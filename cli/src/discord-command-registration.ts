@@ -16,6 +16,7 @@ import {
   sanitizeAgentName,
   buildQuickAgentCommandDescription,
 } from './commands/agent.js'
+import { KEEP_CHOICES } from './commands/keep.js'
 import { isSkillAllowed } from './skill-filter.js'
 
 const cliLogger = createLogger(LogPrefix.CLI)
@@ -472,6 +473,29 @@ export async function registerCommands({
           'Open VS Code in the browser (auto-stops after 30 minutes; Stop button on reply)',
         ),
       )
+      .setDMPermission(false)
+      .toJSON(),
+    new SlashCommandBuilder()
+      .setName('keep')
+      .setDescription(
+        truncateCommandDescription('Set how long this thread stays unarchived after the last message'),
+      )
+      .addIntegerOption((option) => {
+        option
+          .setName('length')
+          .setDescription(
+            truncateCommandDescription('Archive delay after the last message'),
+          )
+          .setRequired(true)
+          .addChoices(
+            ...KEEP_CHOICES.map((choice) => ({
+              name: choice.label,
+              value: choice.minutes,
+            })),
+          )
+
+        return option
+      })
       .setDMPermission(false)
       .toJSON(),
   ]
