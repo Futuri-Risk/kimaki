@@ -105,6 +105,7 @@ import { handleUpgradeAndRestartCommand } from './commands/upgrade.js'
 import { handleMcpCommand, handleMcpSelectMenu } from './commands/mcp.js'
 import { handleScreenshareCommand } from './commands/screenshare.js'
 import { handleVscodeCommand } from './commands/vscode.js'
+import { handleKeepCommand } from './commands/keep.js'
 import { handleModelVariantSelectMenu } from './commands/model.js'
 import {
   handleVariantQuickSelectMenu,
@@ -435,6 +436,10 @@ export function registerInteractionHandler({
 
             case 'vscode':
               await handleVscodeCommand({ command: interaction, appId })
+              return
+
+            case 'keep':
+              await handleKeepCommand({ command: interaction, appId })
               return
           }
 
