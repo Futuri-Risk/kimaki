@@ -15,6 +15,7 @@ import {
   getDerivedSubtaskIndex,
   getLatestAssistantMessageIdForLatestUserTurn,
   getLatestRunInfo,
+  getLatestUserTurnCompletedToolCall,
   hasAssistantMessageCompletedBefore,
   doesLatestUserTurnHaveNaturalCompletion,
   isAssistantMessageInLatestUserTurn,
@@ -400,6 +401,57 @@ describe('session-tool-call-noisy-stream', () => {
       providerID: 'deterministic-provider',
       agent: 'build',
       tokensUsed: 0,
+    })
+  })
+
+  test('no completed terminal tool call while the handoff is still running', () => {
+    // The latest assistant message is a tool-call handoff that has not
+    // finished yet, so the idle handler must not treat it as a footer source.
+    expect(
+      getLatestUserTurnCompletedToolCall({ events, sessionId }),
+    ).toBeUndefined()
+  })
+})
+
+describe('session-terminal-tool-call-idle', () => {
+  const events = loadFixture('session-terminal-tool-call-idle.jsonl')
+  const sessionId = getSessionId(events)
+  const latestAssistantMessageId = getLatestAssistantMessageIdForLatestUserTurn({
+    events,
+    sessionId,
+  })
+
+  test('fixture ends idle on a completed tool-call-only turn', () => {
+    expect(isSessionBusy({ events, sessionId })).toBe(false)
+    if (!latestAssistantMessageId) {
+      throw new Error('Expected latest assistant message')
+    }
+    const message = getAssistantMessageById({
+      events,
+      sessionId,
+      messageId: latestAssistantMessageId,
+    })
+    // The turn's only finish is tool-calls, so the stream-side natural
+    // completion path never fires and the footer must come from the idle path.
+    expect(message.finish).toBe('tool-calls')
+    expect(isAssistantMessageNaturalCompletion({ message })).toBe(false)
+    expect(doesLatestUserTurnHaveNaturalCompletion({ events, sessionId })).toBe(
+      false,
+    )
+  })
+
+  test('exposes the completed terminal tool call for the idle handler', () => {
+    if (!latestAssistantMessageId) {
+      throw new Error('Expected latest assistant message')
+    }
+    const message = getAssistantMessageById({
+      events,
+      sessionId,
+      messageId: latestAssistantMessageId,
+    })
+    expect(getLatestUserTurnCompletedToolCall({ events, sessionId })).toEqual({
+      messageId: latestAssistantMessageId,
+      completedAt: message.time.completed,
     })
   })
 })

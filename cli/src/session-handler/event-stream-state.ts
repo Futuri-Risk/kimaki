@@ -206,10 +206,8 @@ export function isAssistantMessageNaturalCompletion({
     return false
   }
   // finish="tool-calls" means the model's last step was tool execution.
-  // Mid-turn tool-call steps don't get footers — the footer comes from the
-  // final text response (finish="stop") that follows. If the turn ends with
-  // only tool-calls and no text follow-up, no footer is emitted. This is
-  // acceptable since models almost always follow up with text after tools.
+  // Mid-turn tool-call steps don't get footers. A terminal tool-call response
+  // is handled after the session reports idle, avoiding a footer per tool step.
   return message.finish !== 'tool-calls'
 }
 
@@ -585,6 +583,47 @@ export function doesLatestUserTurnHaveNaturalCompletion({
     messageId: latestAssistantMessageId,
     upToIndex,
   })
+}
+
+export function getLatestUserTurnCompletedToolCall({
+  events,
+  sessionId,
+  upToIndex,
+}: {
+  events: EventBufferEntry[]
+  sessionId: string
+  upToIndex?: number
+}): { messageId: string; completedAt: number } | undefined {
+  const latestAssistantMessageId = getLatestAssistantMessageIdForLatestUserTurn({
+    events,
+    sessionId,
+    upToIndex,
+  })
+  if (!latestAssistantMessageId) {
+    return undefined
+  }
+
+  const end = upToIndex ?? events.length - 1
+  for (let i = end; i >= 0; i--) {
+    const entry = events[i]
+    if (!entry || entry.event.type !== 'message.updated') {
+      continue
+    }
+    const info = entry.event.properties.info
+    if (
+      info.sessionID !== sessionId ||
+      info.role !== 'assistant' ||
+      info.id !== latestAssistantMessageId ||
+      info.error ||
+      info.finish !== 'tool-calls' ||
+      typeof info.time.completed !== 'number'
+    ) {
+      continue
+    }
+    return { messageId: info.id, completedAt: info.time.completed }
+  }
+
+  return undefined
 }
 
 export function isAssistantMessageInLatestUserTurn({

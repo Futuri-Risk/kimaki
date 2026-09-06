@@ -111,6 +111,7 @@ import {
 } from './opencode-session-event-log.js'
 import {
   doesLatestUserTurnHaveNaturalCompletion,
+  getLatestUserTurnCompletedToolCall,
   didQuestionQueueHandoffSinceLatestQuestionAsked,
   getAssistantMessageIdsForLatestUserTurn,
   getCurrentTurnStartTime,
@@ -1974,7 +1975,7 @@ export class ThreadSessionRuntime {
       && typeof completedAt === 'number'
       && isAssistantMessageNaturalCompletion({ message: msg })
     ) {
-      await this.handleNaturalAssistantCompletion({
+      await this.handleAssistantCompletion({
         completedMessageId: msg.id,
         completedAt,
       })
@@ -2310,7 +2311,18 @@ export class ThreadSessionRuntime {
     // The event is also pushed into the event buffer by handleEvent(),
     // so waitForEvent() consumers (abort settlement) will see it too.
     if (idleSessionId === sessionId) {
-      const shouldDrainQueuedMessages = doesLatestUserTurnHaveNaturalCompletion({
+      const completedToolCall = getLatestUserTurnCompletedToolCall({
+        events: this.eventBuffer,
+        sessionId: idleSessionId,
+      })
+      if (completedToolCall) {
+        await this.handleAssistantCompletion({
+          completedMessageId: completedToolCall.messageId,
+          completedAt: completedToolCall.completedAt,
+        })
+      }
+
+      const shouldDrainQueuedMessages = completedToolCall !== undefined || doesLatestUserTurnHaveNaturalCompletion({
         events: this.eventBuffer,
         sessionId: idleSessionId,
       })
@@ -2331,7 +2343,7 @@ export class ThreadSessionRuntime {
     }
   }
 
-  private async handleNaturalAssistantCompletion({
+  private async handleAssistantCompletion({
     completedMessageId,
     completedAt,
   }: {
