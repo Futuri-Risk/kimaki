@@ -465,12 +465,26 @@ export async function registerCommands({
           .setDescription(
             truncateCommandDescription('Archive delay after the last message'),
           )
-          .setRequired(true)
+          .setRequired(false)
           .addChoices(
             ...KEEP_CHOICES.map((choice) => ({
               name: choice.label,
               value: choice.minutes,
             })),
+          )
+
+        return option
+      })
+      .addStringOption((option) => {
+        option
+          .setName('renew')
+          .setDescription(
+            truncateCommandDescription('Keep renewing until explicitly turned off'),
+          )
+          .setRequired(false)
+          .addChoices(
+            { name: 'On', value: 'on' },
+            { name: 'Off', value: 'off' },
           )
 
         return option

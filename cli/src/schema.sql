@@ -164,6 +164,14 @@ CREATE TABLE IF NOT EXISTS `session_start_sources` (
 	CONSTRAINT `fk_session_start_sources_scheduled_task_id_scheduled_tasks_id_fk` FOREIGN KEY (`scheduled_task_id`) REFERENCES `scheduled_tasks`(`id`) ON UPDATE CASCADE ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS `thread_keepalives` (
+	`thread_id` text PRIMARY KEY,
+	`app_id` text NOT NULL,
+	`duration_minutes` integer NOT NULL,
+	`created_at` datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`updated_at` datetime DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS `thread_sessions` (
 	`thread_id` text PRIMARY KEY,
 	`session_id` text NOT NULL,
@@ -205,3 +213,4 @@ CREATE INDEX IF NOT EXISTS `scheduled_tasks_thread_id_status_idx` ON `scheduled_
 CREATE INDEX IF NOT EXISTS `session_events_session_id_timestamp_event_index_id_idx` ON `session_events` (`session_id`,`timestamp`,`event_index`,`id`);
 CREATE INDEX IF NOT EXISTS `session_events_thread_id_timestamp_event_index_id_idx` ON `session_events` (`thread_id`,`timestamp`,`event_index`,`id`);
 CREATE INDEX IF NOT EXISTS `session_start_sources_scheduled_task_id_idx` ON `session_start_sources` (`scheduled_task_id`);
+CREATE INDEX IF NOT EXISTS `thread_keepalives_app_id_idx` ON `thread_keepalives` (`app_id`);

@@ -42,7 +42,54 @@ export type ScheduledTaskScheduleKind = typeof schema.scheduled_tasks.$inferSele
 export type ScheduledTask = typeof schema.scheduled_tasks.$inferSelect
 export type SessionStartSource = typeof schema.session_start_sources.$inferSelect
 export type ModelPreference = { modelId: string; variant: string | null }
+export type ThreadKeepalive = typeof schema.thread_keepalives.$inferSelect
 export type { BotMode }
+
+export async function setThreadKeepalive({
+  threadId,
+  appId,
+  durationMinutes,
+}: {
+  threadId: string
+  appId: string
+  durationMinutes: number
+}) {
+  const db = await getDb()
+  await db.insert(schema.thread_keepalives)
+    .values({
+      thread_id: threadId,
+      app_id: appId,
+      duration_minutes: durationMinutes,
+    })
+    .onConflictDoUpdate({
+      target: schema.thread_keepalives.thread_id,
+      set: {
+        app_id: appId,
+        duration_minutes: durationMinutes,
+        updated_at: new Date(),
+      },
+    })
+}
+
+export async function deleteThreadKeepalive(threadId: string) {
+  const db = await getDb()
+  const rows = await db.delete(schema.thread_keepalives)
+    .where(orm.eq(schema.thread_keepalives.thread_id, threadId))
+    .returning({ threadId: schema.thread_keepalives.thread_id })
+  return rows.length > 0
+}
+
+export async function getThreadKeepalive(threadId: string) {
+  const db = await getDb()
+  return await db.query.thread_keepalives.findFirst({
+    where: { thread_id: threadId },
+  }) ?? null
+}
+
+export async function listThreadKeepalives(appId: string) {
+  const db = await getDb()
+  return db.query.thread_keepalives.findMany({ where: { app_id: appId } })
+}
 
 function countRows<T>(rows: T[]) {
   return rows.length
