@@ -272,6 +272,16 @@ export const ipc_requests = sqliteCore.sqliteTable('ipc_requests', {
   sqliteCore.index('ipc_requests_status_created_at_idx').on(table.status, table.created_at),
 ])
 
+export const thread_keepalives = sqliteCore.sqliteTable('thread_keepalives', {
+  thread_id: sqliteCore.text('thread_id').primaryKey().notNull(),
+  app_id: sqliteCore.text('app_id').notNull(),
+  duration_minutes: sqliteCore.integer('duration_minutes', { mode: 'number' }).notNull(),
+  created_at: datetime('created_at').notNull().default(orm.sql`CURRENT_TIMESTAMP`),
+  updated_at: datetime('updated_at').notNull().default(orm.sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
+}, (table) => [
+  sqliteCore.index('thread_keepalives_app_id_idx').on(table.app_id),
+])
+
 export const relations = defineRelations({
   thread_sessions,
   session_events,
@@ -295,6 +305,7 @@ export const relations = defineRelations({
   forum_sync_configs,
   session_sleeps,
   ipc_requests,
+  thread_keepalives,
 }, (r) => ({
   thread_sessions: {
     session_events: r.many.session_events(),
@@ -370,6 +381,7 @@ export const relations = defineRelations({
   ipc_requests: {
     thread: r.one.thread_sessions({ from: r.ipc_requests.thread_id, to: r.thread_sessions.thread_id }),
   },
+  thread_keepalives: {},
 }))
 
 export type BotMode = typeof bot_tokens.$inferSelect.bot_mode

@@ -107,6 +107,10 @@ import {
   startExternalOpencodeSessionSync,
   stopExternalOpencodeSessionSync,
 } from './external-opencode-sync.js'
+import {
+  startThreadKeepalive,
+  stopThreadKeepalive,
+} from './thread-keepalive.js'
 
 export {
   initDatabase,
@@ -346,6 +350,7 @@ export async function startDiscordBot({
     registerInteractionHandler({ discordClient: c, appId: currentAppId })
     registerVoiceStateHandler({ discordClient: c, appId: currentAppId })
     startExternalOpencodeSessionSync({ discordClient: c })
+    startThreadKeepalive({ discordClient: c, appId: currentAppId })
 
     // Channel logging is informational only; do it in background so startup stays responsive.
     void (async () => {
@@ -1578,6 +1583,7 @@ export async function startDiscordBot({
 
       voiceLogger.log('[SHUTDOWN] Stopping OpenCode server')
       stopExternalOpencodeSessionSync()
+      await stopThreadKeepalive()
       await stopOpencodeServer()
 
       discordLogger.log('Closing database...')
