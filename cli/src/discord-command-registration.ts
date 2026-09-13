@@ -94,6 +94,25 @@ export async function registerCommands({
       .setDMPermission(false)
       .toJSON(),
     new SlashCommandBuilder()
+      .setName('rename')
+      .setDescription(
+        truncateCommandDescription(
+          'Rename this thread ({TAG} T#n: title convention; auto from ticket or summary)',
+        ),
+      )
+      .addStringOption((option) => {
+        option
+          .setName('name')
+          .setDescription(
+            truncateCommandDescription('Explicit new name (skips auto-generation)'),
+          )
+          .setRequired(false)
+
+        return option
+      })
+      .setDMPermission(false)
+      .toJSON(),
+    new SlashCommandBuilder()
       .setName('new-session')
       .setDescription(truncateCommandDescription('Start a new OpenCode session'))
       .addStringOption((option) => {
