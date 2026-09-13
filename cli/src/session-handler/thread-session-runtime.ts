@@ -420,7 +420,7 @@ const WORKTREE_THREAD_PREFIX = '⬦ '
 
 // Prefixes that should survive OpenCode session title renames.
 // When a thread starts with one of these, the rename preserves it.
-const PRESERVED_THREAD_PREFIXES: string[] = [
+export const PRESERVED_THREAD_PREFIXES: string[] = [
   WORKTREE_THREAD_PREFIX,
   'btw: ',
   'Fork: ',

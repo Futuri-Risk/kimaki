@@ -104,6 +104,7 @@ import { handleSessionIdCommand } from './commands/session-id.js'
 import { handleUpgradeAndRestartCommand } from './commands/upgrade.js'
 import { handleMcpCommand, handleMcpSelectMenu } from './commands/mcp.js'
 import { handleScreenshareCommand } from './commands/screenshare.js'
+import { handleRenameCommand } from './commands/rename.js'
 import { handleVscodeCommand } from './commands/vscode.js'
 import { handleModelVariantSelectMenu } from './commands/model.js'
 import {
@@ -292,6 +293,10 @@ export function registerInteractionHandler({
               })
               return
 
+
+            case 'rename':
+              await handleRenameCommand({ command: interaction, appId })
+              return
 
             case 'resume':
               await handleResumeCommand({ command: interaction, appId })
