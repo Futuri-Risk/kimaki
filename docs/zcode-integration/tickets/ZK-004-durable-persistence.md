@@ -1,7 +1,7 @@
 # ZK-004 — Durable sidecar persistence on the real Drizzle/libSQL stack
 
 ## Status
-TODO
+DONE (2026-09-17, ZAI) — see completion notes and deviations
 
 ## Objective
 Land the ten-table durable sidecar (`agent_*`) through Kimaki's actual Drizzle schema and
@@ -76,4 +76,43 @@ ZK-001 (stack baseline). Independent of ZK-002/003; ZK-007 consumes it.
 None.
 
 ## Completion notes
-(to fill)
+- Landed:
+  - `cli/src/schema.ts`: ten agent_* tables in Drizzle with explicit CHECK constraints,
+    both partial unique indexes (native identity WHERE native_session_id IS NOT NULL;
+    interactions pending WHERE state='pending'), composite PKs, self-FK for
+    parent_agent_session_id. `src/schema.sql` regenerated via `pnpm generate:sql`
+    (+159 lines, additive only) and reviewed.
+  - `cli/src/agent/schema-gate.ts`: preBootstrapAgentSchemaGate (version/integrity
+    validation BEFORE generic DDL; refuses orphan/unversioned/newer/v1 schemas),
+    finalizeAgentSchema (post-bootstrap stamp + validation), validateAgentSchemaIntegrity
+    (semantic: 10 tables + required indexes + pending-index partiality), and an explicit
+    (not startup-automatic) upgradeAgentSchemaV1ToV2 conversion for standalone-slice DBs.
+  - `cli/src/agent/sql.ts`: SqlClient port + `libsqlSqlClient` adapter over the RAW
+    @libsql/client connection (never the Drizzle object).
+  - `cli/src/agent/store.ts`: verbatim port minus the standalone migrate() (schema
+    ownership moved to gate + generated DDL); all admission/CAS/lease/outbox/interaction
+    invariants preserved.
+  - `cli/src/db.ts`: gate called before the schema.sql statement loop; finalize after it;
+    new `getRawDbClient()` export for later store construction.
+  - Tests: `schema-gate.test.ts` (fresh/orphan/version-refusal, H04 missing-journal
+    refusal, H29 missing-index refusal, H27 history-preserving conversion, H28
+    failed-conversion rollback, idempotent bootstrap, legacy-row preservation) and
+    `store.test.ts` (18 cases ported to real file-backed libSQL: admission immutability,
+    H03 secret escaping, H05 corrupt-state read, queue limits, CAS single-claim,
+    restart recovery, interaction generation/one-use/H25+H26 reuse, lease nonce/machine
+    isolation, freezeIntent priority, transactional cursor/outbox rollback, snapshot
+    replay, coalescing, H01 revision-bound claim, H02 no-receipt-downgrade, zc: fail-closed).
+- Results: agent suite 71 passed / 2 platform-gated skips; tsc 0 errors; db.test.ts
+  10/10 (real getDb bootstrap with gate); non-e2e subset failure sets IDENTICAL to clean
+  baseline (20 failed / 9 files, all pre-existing), +29 new passing tests.
+  Evidence: evidence/zk4-subset.log.
+- Deviations from ticket text: (1) H47/H48 offline-adapter tests NOT ported (adapter
+  class doesn't exist here; real client replaces it — per transplant map). (2) The
+  standalone's exact-DDL comparator replaced by semantic validation (transplant map
+  explicitly requires this for a different generator). (3) Startup REFUSES v1 rather
+  than auto-upgrading (no v1 DBs exist in the wild for kimaki; conversion is an explicit
+  function + tests). (4) Bootstrap DDL failures leave no stamp → next boot refuses via
+  orphan detection (visible, manual reconcile) instead of transactional rollback of
+  CREATE statements — documented limitation.
+- Timestamps: agent tables use epoch-ms integers, isolated from the host datetime custom
+  type; never fed into ISO parsers.

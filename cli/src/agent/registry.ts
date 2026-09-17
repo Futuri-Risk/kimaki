@@ -5,8 +5,9 @@
 // store lands (ZK-004/007). — ZAI 2026-09-17
 
 import { fail } from './errors.js'
+import type { BackendId } from './types.js'
 
-export type BackendId = 'opencode' | 'zcode'
+export type { BackendId }
 
 /** Minimal durable sidecar projection used during backend resolution. */
 export type BackendSidecar = { backend: BackendId }

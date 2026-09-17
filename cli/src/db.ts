@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url'
 import { getDataDir } from './config.js'
 import { createLogger, formatErrorWithStack, LogPrefix } from './logger.js'
 import * as schema from './schema.js'
+import { finalizeAgentSchema, preBootstrapAgentSchemaGate } from './agent/schema-gate.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -135,6 +136,11 @@ async function migrateSchema({
   db: KimakiDb
   client: Client
 }): Promise<void> {
+  // Agent sidecar integrity gate BEFORE generic DDL: existing agent tables must carry a
+  // supported version and declared shape; CREATE IF NOT EXISTS must never silently
+  // recreate a missing journal (ZK-004).
+  await preBootstrapAgentSchemaGate(client)
+
   const schemaPath = path.join(__dirname, '../src/schema.sql')
   const sql = fs.readFileSync(schemaPath, 'utf-8')
   const statements = sql
@@ -162,6 +168,9 @@ async function migrateSchema({
   for (const statement of statements) {
     await client.execute(statement)
   }
+
+  // Stamp/validate the agent sidecar after bootstrap created any missing tables.
+  await finalizeAgentSchema(client)
 
   const alterStatements = [
     'ALTER TABLE channel_models ADD COLUMN variant TEXT',
@@ -256,6 +265,13 @@ async function migrateSchema({
       .where(orm.eq(schema.bot_tokens.app_id, botRow.app_id))
       .catch(() => undefined)
   }
+}
+
+/** Raw libSQL client for components that need transactional SQL outside Drizzle
+ * (the agent sidecar store — never wrap the Drizzle object as a raw client). */
+export async function getRawDbClient(): Promise<Client> {
+  await getDb()
+  return clientInstance!
 }
 
 export async function closeDb(): Promise<void> {
