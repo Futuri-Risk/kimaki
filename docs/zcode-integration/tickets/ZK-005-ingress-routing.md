@@ -1,7 +1,7 @@
 # ZK-005 — Frontend ingress normalization + capability routing
 
 ## Status
-TODO
+IN_PROGRESS (2026-09-17, ZAI) — preprocessing slice landed; remaining scope precisely bounded below
 
 ## Objective
 Route every ingress through the backend/capability policy so a ZCode session never falls
@@ -67,4 +67,27 @@ ZK-003.
 None.
 
 ## Completion notes
-(to fill)
+- LANDED (commit after 3fc31398): the preprocessExistingThreadMessage split — the G01
+  bypass fix. New pure helper `resolvePreprocessBackendPlan(sessionId)` (tested in
+  `cli/src/agent/preprocess-backend-plan.test.ts`); zc: sessions now skip the
+  OpenCode enrichment block entirely (no `initializeOpencodeForDirectory`, no session
+  context, no agent list), get `canForkSession:false` (visible user refusal for voice
+  btw), and never enter `routeVoiceSession` (no OpenCode side-session creation /
+  getOrCreateRuntime). OpenCode sessions: byte-identical behavior (plan constants).
+- REMAINING for DONE (next session, in order):
+  1. discord-bot.ts: `!` shell + `. btw` dispatch resolve backend via
+     `resolveBackend`+`SidecarLookup` before runtime work; `.btw` on zc: → native fork
+     capability or visible refusal; ordinary-message UI dismissal must not abort a
+     pending native question (answers routed as answers — needs the ZK-009 bridge, can
+     land stubbed-refusal first).
+  2. interaction-handler.ts: backend+capability checks in autocomplete/slash/dynamic/
+     buttons/menus/modals branches (requireCommand from agent/registry).
+  3. preprocessNewSessionMessage / preprocessNewThreadMessage gating once native
+     defaults can exist (with ZK-007): consult store.freezeIntent before
+     `initializeOpencodeForDirectory` at lines ~418/~521.
+  4. task-runner scheduled wake + CLI-injected send: source kinds + backend resolution.
+  5. Ingress matrix test: every ingress kind × backend=zcode asserts zero OpenCode
+     init/SDK calls (spy on opencode.ts exports via vi.mock).
+- Evidence: evidence/zk5-slice-subset.log (failure set identical to baseline except
+  hrana-server.test.ts, which passes 1/1 in isolation with the changes present —
+  parallel-load flake on this machine, not a regression).

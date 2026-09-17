@@ -24,6 +24,7 @@ import { isVoiceAttachment } from './voice-attachment.js'
 import { initializeOpencodeForDirectory } from './opencode.js'
 import { getCompactSessionContext, getLastSessionId } from './markdown.js'
 import { getThreadSession, getThreadWorktreeOrWorkspace } from './database.js'
+import { isZcodeSessionId } from './agent/registry.js'
 import { resolveWorkingDirectory, resolveTextChannel, sendThreadMessage } from './discord-utils.js'
 import { forkSessionToBtwThread } from './commands/btw.js'
 import { createNewSessionThread } from './commands/session.js'
@@ -167,6 +168,23 @@ export function extractQueueSuffix(prompt: string): { prompt: string; forceQueue
   return { prompt: prompt.replace(QUEUE_SUFFIX_RE, '').trimEnd(), forceQueue: true }
 }
 
+/**
+ * Backend plan for preprocessing an existing-thread message (ZK-005).
+ * A zc: session must never hydrate OpenCode context (no client init, no session
+ * context, no agent list) and must not be routed through OpenCode voice
+ * side-session creation — OpenCode fallback is prohibited for native sessions.
+ */
+export function resolvePreprocessBackendPlan(sessionId: string | null): {
+  backend: 'opencode' | 'zcode'
+  hydrateOpencodeContext: boolean
+  allowVoiceSideSessions: boolean
+} {
+  if (sessionId !== null && isZcodeSessionId(sessionId)) {
+    return { backend: 'zcode', hydrateOpencodeContext: false, allowVoiceSideSessions: false }
+  }
+  return { backend: 'opencode', hydrateOpencodeContext: true, allowVoiceSideSessions: true }
+}
+
 function shouldSkipEmptyPrompt({
   message,
   prompt,
@@ -270,6 +288,8 @@ export async function preprocessExistingThreadMessage({
 
   // ── Existing session path ──
   voiceLogger.log(`[SESSION] Found session ${sessionId} for thread ${thread.id}`)
+  // ZK-005: native sessions never initialize OpenCode for enrichment or voice routing.
+  const backendPlan = resolvePreprocessBackendPlan(sessionId)
 
   let messageContent = isCliInjected
     ? (message.content || '')
@@ -281,7 +301,7 @@ export async function preprocessExistingThreadMessage({
   let lastSessionContext: string | undefined
   let agents: AgentInfo[] = []
 
-  if (projectDirectory) {
+  if (projectDirectory && backendPlan.hydrateOpencodeContext) {
     try {
       const getClient = await initializeOpencodeForDirectory(
         projectDirectory,
@@ -341,13 +361,14 @@ export async function preprocessExistingThreadMessage({
     currentSessionContext,
     lastSessionContext,
     agents,
-    canForkSession: true,
+    canForkSession: backendPlan.allowVoiceSideSessions,
   })
   if (voiceResult instanceof Error) {
     voiceLogger.warn('Voice request not dispatched:', voiceResult)
     return { prompt: '', mode: 'opencode', skip: true }
   }
-  if (await routeVoiceSession({ voiceResult, message, thread, appId })) {
+  // ZK-005: native sessions never route through OpenCode voice side-session creation.
+  if (backendPlan.allowVoiceSideSessions && (await routeVoiceSession({ voiceResult, message, thread, appId }))) {
     return { prompt: '', mode: 'opencode', skip: true }
   }
   if (voiceResult) {
