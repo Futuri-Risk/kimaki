@@ -30,10 +30,7 @@ export async function loadSchemaStatements(): Promise<string[]> {
         .join('\n')
         .trim(),
     )
-    .filter(
-      (s) =>
-        s.length > 0 && !/^CREATE\s+TABLE\s+["']?sqlite_sequence["']?\s*\(/i.test(s),
-    )
+    .filter((s) => s.length > 0 && !/^CREATE\s+TABLE\s+["']?sqlite_sequence["']?\s*\(/i.test(s))
 }
 
 export type StoreHarness = {
@@ -76,9 +73,58 @@ export type StoreHarness = {
   }
 }
 
-export async function createStoreHarness(options: { secretValues?: string[] } = {}): Promise<StoreHarness> {
+export async function createStoreHarness(
+  options: { secretValues?: string[] } = {},
+): Promise<StoreHarness> {
   const root = await mkdtemp(path.join(tmpdir(), 'kimaki-agent-test-'))
-  const client = createClient({ url: `file:${path.join(root, 'host.db').replace(/\\/g, '/')}` })
+  const rawClient = createClient({ url: `file:${path.join(root, 'host.db').replace(/\\/g, '/')}` })
+  await rawClient.execute('PRAGMA journal_mode = WAL')
+  await rawClient.execute('PRAGMA busy_timeout = 5000')
+  // The coordinator runs concurrent write lanes (event tail + drain + ingest)
+  // against one file DB. @libsql/client's local transaction() BEGIN does not
+  // honor busy_timeout in 0.17.x, so overlapping writes throw SQLITE_BUSY. The
+  // bundle's node:sqlite adapter serialized these implicitly; replicate that
+  // with a single-writer chain. (Host wiring in ZK-008 must provide the same
+  // single-writer guarantee for production traffic.)
+  let writeChain: Promise<unknown> = Promise.resolve()
+  const enqueue = <T>(job: () => Promise<T>): Promise<T> => {
+    const next = writeChain.then(job, job)
+    writeChain = next.catch(() => undefined)
+    return next
+  }
+  const client: Client = {
+    execute: (stmt: Parameters<Client['execute']>[0]) => enqueue(() => rawClient.execute(stmt)),
+    // Hold the single-writer chain for the WHOLE transaction: later writes must
+    // wait until commit/rollback releases, not just until BEGIN returns.
+    transaction: (...args: []) =>
+      enqueue(async () => {
+        const tx = await rawClient.transaction(...(args as []))
+        let release!: () => void
+        const held = new Promise<void>((resolve) => {
+          release = resolve
+        })
+        writeChain = writeChain.then(() => held)
+        const settle = async (fn: () => Promise<void>) => {
+          try {
+            await fn()
+          } finally {
+            release()
+          }
+        }
+        return {
+          execute: (stmt: Parameters<Client['execute']>[0]) => tx.execute(stmt as never),
+          commit: () => settle(() => tx.commit()),
+          rollback: () => settle(() => tx.rollback()),
+          close: () => settle(async () => tx.close()),
+        }
+      }),
+    batch: (stmts: Parameters<Client['batch']>[0], mode: Parameters<Client['batch']>[1]) =>
+      enqueue(() => rawClient.batch(stmts, mode as never)),
+    close: () => rawClient.close(),
+    get closed() {
+      return rawClient.closed
+    },
+  } as unknown as Client
   onTestFinished(async () => {
     client.close()
     // Windows can briefly hold WAL/shm handles after close; cleanup is best-effort
