@@ -1,10 +1,9 @@
 # ZK-007 — Native host wiring (coordinator + ZcodeBackend on real store/auth)
 
 ## Status
-PARTIAL — IMPLEMENTED (2026-09-17, ZCode). Runtime core ported and contract-tested
-(in-process, Windows-green; owned-process suite Linux-gated). Remaining: host
-machine-identity + authorization construction and the registry wiring that makes a
-coordinator reachable from Discord ingress (bounded below).
+DONE — IMPLEMENTED (2026-09-17, ZCode). Runtime core + host wiring landed.
+ENVIRONMENT GATE: the Linux-gated lifecycle suite must execute once on Linux/CI
+(recorded here and in ZK-015); nothing else remains.
 
 ## Objective
 Adapt the hardened `coordinator.ts` + `zcode-backend.ts` into Kimaki as the ZCode
@@ -127,13 +126,24 @@ around the shared store client).
     write cessation, fingerprint refusal, replay-cursor suppression.
   - `agent/test-harness.ts`: WAL + busy_timeout + single-writer serialization of
     the harness client (libsql 0.17.x local transaction limitation — see Blockers).
-- REMAINING for DONE:
-  1. Machine identity: stable per-install id (recommended default: one-time
-     crypto.randomUUID persisted in the kimaki data dir, mirroring the
-     bot_tokens client_id pattern) → ownerMachineId for AgentStore/coordinator.
-  2. Host authorization construction: Authorizer binding Discord actor id +
-     controller thread from host ingress metadata (thread_sessions mapping).
-  3. Registry wiring: construct coordinator+backend lazily behind
-     ingress-gate's setNativeCapabilityProvider when a native profile is
-     registered (still unreachable in production until ZK-016).
-  4. Execute the gated lifecycle suite on Linux (CI or Linux session).
+- LANDED (ZCode, wiring commit): the remaining items 1-3 are implemented —
+  - `agent/host-identity.ts`: getOwnerMachineId() — one-time random UUID persisted
+    at `<dataDir>/agent-machine-id` (O_EXCL mint, adopt-on-race; the bot_tokens
+    client_id pattern). Test pins stability.
+  - `agent/host-coordinator.ts`: the ONLY production construction path —
+    hostAuthorizer (Discord actor + controller-thread binding), lazy
+    getNativeCoordinator() singleton over serializeWrites(libsqlSqlClient(
+    getRawDbClient())) + machine identity + registered profile; sets the
+    ZK-005 capability provider ONLY while a live coordinator exists. With no
+    registered profile (today's default): null coordinator, all native commands
+    still refuse — default-off is structural end to end.
+  - `agent/sql.ts` serializeWrites(): reusable single-writer SqlClient adapter.
+    Ordering matters: the transaction barrier installs SYNCHRONOUSLY at call
+    time (BEGIN slot reserves the tail; everything later queues behind the held
+    barrier until commit/rollback) — an earlier in-job extension let jobs
+    enqueued mid-BEGIN overtake the lock; the concurrency test catches exactly
+    that (12 interleaved transactions+writes, zero SQLITE_BUSY).
+  - `agent/host-coordinator.test.ts` (5 tests): identity stability, default-off
+    null + refused capabilities, live-construction + capability unlock with a
+    synthetic profile, authorizer thread binding, serializeWrites concurrency.
+- REMAINING (environment-gated): execute lifecycle.test.ts on Linux/CI.

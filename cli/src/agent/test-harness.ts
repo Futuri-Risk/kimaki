@@ -94,30 +94,53 @@ export async function createStoreHarness(
   }
   const client: Client = {
     execute: (stmt: Parameters<Client['execute']>[0]) => enqueue(() => rawClient.execute(stmt)),
-    // Hold the single-writer chain for the WHOLE transaction: later writes must
-    // wait until commit/rollback releases, not just until BEGIN returns.
-    transaction: (...args: []) =>
-      enqueue(async () => {
-        const tx = await rawClient.transaction(...(args as []))
-        let release!: () => void
-        const held = new Promise<void>((resolve) => {
-          release = resolve
-        })
-        writeChain = writeChain.then(() => held)
-        const settle = async (fn: () => Promise<void>) => {
-          try {
-            await fn()
-          } finally {
-            release()
-          }
-        }
-        return {
+    // Hold the single-writer chain for the WHOLE transaction. The barrier is
+    // installed synchronously at call time (see serializeWrites in sql.ts for
+    // the ordering argument) so nothing enqueued during BEGIN can overtake.
+    transaction: (...args: []) => {
+      let release!: () => void
+      const held = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const begin = writeChain.then(
+        () => rawClient.transaction(...(args as [])),
+        () => rawClient.transaction(...(args as [])),
+      )
+      writeChain = begin.then(
+        () => held,
+        () => held,
+      )
+      return begin.then(
+        (tx) => ({
           execute: (stmt: Parameters<Client['execute']>[0]) => tx.execute(stmt as never),
-          commit: () => settle(() => tx.commit()),
-          rollback: () => settle(() => tx.rollback()),
-          close: () => settle(async () => tx.close()),
-        }
-      }),
+          commit: async () => {
+            try {
+              await tx.commit()
+            } finally {
+              release()
+            }
+          },
+          rollback: async () => {
+            try {
+              await tx.rollback()
+            } finally {
+              release()
+            }
+          },
+          close: async () => {
+            try {
+              await tx.close()
+            } finally {
+              release()
+            }
+          },
+        }),
+        (error) => {
+          release()
+          throw error
+        },
+      )
+    },
     batch: (stmts: Parameters<Client['batch']>[0], mode: Parameters<Client['batch']>[1]) =>
       enqueue(() => rawClient.batch(stmts, mode as never)),
     close: () => rawClient.close(),
