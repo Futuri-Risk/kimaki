@@ -1,7 +1,7 @@
 # ZK-003 — Default-off backend registry + typed controller boundary
 
 ## Status
-TODO
+DONE (2026-09-17, ZAI) — minimal slice; see completion notes and deviations
 
 ## Objective
 Introduce the capability-aware backend selection seam in front of the real
@@ -64,4 +64,19 @@ New `cli/src/agent/registry.test.ts`; baseline suite regression.
 None.
 
 ## Completion notes
-(to fill)
+- Landed: `cli/src/agent/errors.ts` (single host boundary reexporting native error
+  contracts) and `cli/src/agent/registry.ts` (BackendId, `zc:` prefix guard,
+  `resolveBackend` with injected SidecarLookup — store dependency inverted until ZK-004,
+  `requireCommand` capability guard, `OpenCodeBackend<T>` receiver-preserving seam).
+- Deviation from original scope: `thread-session-runtime.ts` was NOT modified in this
+  ticket. The selector lives in `agent/registry.ts` and is invoked from ingress sites in
+  ZK-005 — this keeps the real runtime byte-identical for default-off and avoids touching
+  the 5094-line controller before the ingress audit. The typed controller union lands with
+  the ZCode controller itself (ZK-007).
+- Default-off is structural: without a sidecar every ID resolves to `opencode`; `zc:` IDs
+  without a sidecar fail closed (SESSION_SIDECAR_MISSING, never OpenCode fallback).
+- Tests (`cli/src/agent/registry.test.ts`): backend identity fallback / missing-zc
+  failure, prefix detection, capability guard (unknown commands + capability=false),
+  receiver preservation, missing-method failure. 8/8 pass; tsc clean.
+- Full-suite comparison vs baseline: see evidence/zk2-vitest-full.log analysis in
+  ZK-002 completion notes.

@@ -76,8 +76,8 @@ Discord ─▶ Kimaki frontend (discord-bot, preprocessing, interactions, comman
 | ID | Title | Depends on | Status | Environment | Result |
 |----|-------|------------|--------|-------------|--------|
 | ZK-001 | Baseline + drift report + environment record | — | IN_PROGRESS | local | |
-| ZK-002 | Import host-independent native core + ported native tests | ZK-001 | TODO | local | |
-| ZK-003 | Default-off backend registry + typed controller boundary | ZK-002 | TODO | local | |
+| ZK-002 | Import host-independent native core + ported native tests | ZK-001 | DONE | local | 9 modules + supervisor.js sibling; 36 pass / 2 gated skips; isolated strict check green |
+| ZK-003 | Default-off backend registry + typed controller boundary | ZK-002 | DONE | local | registry+errors seam; zc: fail-closed; receiver pin; 8/8 tests |
 | ZK-004 | Durable sidecar persistence on real Drizzle/libSQL | ZK-001 | TODO | local | |
 | ZK-005 | Frontend ingress normalization + capability routing | ZK-003 | TODO | local | |
 | ZK-006 | OpenCode preservation regression pin | ZK-003 | TODO | local | |

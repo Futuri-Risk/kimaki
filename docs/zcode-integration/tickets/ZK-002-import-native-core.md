@@ -1,7 +1,7 @@
 # ZK-002 — Import host-independent native core + ported native tests
 
 ## Status
-TODO
+DONE (2026-09-17, ZAI) — see completion notes
 
 ## Objective
 Import the hardened, host-independent native core from the standalone slice into
@@ -73,4 +73,24 @@ Updated here when done: files copied, test counts, skip list.
 None expected.
 
 ## Completion notes
-(to fill)
+- Files imported verbatim from the hardened bundle into `cli/src/agent/native/`: client.ts,
+  diagnostics.ts, errors.ts, model.ts, ndjson.ts, process.ts, protocol.ts, supervisor.ts,
+  types.ts + committed compiled `supervisor.js` sibling (annotated header; needed because
+  process.ts spawns './supervisor.js' relative to import.meta.url in tsx/vitest source mode;
+  excluded from host tsc via tsconfig exclude to avoid duplicate dist output).
+- Tests ported to vitest (node:assert kept, matching repo convention):
+  `client.test.ts` (11 client cases + H43/H45/H46), `native-core.test.ts` (NDJSON×6,
+  classify, V4 builders×6, runtimeModel, H14, H50-verifyLaunch-half, fingerprint — H14 +
+  fingerprint test are Linux-gated with visible skip reason because verifyLaunch's win32
+  PLATFORM_UNCERTIFIED gate precedes the arg/hash checks), `native-boundary.test.ts`
+  (H30 host-import scan adapted to host layout, supervisor sibling check, H31, H32, H44
+  adapted in-process instead of spawnSync per repo rule).
+- Results: native suite 36 passed / 2 skipped (win32 gates); `tsc --noEmit` full = 0 errors
+  (after also fixing the pre-existing discord-digital-twin missing prisma client via
+  `pnpm generate` in that package — generate:sql step of that package still fails on this
+  machine (P1013 dev.db URL), harmless: schema.sql is committed); `check:native` isolated
+  strict check (incl. exactOptionalPropertyTypes) = exit 0.
+- Deliberately NOT ported here: projector/attachments/registry/renderer/store/coordinator
+  tests (their modules come with ZK-003/004/007/008/013); H47/H48 sqlite-adapter tests stay
+  in the standalone bundle (test-adapter-only defect class, per transplant map).
+- Full-suite comparison vs baseline recorded in evidence/zk2-vitest-summary.

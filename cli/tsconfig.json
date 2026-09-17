@@ -30,5 +30,10 @@
     "noPropertyAccessFromIndexSignature": false
   },
   "include": ["src"],
-  "exclude": ["scripts"]
+  "exclude": [
+    "scripts",
+    // committed compiled mirror of supervisor.ts, spawned by process.ts in source mode;
+    // compiling both would collide on the same dist output path
+    "src/agent/native/supervisor.js"
+  ]
 }

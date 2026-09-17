@@ -1,0 +1,263 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.6 [39m[90mC:/Dev/kimaki-zcode/cli[39m
+
+[1m[43m DEPRECATED [49m[22m [33m'basic' reporter is deprecated and will be removed in Vitest v3.
+Remove 'basic' from 'reporters' option. To match 'basic' reporter 100%, use configuration:
+{
+  "test": {
+    "reporters": [
+      [
+        "default",
+        {
+          "summary": false
+        }
+      ]
+    ]
+  }
+}[39m
+ [31m❯[39m src/thread-message-queue.e2e.test.ts [2m([22m[2m10 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[33m 52269[2mms[22m[39m
+[31m   [31m×[31m thread message queue ordering[2m > [22mfirst prompt after cold opencode server start still streams text parts[39m[33m 11148[2mms[22m[39m
+[31m     → Timed out waiting for bot message containing "ok" in thread 1550114928092774403. Recent messages:
+user: Reply with exactly: cold-start-stream
+bot: > *using deterministic-provider/deterministic-v2*[39m
+[31m   [31m×[31m thread message queue ordering[2m > [22mtext message during active session gets processed[39m[33m 9908[2mms[22m[39m
+[31m     → Timed out waiting for footer after "beta" in thread 1550114970589462534. Recent messages:
+user: Reply with exactly: alpha
+bot: > *using deterministic-provider/deterministic-v2*
+user: Reply with exactly: beta
+bot: > ok[39m
+   [33m[2m✓[22m[39m thread message queue ordering[2m > [22mtwo rapid text messages in thread — both processed in order [33m 2015[2mms[22m[39m
+[31m   [31m×[31m thread message queue ordering[2m > [22mbash tool-call actually executes and creates file in project directory[39m[33m 3320[2mms[22m[39m
+[31m     → Snapshot `thread message queue ordering > bash tool-call actually executes and creates file in project directory 1` mismatched[39m
+   [33m[2m✓[22m[39m thread message queue ordering[2m > [22m/queue shows queued status first, then dispatch indicator when dequeued [33m 5364[2mms[22m[39m
+   [33m[2m✓[22m[39m thread message queue ordering[2m > [22mRemove from queue button clears only that queued message [33m 3434[2mms[22m[39m
+[31m   [31m×[31m thread message queue ordering[2m > [22mslow stream still processes queued next message after completion[39m[33m 3395[2mms[22m[39m
+[31m     → Snapshot `thread message queue ordering > slow stream still processes queued next message after completion 1` mismatched[39m
+   [33m[2m✓[22m[39m thread message queue ordering[2m > [22mqueue drains correctly after bursty queued messages [33m 1810[2mms[22m[39m
+[31m   [31m×[31m thread message queue ordering[2m > [22mediting a queued message updates its prompt before dispatch[39m[33m 5484[2mms[22m[39m
+[31m     → Snapshot `thread message queue ordering > editing a queued message updates its prompt before dispatch 1` mismatched[39m
+   [33m[2m✓[22m[39m thread message queue ordering[2m > [22mediting a queued message to remove queue suffix removes it from queue [33m 3261[2mms[22m[39m
+ [31m❯[39m src/agent-model.e2e.test.ts [2m([22m[2m18 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[33m 43294[2mms[22m[39m
+[31m   [31m×[31m agent model resolution[2m > [22mnew thread uses agent model when channel agent is set[39m[33m 8165[2mms[22m[39m
+[31m     → Timed out waiting for bot message containing "*project" in thread 1550115150667710473. Recent messages:
+user: Reply with exactly: agent-model-check
+bot: > *using deterministic-provider/agent-model-v2 ⋅ test-agent*[39m
+[31m   [31m×[31m agent model resolution[2m > [22mpromptAsync path includes rich system context[39m[33m 4023[2mms[22m[39m
+[31m     → Snapshot `agent model resolution > promptAsync path includes rich system context 1` mismatched[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22msession.command path includes kimaki system prompt on first message [33m 1116[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22mreply message injects replied-message context [33m 920[2mms[22m[39m
+[31m   [31m×[31m agent model resolution[2m > [22mnew thread uses channel model when channel model preference is set[39m[33m 2171[2mms[22m[39m
+[31m     → Snapshot `agent model resolution > new thread uses channel model when channel model preference is set 1` mismatched[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22munsupported channel model variant falls back to the selected model [33m 1934[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22m/btw fork keeps source session model when channel model differs [33m 2506[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22mchanging channel agent via /plan-agent does not affect existing thread model [33m 2560[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22m/plan-agent with prompt starts a session with the plan agent [33m 1320[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22m/plan-agent with prompt persists a supported thinking variant [33m 2446[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22m/plan-agent variant persists on the channel without a prompt [33m 603[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22m/plan-agent with prompt in an existing thread changes the session agent [33m 2422[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22m/plan-agent inside a thread switches the model for that thread [33m 2411[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22m/plan-agent then an immediate follow-up uses the new agent [33m 2311[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22m/plan-agent in a channel then an immediate message uses the new agent [33m 1223[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22m/plan-agent on the same agent refreshes a stale session model [33m 1267[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22m/plan-agent shows the agent model when a channel model is also set [33m 1368[2mms[22m[39m
+   [33m[2m✓[22m[39m agent model resolution[2m > [22m/plain-agent tells the user to clear a channel model override [33m 1257[2mms[22m[39m
+ [31m❯[39m src/voice-message.e2e.test.ts [2m([22m[2m10 tests[22m[2m | [22m[31m3 failed[39m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 39157[2mms[22m[39m
+[31m   [31m×[31m voice message handling[2m > [22mvoice btw routing creates a separate thread with the correct history[39m[33m 8004[2mms[22m[39m
+[31m     → Test timed out in 8000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[31m   [31m×[31m voice message handling[2m > [22mvoice new-session routing creates a separate thread with the correct history[39m[33m 8000[2mms[22m[39m
+[31m     → Test timed out in 8000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[31m   [31m×[31m voice message handling[2m > [22mvoice message in channel creates thread and starts session[39m[33m 2141[2mms[22m[39m
+[31m     → Snapshot `voice message handling > voice message in channel creates thread and starts session 2` mismatched[39m
+   [33m[2m✓[22m[39m voice message handling[2m > [22mfirst voice message resumes after the user saves an API key [33m 1669[2mms[22m[39m
+   [33m[2m✓[22m[39m voice message handling[2m > [22mvoice attachment without content type still transcribes and avoids empty prompt dispatch [33m 1503[2mms[22m[39m
+   [33m[2m✓[22m[39m voice message handling[2m > [22mvoice message in thread with idle session starts new request [33m 2930[2mms[22m[39m
+   [2m[90m↓[39m[22m voice message handling[2m > [22mvoice message with queueMessage=false queues behind running session
+   [33m[2m✓[22m[39m voice message handling[2m > [22mvoice message with queueMessage=true queues behind running session [33m 5031[2mms[22m[39m
+   [33m[2m✓[22m[39m voice message handling[2m > [22mslow transcription completing after session finishes is handled correctly [33m 3050[2mms[22m[39m
+   [33m[2m✓[22m[39m voice message handling[2m > [22mslow queued transcription completing after session idle is dispatched [33m 3736[2mms[22m[39m
+ [31m❯[39m src/worktree-lifecycle.e2e.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[33m 30886[2mms[22m[39m
+[31m   [31m×[31m worktree lifecycle[2m > [22m/new-worktree in a session thread forks into a new worktree thread[39m[33m 10169[2mms[22m[39m
+[31m     → Timed out waiting for bot message containing "ok" in thread 1550115520324304899. Recent messages:
+user: Reply with exactly: before-worktree
+bot: > *using deterministic-provider/deterministic-v2*[39m
+[31m   [31m×[31m worktree lifecycle[2m > [22m/new-worktree from a text channel creates a worktree thread that responds to messages[39m[33m 4091[2mms[22m[39m
+[31m     → Snapshot `worktree lifecycle > /new-worktree from a text channel creates a worktree thread that responds to messages 1` mismatched[39m
+   [33m[2m✓[22m[39m worktree lifecycle[2m > [22mauto-worktree from user message creates worktree thread and responds [33m 4313[2mms[22m[39m
+[31m   [31m×[31m worktree lifecycle[2m > [22mauto-worktrees fall back to normal sessions outside git repositories[39m[33m 4486[2mms[22m[39m
+[31m     → Snapshot `worktree lifecycle > auto-worktrees fall back to normal sessions outside git repositories 1` mismatched[39m
+[31m   [31m×[31m worktree lifecycle[2m > [22mkimaki send --channel auto-creates worktree when channel toggle is enabled[39m[33m 2511[2mms[22m[39m
+[31m     → Snapshot `worktree lifecycle > kimaki send --channel auto-creates worktree when channel toggle is enabled 1` mismatched[39m
+ [31m❯[39m src/queue-advanced-footer.e2e.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[33m 23706[2mms[22m[39m
+[31m   [31m×[31m queue advanced: footer emission[2m > [22mnormal completion emits footer after bot reply[39m[33m 8854[2mms[22m[39m
+[31m     → Timed out waiting for message in channel 1550115653128552451[39m
+[31m   [31m×[31m queue advanced: footer emission[2m > [22mskip-footer-mentions omits the thread creator mention[39m[33m 3291[2mms[22m[39m
+[31m     → Snapshot `queue advanced: footer emission > skip-footer-mentions omits the thread creator mention 1` mismatched[39m
+   [33m[2m✓[22m[39m queue advanced: footer emission[2m > [22mfooter appears after second message in same session [33m 2585[2mms[22m[39m
+   [33m[2m✓[22m[39m queue advanced: footer emission[2m > [22minterrupted run has no footer, completed follow-up has footer [33m 3496[2mms[22m[39m
+[31m   [31m×[31m queue advanced: footer emission[2m > [22mtool-call turn emits a footer after the final follow-up[39m[33m 2093[2mms[22m[39m
+[31m     → Snapshot `queue advanced: footer emission > tool-call turn emits a footer after the final follow-up 1` mismatched[39m
+ [31m❯[39m src/runtime-lifecycle.e2e.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[33m 35083[2mms[22m[39m
+[31m   [31m×[31m runtime lifecycle[2m > [22mtwo sequential completions reuse same runtime and listener[39m[33m 8102[2mms[22m[39m
+[31m     → Timed out waiting for bot message containing "*project" in thread 1550115759726788611. Recent messages:
+user: Reply with exactly: seq-alpha[39m
+[31m   [31m×[31m runtime lifecycle[2m > [22mfooter includes context percentage and model id[39m[33m 8126[2mms[22m[39m
+[31m     → Timed out waiting for bot message containing "%" in thread 1550115793667096581. Recent messages:
+user: Reply with exactly: footer-check
+bot: > *using deterministic-provider/deterministic-v2*[39m
+[31m   [31m×[31m runtime lifecycle[2m > [22mexisting runtime reconnects after shared opencode server restart[39m[33m 11549[2mms[22m[39m
+[31m     → Snapshot `runtime lifecycle > existing runtime reconnects after shared opencode server restart 1` mismatched[39m
+   [32m✓[39m runtime lifecycle[2m > [22mdoes not print a context-usage notice for the final text part right before the footer[32m 183[2mms[22m[39m
+   [33m[2m✓[22m[39m runtime lifecycle[2m > [22mtwo near-simultaneous messages to same thread serialize correctly [33m 3783[2mms[22m[39m
+ [31m❯[39m src/queue-advanced-abort.e2e.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m2 failed[39m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 19759[2mms[22m[39m
+[31m   [31m×[31m queue advanced: abort and retry[2m > [22mslow tool call (sleep) gets aborted by explicit abort, then queue continues[39m[33m 9091[2mms[22m[39m
+[31m     → Timed out waiting for message in channel 1550115915482267651[39m
+[31m     → Hook timed out in 5000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".[39m
+[31m   [31m×[31m queue advanced: abort and retry[2m > [22mexplicit abort emits MessageAbortedError and does not emit footer[39m[33m 5034[2mms[22m[39m
+[31m     → Snapshot `queue advanced: abort and retry > explicit abort emits MessageAbortedError and does not emit footer 1` mismatched[39m
+   [2m[90m↓[39m[22m queue advanced: abort and retry[2m > [22mexplicit abort stale-idle window: follow-up prompt still gets assistant text
+   [33m[2m✓[22m[39m queue advanced: abort and retry[2m > [22mmodel switch mid-session aborts and restarts from same session history [33m 2443[2mms[22m[39m
+   [32m✓[39m queue advanced: abort and retry[2m > [22mabortActiveRun settles correctly during long-running request[32m 157[2mms[22m[39m
+ [31m❯[39m src/queue-interrupt-drain.e2e.test.ts [2m([22m[2m2 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 18906[2mms[22m[39m
+[31m   [31m×[31m queue + interrupt drain ordering[2m > [22marchiving keeps the active run alive so queued messages drain[39m[33m 8096[2mms[22m[39m
+[31m     → Timed out waiting for message in channel 1550116004707696643[39m
+[31m   [31m×[31m queue + interrupt drain ordering[2m > [22mqueued message via /queue + normal interrupt: interrupt reply should appear, then queue drains[39m[33m 7919[2mms[22m[39m
+[31m     → Snapshot `queue + interrupt drain ordering > queued message via /queue + normal interrupt: interrupt reply should appear, then queue drains 1` mismatched[39m
+ [31m❯[39m src/sleep.e2e.test.ts [2m([22m[2m3 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 20426[2mms[22m[39m
+[31m   [31m×[31m kimaki_sleep[2m > [22mpersists a wake row, then the runner wakes the same session[39m[33m 8224[2mms[22m[39m
+[31m     → Timed out waiting for bot message containing "sleep-started" in thread 1550116090187612163. Recent messages:
+user: SLEEP_TOOL_MARKER wait for the deploy[39m
+[31m   [31m×[31m kimaki_sleep[2m > [22ma user message cancels a planned sleep so no wake fires[39m[33m 5697[2mms[22m[39m
+[31m     → Snapshot `kimaki_sleep > a user message cancels a planned sleep so no wake fires 1` mismatched[39m
+   [33m[2m✓[22m[39m kimaki_sleep[2m > [22m/queue also supersedes a pending sleep [33m 3712[2mms[22m[39m
+ [31m❯[39m src/queue-advanced-action-buttons.e2e.test.ts [2m([22m[2m2 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 17534[2mms[22m[39m
+[31m   [31m×[31m queue advanced: action buttons[2m > [22mbutton click should continue the session with a follow-up assistant reply[39m[33m 10247[2mms[22m[39m
+[31m     → Timed out waiting for bot message containing "ok" in thread 1550116187860369411. Recent messages:
+user: Reply with exactly: action-button-setup[39m
+[31m   [31m×[31m queue advanced: action buttons[2m > [22mmanual thread message dismisses pending action buttons[39m[33m 3918[2mms[22m[39m
+[31m     → Snapshot `queue advanced: action buttons > manual thread message dismisses pending action buttons 1` mismatched[39m
+ [31m❯[39m src/queue-advanced-model-switch.e2e.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 11558[2mms[22m[39m
+[31m   [31m×[31m queue advanced: /model with interrupt recovery[2m > [22msession model selected in /model survives interrupt-plugin resume path[39m[33m 8712[2mms[22m[39m
+[31m     → Timed out waiting for message in channel 1550116266272882691[39m
+ [31m❯[39m src/queue-advanced-typing.e2e.test.ts [2m([22m[2m2 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 18303[2mms[22m[39m
+[31m   [31m×[31m queue advanced: typing lifecycle[2m > [22mnormal reply stops typing after footer[39m[33m 8929[2mms[22m[39m
+[31m     → Test timed out in 8000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+   [33m[2m✓[22m[39m queue advanced: typing lifecycle[2m > [22mthread follow-up reply re-pulses typing after a visible assistant message while session stays busy [33m 6628[2mms[22m[39m
+ [31m❯[39m src/voice-routing-question.e2e.test.ts [2m([22m[2m2 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 15904[2mms[22m[39m
+[31m   [31m×[31m voice routing preserves source questions[2m > [22mbtw preserves the source dropdown[39m[33m 8059[2mms[22m[39m
+[31m     → Test timed out in 8000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[31m   [31m×[31m voice routing preserves source questions[2m > [22mnew-session preserves the source dropdown[39m[33m 4975[2mms[22m[39m
+[31m     → Snapshot `voice routing preserves source questions > new-session preserves the source dropdown 1` mismatched[39m
+ [31m❯[39m src/queue-advanced-question.e2e.test.ts [2m([22m[2m2 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 15132[2mms[22m[39m
+[31m   [31m×[31m queue advanced: question tool answer[2m > [22muser text message dismisses pending question and enqueues as normal prompt[39m[33m 10258[2mms[22m[39m
+[31m     → Timed out waiting for bot message containing "Which option do you prefer?" in thread 1550116479767150595. Recent messages:
+user: QUESTION_TEXT_ANSWER_MARKER
+bot: > *using deterministic-provider/deterministic-v2*[39m
+   [33m[2m✓[22m[39m queue advanced: question tool answer[2m > [22mvoice message during pending question dismisses question and transcribes normally [33m 2145[2mms[22m[39m
+ [31m❯[39m src/queue-advanced-permissions-typing.e2e.test.ts [2m([22m[2m2 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 16947[2mms[22m[39m
+[31m   [31m×[31m queue advanced: typing around permissions[2m > [22mpermission prompt pauses typing until user click, then typing resumes[39m[33m 8331[2mms[22m[39m
+[31m     → Timed out waiting for typing event in channel 1550116558901084163[39m
+   [33m[2m✓[22m[39m queue advanced: typing around permissions[2m > [22mmanual thread message dismisses pending permission and sends the new prompt [33m 3811[2mms[22m[39m
+ [31m❯[39m src/voice-routing-input.e2e.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 16762[2mms[22m[39m
+[31m   [31m×[31m voice routing input boundaries[2m > [22mfresh voice route splits display and preserves the full model prompt[39m[33m 9222[2mms[22m[39m
+[31m     → Test timed out in 8000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+   [33m[2m✓[22m[39m voice routing input boundaries[2m > [22munsupported contextual route keeps the transcript and never dispatches raw text [33m 473[2mms[22m[39m
+   [33m[2m✓[22m[39m voice routing input boundaries[2m > [22mrouting-only audio does not start a junk turn [33m 353[2mms[22m[39m
+[31m   [31m×[31m voice routing input boundaries[2m > [22m/new-session confirms the destination and sends the prompt[39m[33m 3633[2mms[22m[39m
+[31m     → Snapshot `voice routing input boundaries > /new-session confirms the destination and sends the prompt 2` mismatched[39m
+ [31m❯[39m src/markdown.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 15517[2mms[22m[39m
+   [32m✓[39m generate markdown with system info[32m 25[2mms[22m[39m
+   [32m✓[39m generate markdown without system info[32m 32[2mms[22m[39m
+   [32m✓[39m error handling for non-existent session[32m 5[2mms[22m[39m
+   [32m✓[39m getCompactSessionContext generates compact format[32m 10[2mms[22m[39m
+   [32m✓[39m generate markdown with lastAssistantOnly[32m 22[2mms[22m[39m
+   [32m✓[39m compact tools: tool calls show one-liner with line count[32m 7[2mms[22m[39m
+   [32m✓[39m verbose tools: tool calls show full input and output[32m 23[2mms[22m[39m
+ [31m❯[39m src/worktree-clone-isolation.e2e.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 13348[2mms[22m[39m
+   [33m[2m✓[22m[39m creates a workspace from the exact requested clone and commit [33m 10203[2mms[22m[39m
+   [33m[2m✓[22m[39m removes workspace state when identity validation rejects creation [33m 658[2mms[22m[39m
+ [31m❯[39m src/cli-send-thread.e2e.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 16109[2mms[22m[39m
+   [32m✓[39m kimaki send --channel thread creation[2m > [22mempty project-channel message asks user to mention the bot instead of creating a thread[32m 137[2mms[22m[39m
+   [33m[2m✓[22m[39m kimaki send --channel thread creation[2m > [22mmention mode silently ignores empty project-channel messages without warning [33m 315[2mms[22m[39m
+[31m   [31m×[31m kimaki send --channel thread creation[2m > [22mempty existing-thread message asks user to mention the bot instead of enqueueing a prompt[39m[33m 8143[2mms[22m[39m
+[31m     → Timed out waiting for footer after "caught-by-model" in thread 1550116840032698373. Recent messages:
+user: thread empty content seed[39m
+   [33m[2m✓[22m[39m kimaki send --channel thread creation[2m > [22mkimaki send --prompt "/hello-test-cmd" falls through as text when registeredUserCommands is empty (repro #97) [33m 1192[2mms[22m[39m
+   [33m[2m✓[22m[39m kimaki send --channel thread creation[2m > [22mbot-posted starter message with start marker creates thread without DiscordAPIError[160004] [33m 3385[2mms[22m[39m
+ [31m❯[39m src/queue-drain-after-interactive-ui.e2e.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 11590[2mms[22m[39m
+[31m   [31m×[31m queue drain with pending interactive UI[2m > [22mqueued message drains immediately while action buttons are still pending[39m[33m 8339[2mms[22m[39m
+[31m     → Timed out waiting for bot message containing "ok" in thread 1550116915987349507. Recent messages:
+user: Reply with exactly: drain-button-setup
+bot: > *using deterministic-provider/deterministic-v2*[39m
+ [31m❯[39m src/queue-advanced-typing-interrupt.e2e.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 11128[2mms[22m[39m
+[31m   [31m×[31m queue advanced: typing interrupt[2m > [22minterruption flow emits footer for final assistant reply and then stops typing[39m[33m 8385[2mms[22m[39m
+[31m     → Timed out waiting for bot message containing "*project" in thread 1550116969561194499. Recent messages:
+user: Reply with exactly: typing-stop-interrupt-setup
+bot: > *using deterministic-provider/deterministic-v2*[39m
+ [31m❯[39m src/worktrees.test.ts [2m([22m[2m27 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 15948[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mplugin-safe gitmodules parser handles standard indented entries[32m 7[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mworktree creation resolves local-only submodule commits from local source checkout [33m 4177[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mworktree creation uses current HEAD even when origin does not have the commit [33m 937[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mworktree creation survives an unavailable submodule remote [33m 3999[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mworktree removal succeeds when its branch was already deleted [33m 497[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mworktree identity mismatch is detected and cleaned from its actual clone [33m 1323[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mmergeWorktree rejects dirty checked-out target before local push [33m 948[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mformatMergeWorktreeError includes git command, exit code, and stderr[32m 1[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mformatMergeWorktreeError keeps timeout cause when git has no stderr[32m 1[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mformatMergeWorktreeError truncates to maxLength[32m 0[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mmergeWorktree push failure includes git stderr in formatted error [33m 953[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mmergeWorktree squash creates one target commit with the complete tree [33m 1849[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mmergeWorktree keeps reporting a paused rebase conflict on retry [33m 770[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mvalidateBranchRef does not execute shell syntax from a branch value[32m 64[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mshortenWorktreeSlug leaves short slugs alone[32m 0[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mshortenWorktreeSlug strips vowels from long slugs[32m 0[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mformatWorktreeName keeps user-provided slugs verbatim[32m 0[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mformatAutoWorktreeName compresses long auto-derived slugs[32m 0[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mgetManagedWorktreeDirectory writes under kimaki data dir and strips prefix[32m 1[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mresolveSessionWorkingDirectory accepts the project root[32m 1[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mresolveSessionWorkingDirectory accepts project subfolders[32m 1[2mms[22m[39m
+[31m   [31m×[31m worktrees[2m > [22mresolveSessionWorkingDirectory accepts project worktrees[39m[33m 336[2mms[22m[39m
+[31m     → Working directory must be inside C:\Dev\kimaki-zcode\cli\tmp\worktrees-test-fxJe7a\project or a git worktree of it: C:\Dev\kimaki-zcode\cli\tmp\worktrees-test-fxJe7a\feature-worktree[39m
+   [32m✓[39m worktrees[2m > [22mresolveSessionWorkingDirectory rejects unrelated directories[32m 79[2mms[22m[39m
+   [32m✓[39m parseGitWorktreeListPorcelain[2m > [22mparses porcelain output, skips main worktree[32m 1[2mms[22m[39m
+   [32m✓[39m parseGitWorktreeListPorcelain[2m > [22mhandles detached HEAD worktrees[32m 0[2mms[22m[39m
+   [32m✓[39m parseGitWorktreeListPorcelain[2m > [22mparses locked and prunable flags[32m 0[2mms[22m[39m
+   [32m✓[39m parseGitWorktreeListPorcelain[2m > [22mreturns empty array when only main worktree exists[32m 0[2mms[22m[39m
+ [31m❯[39m src/external-directory-project-deny.e2e.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 16325[2mms[22m[39m
+[31m   [31m×[31m external directory project deny[2m > [22mproject opencode.json deny beats the allow-all default[39m[33m 13007[2mms[22m[39m
+[31m     → Test timed out in 8000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[31m     → Hook timed out in 5000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".[39m
+ [31m❯[39m src/question-abort-clears-dropdown.e2e.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 14416[2mms[22m[39m
+[31m   [31m×[31m abort clears pending question dropdown[2m > [22mdropdown stops accepting answers after abort[39m[33m 10535[2mms[22m[39m
+[31m     → Timed out waiting for bot message containing "How to proceed?" in thread 1550117176352964611. Recent messages:
+user: QUESTION_SELECT_QUEUE_MARKER abort-test[39m
+ [31m❯[39m src/queue-question-select-drain.e2e.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 13389[2mms[22m[39m
+[31m   [31m×[31m queue drain after question select answer[2m > [22mqueued messages drain in order after answering via dropdown select[39m[33m 10127[2mms[22m[39m
+[31m     → Timed out waiting for bot message containing "How to proceed?" in thread 1550117244359409667. Recent messages:
+user: QUESTION_SELECT_QUEUE_MARKER
+bot: > *using deterministic-provider/deterministic-v2*[39m
+ [31m❯[39m src/queue-delete-message.e2e.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 11368[2mms[22m[39m
+[31m   [31m×[31m queue delete message[2m > [22mdeleting a queued Discord message removes it from queue[39m[33m 8349[2mms[22m[39m
+[31m     → Timed out waiting for message in channel 1550117308481929219[39m
+
+[31m⎯⎯⎯⎯[39m[1m[41m Unhandled Rejection [49m[22m[31m⎯⎯⎯⎯⎯[39m
+[31m[1mError[22m: Channel closed[39m
+[90m [2m❯[22m target.send node:internal/child_process:[2m777:16[22m[39m
+[90m [2m❯[22m ProcessWorker.send ../node_modules/.pnpm/tinypool@1.1.1/node_modules/tinypool/dist/index.js:[2m140:41[22m[39m
+[90m [2m❯[22m MessagePort.<anonymous> ../node_modules/.pnpm/tinypool@1.1.1/node_modules/tinypool/dist/index.js:[2m149:62[22m[39m
+[90m [2m❯[22m [nodejs.internal.kHybridDispatch] node:internal/event_target:[2m843:20[22m[39m
+[90m [2m❯[22m MessagePort.<anonymous> node:internal/per_context/messageport:[2m23:28[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22m[39m
+[31m[1mSerialized Error:[22m[39m [90m{ code: 'ERR_IPC_CHANNEL_CLOSED' }[39m
+
+
+
+EXIT=1
