@@ -1,0 +1,52 @@
+ FAIL  src/agent-model.e2e.test.ts [ src/agent-model.e2e.test.ts ]
+ FAIL  src/cli-parsing.test.ts > goke CLI ID parsing > keeps session search regex and channel ID as strings
+ FAIL  src/cli-send-thread.e2e.test.ts [ src/cli-send-thread.e2e.test.ts ]
+ FAIL  src/db.test.ts [ src/db.test.ts ]
+ FAIL  src/default-channel-provisioning.test.ts [ src/default-channel-provisioning.test.ts ]
+ FAIL  src/event-stream-real-capture.e2e.test.ts [ src/event-stream-real-capture.e2e.test.ts ]
+ FAIL  src/external-directory-permissions.e2e.test.ts [ src/external-directory-permissions.e2e.test.ts ]
+ FAIL  src/external-directory-project-deny.e2e.test.ts [ src/external-directory-project-deny.e2e.test.ts ]
+ FAIL  src/file-edit-log.test.ts > extractEditedFiles > extracts apply_patch paths and resolves them against directory
+ FAIL  src/file-edit-log.test.ts > extractEditedFiles > extracts edit and write filePath and ignores other tools
+ FAIL  src/file-edit-log.test.ts > fileEditTrackerPlugin > records edit and apply_patch and ignores bash
+ FAIL  src/gateway-proxy-reconnect.e2e.test.ts [ src/gateway-proxy-reconnect.e2e.test.ts ]
+ FAIL  src/gateway-proxy.e2e.test.ts [ src/gateway-proxy.e2e.test.ts ]
+ FAIL  src/kimaki-digital-twin.e2e.test.ts [ src/kimaki-digital-twin.e2e.test.ts ]
+ FAIL  src/kimaki-opencode-plugin-loading.e2e.test.ts [ src/kimaki-opencode-plugin-loading.e2e.test.ts ]
+ FAIL  src/markdown.test.ts [ src/markdown.test.ts ]
+ FAIL  src/message-formatting.test.ts > getTextAttachments > inlines small text files and saves them locally
+ FAIL  src/message-formatting.test.ts > getTextAttachments > keeps small files inlined next to large file references
+ FAIL  src/message-formatting.test.ts > getTextAttachments > saves large text files locally without inlining contents
+ FAIL  src/message-formatting.test.ts > getTextAttachments > still inlines large prompt.md attachments from kimaki send
+ FAIL  src/project-add.test.ts > project add duplicate directory > error message tells the user how to remove the mapping
+ FAIL  src/project-add.test.ts > project add duplicate directory > matches a symlink to the same registered folder
+ FAIL  src/project-add.test.ts > project add duplicate directory > returns null when the folder is not registered
+ FAIL  src/project-add.test.ts > project add duplicate directory > returns the existing text channel for a registered folder
+ FAIL  src/question-abort-clears-dropdown.e2e.test.ts [ src/question-abort-clears-dropdown.e2e.test.ts ]
+ FAIL  src/question-abort-retry-text-before-dropdown.e2e.test.ts [ src/question-abort-retry-text-before-dropdown.e2e.test.ts ]
+ FAIL  src/question-text-before-dropdown.e2e.test.ts [ src/question-text-before-dropdown.e2e.test.ts ]
+ FAIL  src/queue-advanced-abort.e2e.test.ts [ src/queue-advanced-abort.e2e.test.ts ]
+ FAIL  src/queue-advanced-action-buttons.e2e.test.ts [ src/queue-advanced-action-buttons.e2e.test.ts ]
+ FAIL  src/queue-advanced-footer.e2e.test.ts [ src/queue-advanced-footer.e2e.test.ts ]
+ FAIL  src/queue-advanced-model-switch.e2e.test.ts [ src/queue-advanced-model-switch.e2e.test.ts ]
+ FAIL  src/queue-advanced-permissions-typing.e2e.test.ts [ src/queue-advanced-permissions-typing.e2e.test.ts ]
+ FAIL  src/queue-advanced-question.e2e.test.ts [ src/queue-advanced-question.e2e.test.ts ]
+ FAIL  src/queue-advanced-typing-interrupt.e2e.test.ts [ src/queue-advanced-typing-interrupt.e2e.test.ts ]
+ FAIL  src/queue-advanced-typing.e2e.test.ts [ src/queue-advanced-typing.e2e.test.ts ]
+ FAIL  src/queue-delete-message.e2e.test.ts [ src/queue-delete-message.e2e.test.ts ]
+ FAIL  src/queue-drain-after-interactive-ui.e2e.test.ts [ src/queue-drain-after-interactive-ui.e2e.test.ts ]
+ FAIL  src/queue-interrupt-drain.e2e.test.ts [ src/queue-interrupt-drain.e2e.test.ts ]
+ FAIL  src/queue-question-select-drain.e2e.test.ts [ src/queue-question-select-drain.e2e.test.ts ]
+ FAIL  src/runtime-lifecycle.e2e.test.ts [ src/runtime-lifecycle.e2e.test.ts ]
+ FAIL  src/sleep.e2e.test.ts [ src/sleep.e2e.test.ts ]
+ FAIL  src/startup-time.e2e.test.ts [ src/startup-time.e2e.test.ts ]
+ FAIL  src/system-message.test.ts > system-message > persists and reads session system prompt for command path
+ FAIL  src/task-schedule.test.ts > scheduled task execution options > runs the pre-run command in the project directory
+ FAIL  src/thread-message-queue.e2e.test.ts [ src/thread-message-queue.e2e.test.ts ]
+ FAIL  src/undo-redo.e2e.test.ts [ src/undo-redo.e2e.test.ts ]
+ FAIL  src/voice-message.e2e.test.ts [ src/voice-message.e2e.test.ts ]
+ FAIL  src/voice-routing-input.e2e.test.ts [ src/voice-routing-input.e2e.test.ts ]
+ FAIL  src/voice-routing-question.e2e.test.ts [ src/voice-routing-question.e2e.test.ts ]
+ FAIL  src/worktree-clone-isolation.e2e.test.ts [ src/worktree-clone-isolation.e2e.test.ts ]
+ FAIL  src/worktree-lifecycle.e2e.test.ts [ src/worktree-lifecycle.e2e.test.ts ]
+ FAIL  src/worktrees.test.ts > worktrees > resolveSessionWorkingDirectory accepts project worktrees
