@@ -79,7 +79,7 @@ Discord ─▶ Kimaki frontend (discord-bot, preprocessing, interactions, comman
 | ZK-002 | Import host-independent native core + ported native tests | ZK-001 | DONE | local | 9 modules + supervisor.js sibling; 36 pass / 2 gated skips; isolated strict check green |
 | ZK-003 | Default-off backend registry + typed controller boundary | ZK-002 | DONE | local | registry+errors seam; zc: fail-closed; receiver pin; 8/8 tests |
 | ZK-004 | Durable sidecar persistence on real Drizzle/libSQL | ZK-001 | DONE | local | 10 tables + gate + store port; 29 new tests; failure set identical to baseline |
-| ZK-005 | Frontend ingress normalization + capability routing | ZK-003 | IN_PROGRESS | local | preprocessing split landed; discord-bot/interaction/task-runner routing remain (see ticket) |
+| ZK-005 | Frontend ingress normalization + capability routing | ZK-003 | DONE | local | ingress-gate+host-sidecar modules; discord-bot/interaction-handler/task-runner gated; 12-test zero-OpenCode matrix; new-session gating folded into ZK-007 |
 | ZK-006 | OpenCode preservation regression pin | ZK-003 | TODO | local | |
 | ZK-007 | Native host wiring (coordinator/backend → real store/auth) | ZK-002,003,004 | TODO | local (fake-native) | |
 | ZK-008 | Renderer + projector integration | ZK-007 | TODO | local | |
@@ -164,7 +164,7 @@ basic native profile certified (see mission Subrouter phase).
 ## Forge issue mapping (projects/zcode-kimaki, filed 2026-09-17 by ZCode)
 
 ZK-001=#1 (closed) · ZK-002=#2 (closed) · ZK-003=#3 (closed) · ZK-004=#4 (closed) ·
-ZK-005=#5 (in-flight, claimed) · ZK-006=#6 · ZK-007=#7 · ZK-008=#8 · ZK-009=#9 ·
+ZK-005=#5 (closed DONE 2026-09-17) · ZK-006=#6 · ZK-007=#7 · ZK-008=#8 · ZK-009=#9 ·
 ZK-010=#10 · ZK-011=#11 · ZK-012=#12 · ZK-013=#13 · ZK-014=#14 · ZK-015=#15 ·
 ZK-016=#16 · ZK-017=#17 · ZK-018=#18 · ZS-PHASE=#19 (gated umbrella).
 Board: http://127.0.0.1:3000/projects/zcode-kimaki/issues — these files remain the

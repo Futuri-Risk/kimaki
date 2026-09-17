@@ -2,20 +2,9 @@
 // Processes all slash commands (/session, /resume, /fork, /model, /abort, etc.)
 // and manages autocomplete, select menu interactions for the bot.
 
-import {
-  Events,
-  MessageFlags,
-  type Client,
-  type Interaction,
-} from 'discord.js'
-import {
-  handleSessionCommand,
-  handleSessionAutocomplete,
-} from './commands/session.js'
-import {
-  handleNewWorktreeCommand,
-  handleNewWorktreeAutocomplete,
-} from './commands/new-worktree.js'
+import { Events, MessageFlags, type Client, type Interaction } from 'discord.js'
+import { handleSessionCommand, handleSessionAutocomplete } from './commands/session.js'
+import { handleNewWorktreeCommand, handleNewWorktreeAutocomplete } from './commands/new-worktree.js'
 import {
   handleMergeWorktreeCommand,
   handleMergeWorktreeAutocomplete,
@@ -24,14 +13,8 @@ import { handleWorktreesCommand } from './commands/worktrees.js'
 import { handleTasksCommand } from './commands/tasks.js'
 import { handleLastSessionsCommand } from './commands/last-sessions.js'
 
-import {
-  handleResumeCommand,
-  handleResumeAutocomplete,
-} from './commands/resume.js'
-import {
-  handleAddProjectCommand,
-  handleAddProjectAutocomplete,
-} from './commands/add-project.js'
+import { handleResumeCommand, handleResumeAutocomplete } from './commands/resume.js'
+import { handleAddProjectCommand, handleAddProjectAutocomplete } from './commands/add-project.js'
 import {
   handleRemoveProjectCommand,
   handleRemoveProjectAutocomplete,
@@ -42,10 +25,7 @@ import { handleAbortCommand } from './commands/abort.js'
 import { handleCompactCommand } from './commands/compact.js'
 import { handleShareCommand } from './commands/share.js'
 import { handleDiffCommand } from './commands/diff.js'
-import {
-  handleForkCommand,
-  handleForkSelectMenu,
-} from './commands/fork.js'
+import { handleForkCommand, handleForkSelectMenu } from './commands/fork.js'
 import {
   handleForkSubagentCommand,
   handleForkSubagentSelectMenu,
@@ -79,10 +59,7 @@ import {
   handleQuickAgentAutocomplete,
 } from './commands/agent.js'
 import { handleAskQuestionSelectMenu } from './commands/ask-question.js'
-import {
-  handleFileUploadButton,
-  handleFileUploadModalSubmit,
-} from './commands/file-upload.js'
+import { handleFileUploadButton, handleFileUploadModalSubmit } from './commands/file-upload.js'
 import { handleActionButton } from './commands/action-buttons.js'
 import { handleHtmlActionButton } from './html-actions.js'
 import {
@@ -93,10 +70,7 @@ import {
 } from './commands/queue.js'
 import { handleUndoCommand, handleRedoCommand } from './commands/undo-redo.js'
 import { handleUserCommand } from './commands/user-command.js'
-import {
-  handleVerbosityCommand,
-  handleVerbositySelectMenu,
-} from './commands/verbosity.js'
+import { handleVerbosityCommand, handleVerbositySelectMenu } from './commands/verbosity.js'
 import { handleRestartOpencodeServerCommand } from './commands/restart-opencode-server.js'
 import { handleRunCommand } from './commands/run-command.js'
 import { handleContextUsageCommand } from './commands/context-usage.js'
@@ -120,6 +94,13 @@ import {
   reserveThreadIngress,
   runInThreadIngressSlot,
 } from './session-handler/thread-session-runtime.js'
+import {
+  gateThreadCommand,
+  isRuntimeAutocomplete,
+  isRuntimeSlashCommand,
+  resolveThreadBackendByChannelId,
+  runtimeCommandForComponent,
+} from './agent/ingress-gate.js'
 
 const interactionLogger = createLogger(LogPrefix.INTERACTION)
 
@@ -145,9 +126,7 @@ function serialIngressChannelId(interaction: Interaction): string | undefined {
  * directory configured in the local sqlite db). For threads, checks the parent
  * channel. Returns true if owned, false if not (another machine should handle it).
  */
-async function isInteractionOwnedByThisMachine(
-  interaction: Interaction,
-): Promise<boolean> {
+async function isInteractionOwnedByThisMachine(interaction: Interaction): Promise<boolean> {
   const channelId = interaction.channelId
   if (!channelId) return false
 
@@ -156,9 +135,7 @@ async function isInteractionOwnedByThisMachine(
   if (channelConfig) return true
 
   // If in a thread, check the parent channel
-  const cachedParentId = interaction.channel?.isThread()
-    ? interaction.channel.parentId
-    : null
+  const cachedParentId = interaction.channel?.isThread() ? interaction.channel.parentId : null
   if (cachedParentId) {
     const parentConfig = await getChannelDirectory(cachedParentId)
     if (parentConfig) return true
@@ -166,9 +143,7 @@ async function isInteractionOwnedByThisMachine(
 
   // When channel isn't cached (common with gateway-proxy), fetch it to get parentId
   if (!cachedParentId) {
-    const fetched = await interaction.client.channels
-      .fetch(channelId)
-      .catch(() => null)
+    const fetched = await interaction.client.channels.fetch(channelId).catch(() => null)
     if (fetched?.isThread() && fetched.parentId) {
       const parentConfig = await getChannelDirectory(fetched.parentId)
       if (parentConfig) return true
@@ -187,14 +162,10 @@ export function registerInteractionHandler({
 }) {
   interactionLogger.log('[REGISTER] Interaction handler registered')
 
-  discordClient.on(
-    Events.InteractionCreate,
-    async (interaction: Interaction) => {
-      const ingressChannelId = serialIngressChannelId(interaction)
-      const ingressSlot = ingressChannelId
-        ? reserveThreadIngress(ingressChannelId)
-        : undefined
-      await runInThreadIngressSlot(ingressSlot, async () => {
+  discordClient.on(Events.InteractionCreate, async (interaction: Interaction) => {
+    const ingressChannelId = serialIngressChannelId(interaction)
+    const ingressSlot = ingressChannelId ? reserveThreadIngress(ingressChannelId) : undefined
+    await runInThreadIngressSlot(ingressSlot, async () => {
       try {
         interactionLogger.log(
           `[INTERACTION] Received: ${interaction.type} - ${
@@ -218,6 +189,41 @@ export function registerInteractionHandler({
           // Do not respond at all — consuming the interaction token would
           // prevent the owning machine from responding (tokens are single-use).
           return
+        }
+
+        // ZK-005: backend/capability routing. Runtime commands, autocompletes,
+        // and components on a native (zc:) session get a visible refusal BEFORE
+        // their handler touches the OpenCode runtime. Host-owned interactions
+        // (diff, worktrees, projects, credentials, uploads, html actions, modals)
+        // keep host routing untouched.
+        const runtimeCommand = interaction.isChatInputCommand()
+          ? isRuntimeSlashCommand(interaction.commandName)
+            ? interaction.commandName
+            : undefined
+          : interaction.isAutocomplete()
+            ? isRuntimeAutocomplete(interaction.commandName)
+              ? interaction.commandName
+              : undefined
+            : interaction.isMessageComponent() || interaction.isModalSubmit()
+              ? runtimeCommandForComponent(interaction.customId)
+              : undefined
+        if (runtimeCommand) {
+          const backend = await resolveThreadBackendByChannelId(interaction.channelId ?? undefined)
+          const gate = gateThreadCommand(backend, runtimeCommand)
+          if (gate.kind === 'refuse') {
+            interactionLogger.log(
+              `[ZCODE] Refusing /${runtimeCommand} on native session in channel ${interaction.channelId}: ${gate.reason}`,
+            )
+            if (interaction.isAutocomplete()) {
+              await interaction.respond([])
+            } else if (interaction.isRepliable()) {
+              await interaction.reply({
+                content: gate.reason,
+                flags: MessageFlags.Ephemeral,
+              })
+            }
+            return
+          }
         }
 
         if (interaction.isAutocomplete()) {
@@ -269,9 +275,7 @@ export function registerInteractionHandler({
         }
 
         if (interaction.isChatInputCommand()) {
-          interactionLogger.log(
-            `[COMMAND] Processing: ${interaction.commandName}`,
-          )
+          interactionLogger.log(`[COMMAND] Processing: ${interaction.commandName}`)
 
           if (!hasKimakiBotPermission(interaction.member, interaction.guild)) {
             await interaction.reply({
@@ -314,7 +318,6 @@ export function registerInteractionHandler({
                 appId,
               })
               return
-
 
             case 'resume':
               await handleResumeCommand({ command: interaction, appId })
@@ -429,8 +432,6 @@ export function registerInteractionHandler({
               await handleSessionIdCommand({ command: interaction, appId })
               return
 
-
-
             case 'upgrade-and-restart':
               await handleUpgradeAndRestartCommand({
                 command: interaction,
@@ -466,10 +467,7 @@ export function registerInteractionHandler({
           }
 
           // Handle quick agent commands (ending with -agent suffix, but not the base /agent command)
-          if (
-            interaction.commandName.endsWith('-agent') &&
-            interaction.commandName !== 'agent'
-          ) {
+          if (interaction.commandName.endsWith('-agent') && interaction.commandName !== 'agent') {
             await handleQuickAgentCommand({ command: interaction, appId })
             return
           }
@@ -723,10 +721,7 @@ export function registerInteractionHandler({
           return
         }
       } catch (error) {
-        interactionLogger.error(
-          '[INTERACTION] Error handling interaction:',
-          error,
-        )
+        interactionLogger.error('[INTERACTION] Error handling interaction:', error)
         void notifyError(error, 'Interaction handler error')
         try {
           if (interaction.isRepliable() && !interaction.replied) {
@@ -736,8 +731,7 @@ export function registerInteractionHandler({
               // overwrite the original message). For deferReply() interactions
               // (ephemeral is true/false), editReply resolves the pending reply.
               const usedDeferUpdate =
-                interaction.isMessageComponent() &&
-                interaction.ephemeral === null
+                interaction.isMessageComponent() && interaction.ephemeral === null
               if (usedDeferUpdate) {
                 await interaction.followUp({
                   content: 'An error occurred processing this interaction.',
@@ -756,13 +750,9 @@ export function registerInteractionHandler({
             }
           }
         } catch (replyError) {
-          interactionLogger.error(
-            '[INTERACTION] Failed to send error reply:',
-            replyError,
-          )
+          interactionLogger.error('[INTERACTION] Failed to send error reply:', replyError)
         }
       }
-      })
-    },
-  )
+    })
+  })
 }

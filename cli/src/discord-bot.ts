@@ -28,10 +28,12 @@ import {
   createPendingWorkspace,
   setWorkspaceReady,
 } from './database.js'
+import { stopOpencodeServer } from './opencode.js'
 import {
-  stopOpencodeServer,
-} from './opencode.js'
-import { formatAutoWorktreeName, createWorktreeInBackground, worktreeCreatingMessage } from './commands/new-worktree.js'
+  formatAutoWorktreeName,
+  createWorktreeInBackground,
+  worktreeCreatingMessage,
+} from './commands/new-worktree.js'
 import { resolveSessionWorkingDirectory, git, isGitRepositoryRoot } from './worktrees.js'
 import { WORKTREE_PREFIX } from './commands/merge-worktree.js'
 import { STATUS_PREFIX } from './message-formatting.js'
@@ -53,11 +55,7 @@ import {
   type ThreadStartMarker,
 } from './system-message.js'
 import YAML from 'yaml'
-import {
-  getFileAttachments,
-  getTextAttachments,
-  resolveMentions,
-} from './message-formatting.js'
+import { getFileAttachments, getTextAttachments, resolveMentions } from './message-formatting.js'
 import { extractBtwSuffix } from './btw-prefix-detection.js'
 import { isVoiceAttachment } from './voice-attachment.js'
 import { forkSessionToBtwThread } from './commands/btw.js'
@@ -66,6 +64,12 @@ import {
   preprocessExistingThreadMessage,
   preprocessNewThreadMessage,
 } from './message-preprocessing.js'
+import {
+  gateThreadCommand,
+  gateThreadMessage,
+  resolveIngressBackend,
+} from './agent/ingress-gate.js'
+import { isZcodeSessionId } from './agent/registry.js'
 import { cancelPendingActionButtons } from './commands/action-buttons.js'
 import { cancelPendingQuestion, hasPendingQuestionForThread } from './commands/ask-question.js'
 import { cancelPendingFileUpload } from './commands/file-upload.js'
@@ -83,9 +87,7 @@ import {
   cleanupVoiceConnection,
   registerVoiceStateHandler,
 } from './voice-handler.js'
-import {
-  type SessionStartSourceContext,
-} from './session-handler/model-utils.js'
+import { type SessionStartSourceContext } from './session-handler/model-utils.js'
 import {
   getRuntime,
   getOrCreateRuntime,
@@ -101,26 +103,16 @@ import { notifyError } from './sentry.js'
 import { trackEvent, flushAnalytics } from './analytics.js'
 import { flushDebouncedProcessCallbacks } from './debounced-process-flush.js'
 import { startRuntimeIdleSweeper } from './runtime-idle-sweeper.js'
-import {
-  getDefaultKimakiDirectory,
-  getUserProjectCount,
-} from './channel-management.js'
+import { getDefaultKimakiDirectory, getUserProjectCount } from './channel-management.js'
 import { store } from './store.js'
 import {
   startExternalOpencodeSessionSync,
   stopExternalOpencodeSessionSync,
 } from './external-opencode-sync.js'
 
-export {
-  initDatabase,
-  closeDatabase,
-  getChannelDirectory,
-} from './database.js'
+export { initDatabase, closeDatabase, getChannelDirectory } from './database.js'
 export { initializeOpencodeForDirectory, assertCompatibleOpencodeVersion } from './opencode.js'
-export {
-  escapeBackticksInCodeBlocks,
-  splitMarkdownForDiscord,
-} from './discord-utils.js'
+export { escapeBackticksInCodeBlocks, splitMarkdownForDiscord } from './discord-utils.js'
 export { getOpencodeSystemMessage } from './system-message.js'
 export {
   ensureKimakiCategory,
@@ -159,7 +151,6 @@ import { startTaskRunner } from './task-runner.js'
 // regular HTTP requests (question.reply, session.prompt) get blocked → deadlock.
 // undici is a transitive dep from discord.js — not listed in our package.json.
 // Types are declared in src/undici.d.ts.
-
 
 const discordLogger = createLogger(LogPrefix.DISCORD)
 const voiceLogger = createLogger(LogPrefix.VOICE)
@@ -294,12 +285,7 @@ export async function createDiscordClient() {
       GatewayIntentBits.MessageContent,
       GatewayIntentBits.GuildVoiceStates,
     ],
-    partials: [
-      Partials.Channel,
-      Partials.Message,
-      Partials.User,
-      Partials.ThreadMember,
-    ],
+    partials: [Partials.Channel, Partials.Message, Partials.User, Partials.ThreadMember],
     rest: { api: restApiUrl },
     allowedMentions: { parse: allowedMentions },
   })
@@ -364,9 +350,7 @@ export async function startDiscordBot({
         const kimakiChannels = channels.filter((ch) => ch.kimakiDirectory)
 
         if (kimakiChannels.length > 0) {
-          discordLogger.log(
-            `  Found ${kimakiChannels.length} channel(s) for this bot`,
-          )
+          discordLogger.log(`  Found ${kimakiChannels.length} channel(s) for this bot`)
           continue
         }
 
@@ -386,9 +370,7 @@ export async function startDiscordBot({
   } else {
     discordClient.once(Events.ClientReady, (readyClient) => {
       void setupHandlers(readyClient).catch((error) => {
-        discordLogger.error(
-          `[GATEWAY] ClientReady handler failed: ${formatErrorWithStack(error)}`,
-        )
+        discordLogger.error(`[GATEWAY] ClientReady handler failed: ${formatErrorWithStack(error)}`)
       })
     })
   }
@@ -400,9 +382,7 @@ export async function startDiscordBot({
   discordClient.on(Events.ShardError, (error, shardId) => {
     const state = getOrCreateShardState(shardId)
     state.lastError = error
-    discordLogger.error(
-      `[GATEWAY] Shard ${shardId} error: ${formatErrorWithStack(error)}`,
-    )
+    discordLogger.error(`[GATEWAY] Shard ${shardId} error: ${formatErrorWithStack(error)}`)
   })
 
   discordClient.on(Events.ShardDisconnect, (event, shardId) => {
@@ -431,14 +411,14 @@ export async function startDiscordBot({
 
     const parts: string[] = [`attempt #${state.attempts}`]
     if (state.lastDisconnectCode !== undefined) {
-      parts.push(`close code=${state.lastDisconnectCode} (${describeCloseCode(state.lastDisconnectCode)})`)
+      parts.push(
+        `close code=${state.lastDisconnectCode} (${describeCloseCode(state.lastDisconnectCode)})`,
+      )
     }
     if (state.lastError) {
       parts.push(`last error: ${state.lastError.message}`)
     }
-    discordLogger.warn(
-      `[GATEWAY] Shard ${shardId} reconnecting: ${parts.join(', ')}`,
-    )
+    discordLogger.warn(`[GATEWAY] Shard ${shardId} reconnecting: ${parts.join(', ')}`)
 
     if (state.attempts >= MAX_RECONNECT_ATTEMPTS) {
       discordLogger.error(
@@ -457,9 +437,7 @@ export async function startDiscordBot({
         `[GATEWAY] Shard ${shardId} resumed after ${state.attempts} reconnect attempt(s), ${replayedEvents} replayed events`,
       )
     } else {
-      discordLogger.log(
-        `[GATEWAY] Shard ${shardId} resumed, ${replayedEvents} replayed events`,
-      )
+      discordLogger.log(`[GATEWAY] Shard ${shardId} resumed, ${replayedEvents} replayed events`)
     }
     shardReconnectState.delete(shardId)
   })
@@ -487,654 +465,672 @@ export async function startDiscordBot({
         ? reserveThreadIngress(message.channel.id)
         : undefined
     await runInThreadIngressSlot(threadIngressSlot, async () => {
-    try {
-      const isSelfBotMessage = Boolean(
-        discordClient.user && message.author?.id === discordClient.user.id,
-      )
-      const promptMarker = parseEmbedFooterMarker<ThreadStartMarker>({
-        footer: message.embeds[0]?.footer?.text,
-      })
-      const isCliInjectedPrompt = Boolean(
-        isSelfBotMessage && isInjectedPromptMarker({ marker: promptMarker }),
-      )
-      const sessionStartSource = isCliInjectedPrompt
-        ? parseSessionStartSourceFromMarker(promptMarker)
-        : undefined
-      const cliInjectedUsername = isCliInjectedPrompt
-        ? promptMarker?.username || 'kimaki-cli'
-        : undefined
-      const cliInjectedUserId = isCliInjectedPrompt
-        ? promptMarker?.userId
-        : undefined
-      const cliInjectedAgent = isCliInjectedPrompt
-        ? promptMarker?.agent
-        : undefined
-      const cliInjectedModel = isCliInjectedPrompt
-        ? promptMarker?.model
-        : undefined
-      const cliInjectedPermissions = isCliInjectedPrompt
-        ? promptMarker?.permissions
-        : undefined
-      const cliInjectedInjectionGuardPatterns = isCliInjectedPrompt
-        ? promptMarker?.injectionGuardPatterns
-        : undefined
-      const cliInjectedParentSessionId = isCliInjectedPrompt
-        ? promptMarker?.parentSessionId
-        : undefined
+      try {
+        const isSelfBotMessage = Boolean(
+          discordClient.user && message.author?.id === discordClient.user.id,
+        )
+        const promptMarker = parseEmbedFooterMarker<ThreadStartMarker>({
+          footer: message.embeds[0]?.footer?.text,
+        })
+        const isCliInjectedPrompt = Boolean(
+          isSelfBotMessage && isInjectedPromptMarker({ marker: promptMarker }),
+        )
+        const sessionStartSource = isCliInjectedPrompt
+          ? parseSessionStartSourceFromMarker(promptMarker)
+          : undefined
+        const cliInjectedUsername = isCliInjectedPrompt
+          ? promptMarker?.username || 'kimaki-cli'
+          : undefined
+        const cliInjectedUserId = isCliInjectedPrompt ? promptMarker?.userId : undefined
+        const cliInjectedAgent = isCliInjectedPrompt ? promptMarker?.agent : undefined
+        const cliInjectedModel = isCliInjectedPrompt ? promptMarker?.model : undefined
+        const cliInjectedPermissions = isCliInjectedPrompt ? promptMarker?.permissions : undefined
+        const cliInjectedInjectionGuardPatterns = isCliInjectedPrompt
+          ? promptMarker?.injectionGuardPatterns
+          : undefined
+        const cliInjectedParentSessionId = isCliInjectedPrompt
+          ? promptMarker?.parentSessionId
+          : undefined
 
-      // Always ignore our own messages (unless CLI-injected prompt above).
-      // Without this, assigning the Kimaki role to the bot itself would loop.
-      if (isSelfBotMessage && !isCliInjectedPrompt) {
-        return
-      }
-
-      // Allow CLI-injected prompts from this Kimaki bot through even when role
-      // reconciliation did not give the bot the "Kimaki" role yet. Other bots
-      // still need Kimaki permission so multi-agent orchestration stays opt-in.
-      const isInjectedSelfBotMessage =
-        isCliInjectedPrompt && message.author?.id === discordClient.user?.id
-
-      if (message.author?.bot && !isInjectedSelfBotMessage) {
-        const member = await resolveGuildMessageMember(message)
-        if (!hasKimakiBotPermission(member, message.guild)) {
+        // Always ignore our own messages (unless CLI-injected prompt above).
+        // Without this, assigning the Kimaki role to the bot itself would loop.
+        if (isSelfBotMessage && !isCliInjectedPrompt) {
           return
         }
-      }
 
-      // Detect messages that start with a mention of another user (not the bot).
-      // In channels these are fully ignored. In threads they are added to the
-      // session context without triggering the AI (noReply), so the agent sees
-      // user-to-user conversation on the next real turn.
-      const leadingMentionMatch = message.content?.match(/^<@!?(\d+)>/)
-      const isLeadingMentionToOtherUser =
-        leadingMentionMatch &&
-        leadingMentionMatch[1] !== discordClient.user?.id
+        // Allow CLI-injected prompts from this Kimaki bot through even when role
+        // reconciliation did not give the bot the "Kimaki" role yet. Other bots
+        // still need Kimaki permission so multi-agent orchestration stays opt-in.
+        const isInjectedSelfBotMessage =
+          isCliInjectedPrompt && message.author?.id === discordClient.user?.id
 
-      if (message.partial) {
-        discordLogger.log(`Fetching partial message ${message.id}`)
-        const fetched = await message.fetch()
-          .catch((e) => new DiscordOperationError({ operation: 'fetchMessage', cause: e }))
-        if (fetched instanceof Error) {
-          discordLogger.log(
-            `Failed to fetch partial message ${message.id}:`,
-            fetched.message,
-          )
-          return
-        }
-      }
-
-      // Check mention mode BEFORE permission check for text channels.
-      // When mention mode is enabled, users without Kimaki role can message
-      // without getting a permission error - we just silently ignore.
-      const channel = message.channel
-
-      // In text channels, messages starting with a mention to another user
-      // are fully ignored before any permission or mention-mode checks.
-      // This prevents permission-error replies for user-to-user conversation.
-      if (channel.type === ChannelType.GuildText && isLeadingMentionToOtherUser) {
-        return
-      }
-
-      if (channel.type === ChannelType.GuildText && !isCliInjectedPrompt) {
-        const mentionModeEnabled = await getChannelMentionMode(channel.id)
-        if (mentionModeEnabled) {
-          const botMentioned =
-            discordClient.user && message.mentions.has(discordClient.user.id)
-          const isShellCommand = message.content?.startsWith('!')
-          if (!botMentioned && !isShellCommand) {
-            voiceLogger.log(`[IGNORED] Mention mode enabled, bot not mentioned`)
+        if (message.author?.bot && !isInjectedSelfBotMessage) {
+          const member = await resolveGuildMessageMember(message)
+          if (!hasKimakiBotPermission(member, message.guild)) {
             return
           }
         }
-      }
 
-      // Multi-machine routing: check channel ownership before permission
-      // checks so we don't send permission-denial replies in channels owned
-      // by another machine. Resolve the "owning" channel: for threads, check
-      // the parent channel; for text channels, check the channel itself.
-      if (!isCliInjectedPrompt && message.guild) {
+        // Detect messages that start with a mention of another user (not the bot).
+        // In channels these are fully ignored. In threads they are added to the
+        // session context without triggering the AI (noReply), so the agent sees
+        // user-to-user conversation on the next real turn.
+        const leadingMentionMatch = message.content?.match(/^<@!?(\d+)>/)
+        const isLeadingMentionToOtherUser =
+          leadingMentionMatch && leadingMentionMatch[1] !== discordClient.user?.id
+
+        if (message.partial) {
+          discordLogger.log(`Fetching partial message ${message.id}`)
+          const fetched = await message
+            .fetch()
+            .catch((e) => new DiscordOperationError({ operation: 'fetchMessage', cause: e }))
+          if (fetched instanceof Error) {
+            discordLogger.log(`Failed to fetch partial message ${message.id}:`, fetched.message)
+            return
+          }
+        }
+
+        // Check mention mode BEFORE permission check for text channels.
+        // When mention mode is enabled, users without Kimaki role can message
+        // without getting a permission error - we just silently ignore.
         const channel = message.channel
-        let owningChannelId: string | undefined
-        if (
-          [
-            ChannelType.PublicThread,
-            ChannelType.PrivateThread,
-            ChannelType.AnnouncementThread,
-          ].includes(channel.type)
-        ) {
-          const thread = channel as ThreadChannel
-          owningChannelId = thread.parent?.id || thread.parentId || undefined
-        } else {
-          owningChannelId = channel.id
+
+        // In text channels, messages starting with a mention to another user
+        // are fully ignored before any permission or mention-mode checks.
+        // This prevents permission-error replies for user-to-user conversation.
+        if (channel.type === ChannelType.GuildText && isLeadingMentionToOtherUser) {
+          return
         }
-        if (owningChannelId) {
-          const channelConfig = await getChannelDirectory(owningChannelId)
-          if (!channelConfig) {
-            voiceLogger.log(
-              `[IGNORED] Channel ${owningChannelId} has no project directory configured`,
-            )
+
+        if (channel.type === ChannelType.GuildText && !isCliInjectedPrompt) {
+          const mentionModeEnabled = await getChannelMentionMode(channel.id)
+          if (mentionModeEnabled) {
+            const botMentioned = discordClient.user && message.mentions.has(discordClient.user.id)
+            const isShellCommand = message.content?.startsWith('!')
+            if (!botMentioned && !isShellCommand) {
+              voiceLogger.log(`[IGNORED] Mention mode enabled, bot not mentioned`)
+              return
+            }
+          }
+        }
+
+        // Multi-machine routing: check channel ownership before permission
+        // checks so we don't send permission-denial replies in channels owned
+        // by another machine. Resolve the "owning" channel: for threads, check
+        // the parent channel; for text channels, check the channel itself.
+        if (!isCliInjectedPrompt && message.guild) {
+          const channel = message.channel
+          let owningChannelId: string | undefined
+          if (
+            [
+              ChannelType.PublicThread,
+              ChannelType.PrivateThread,
+              ChannelType.AnnouncementThread,
+            ].includes(channel.type)
+          ) {
+            const thread = channel as ThreadChannel
+            owningChannelId = thread.parent?.id || thread.parentId || undefined
+          } else {
+            owningChannelId = channel.id
+          }
+          if (owningChannelId) {
+            const channelConfig = await getChannelDirectory(owningChannelId)
+            if (!channelConfig) {
+              voiceLogger.log(
+                `[IGNORED] Channel ${owningChannelId} has no project directory configured`,
+              )
+              return
+            }
+          }
+        }
+
+        if (!isCliInjectedPrompt && message.guild) {
+          const member = await resolveGuildMessageMember(message)
+          if (!member) {
             return
           }
-        }
-      }
 
-      if (!isCliInjectedPrompt && message.guild) {
-        const member = await resolveGuildMessageMember(message)
-        if (!member) {
-          return
-        }
-
-        if (hasNoKimakiRole(member)) {
-          await message.reply({
-            content: `You have the **no-kimaki** role which blocks bot access.\nRemove this role to use Kimaki.`,
-            flags: SILENT_MESSAGE_FLAGS,
-          })
-          return
-        }
-
-        if (!hasKimakiBotPermission(member, message.guild)) {
-          await message.reply({
-            content: `You don't have permission to start sessions.\nTo use Kimaki, ask a server admin to give you the **Kimaki** role.`,
-            flags: SILENT_MESSAGE_FLAGS,
-          })
-          return
-        }
-      }
-
-      const isThread = [
-        ChannelType.PublicThread,
-        ChannelType.PrivateThread,
-        ChannelType.AnnouncementThread,
-      ].includes(channel.type)
-
-      if (isThread) {
-        const thread = channel as ThreadChannel
-        discordLogger.log(`Message in thread ${thread.name} (${thread.id})`)
-
-        // Only respond in threads kimaki knows about (has a session row in DB),
-        // where the bot is explicitly @mentioned, or where the bot created the
-        // thread itself (e.g. /new-worktree, /fork, kimaki send). This prevents
-        // the bot from hijacking user-created threads in project channels while
-        // still responding to bot-created threads that may not yet have a session
-        // row with a non-empty session_id (createPendingWorkspace sets ''). (GitHub #84)
-        const hasExistingSession = await getThreadSession(thread.id)
-        const botMentioned =
-          discordClient.user && message.mentions.has(discordClient.user.id)
-        const botCreatedThread =
-          discordClient.user && thread.ownerId === discordClient.user.id
-        if (
-          !hasExistingSession &&
-          !botMentioned &&
-          !isCliInjectedPrompt &&
-          !botCreatedThread
-        ) {
-          discordLogger.log(
-            `Ignoring thread ${thread.id}: no existing session and bot not mentioned`,
-          )
-          return
-        }
-
-        // Context-only messages (user-to-user replies) can't be stored without
-        // an existing session. Skip early to avoid creating a runtime or running
-        // preprocessing for nothing.
-        if (isLeadingMentionToOtherUser && !hasExistingSession) {
-          return
-        }
-
-        const parent = thread.parent as TextChannel | null
-        let projectDirectory: string | undefined
-        if (parent) {
-          const channelConfig = await getChannelDirectory(parent.id)
-          if (channelConfig) {
-            projectDirectory = channelConfig.directory
-          }
-        }
-
-        // Check if this thread is a worktree thread.
-        // When the runtime exists in memory, pending worktrees are handled by
-        // the preprocess chain (messages queue behind the worktree promise).
-        // After a bot restart the runtime is gone, so we must reject messages
-        // for pending worktrees to avoid running in the base directory.
-        // Check both thread_workspaces (new) and thread_worktrees (legacy)
-        const worktreeInfo = await getThreadWorktreeOrWorkspace(thread.id)
-        if (worktreeInfo) {
-          if (worktreeInfo.status === 'pending' && !getRuntime(thread.id)) {
+          if (hasNoKimakiRole(member)) {
             await message.reply({
-              content: '⏳ Worktree is still being created. Please wait...',
+              content: `You have the **no-kimaki** role which blocks bot access.\nRemove this role to use Kimaki.`,
               flags: SILENT_MESSAGE_FLAGS,
             })
             return
           }
-          if (worktreeInfo.status === 'error') {
+
+          if (!hasKimakiBotPermission(member, message.guild)) {
             await message.reply({
-              content: `❌ Worktree creation failed: ${(worktreeInfo.error_message || '').slice(0, 1900)}`,
+              content: `You don't have permission to start sessions.\nTo use Kimaki, ask a server admin to give you the **Kimaki** role.`,
+              flags: SILENT_MESSAGE_FLAGS,
+            })
+            return
+          }
+        }
+
+        const isThread = [
+          ChannelType.PublicThread,
+          ChannelType.PrivateThread,
+          ChannelType.AnnouncementThread,
+        ].includes(channel.type)
+
+        if (isThread) {
+          const thread = channel as ThreadChannel
+          discordLogger.log(`Message in thread ${thread.name} (${thread.id})`)
+
+          // Only respond in threads kimaki knows about (has a session row in DB),
+          // where the bot is explicitly @mentioned, or where the bot created the
+          // thread itself (e.g. /new-worktree, /fork, kimaki send). This prevents
+          // the bot from hijacking user-created threads in project channels while
+          // still responding to bot-created threads that may not yet have a session
+          // row with a non-empty session_id (createPendingWorkspace sets ''). (GitHub #84)
+          const hasExistingSession = await getThreadSession(thread.id)
+          const botMentioned = discordClient.user && message.mentions.has(discordClient.user.id)
+          const botCreatedThread = discordClient.user && thread.ownerId === discordClient.user.id
+          if (!hasExistingSession && !botMentioned && !isCliInjectedPrompt && !botCreatedThread) {
+            discordLogger.log(
+              `Ignoring thread ${thread.id}: no existing session and bot not mentioned`,
+            )
+            return
+          }
+
+          // Context-only messages (user-to-user replies) can't be stored without
+          // an existing session. Skip early to avoid creating a runtime or running
+          // preprocessing for nothing.
+          if (isLeadingMentionToOtherUser && !hasExistingSession) {
+            return
+          }
+
+          const parent = thread.parent as TextChannel | null
+          let projectDirectory: string | undefined
+          if (parent) {
+            const channelConfig = await getChannelDirectory(parent.id)
+            if (channelConfig) {
+              projectDirectory = channelConfig.directory
+            }
+          }
+
+          // Check if this thread is a worktree thread.
+          // When the runtime exists in memory, pending worktrees are handled by
+          // the preprocess chain (messages queue behind the worktree promise).
+          // After a bot restart the runtime is gone, so we must reject messages
+          // for pending worktrees to avoid running in the base directory.
+          // Check both thread_workspaces (new) and thread_worktrees (legacy)
+          const worktreeInfo = await getThreadWorktreeOrWorkspace(thread.id)
+          if (worktreeInfo) {
+            if (worktreeInfo.status === 'pending' && !getRuntime(thread.id)) {
+              await message.reply({
+                content: '⏳ Worktree is still being created. Please wait...',
+                flags: SILENT_MESSAGE_FLAGS,
+              })
+              return
+            }
+            if (worktreeInfo.status === 'error') {
+              await message.reply({
+                content: `❌ Worktree creation failed: ${(worktreeInfo.error_message || '').slice(0, 1900)}`,
+                flags: NOTIFY_MESSAGE_FLAGS,
+              })
+              return
+            }
+            // Use original project directory for OpenCode server (session lives there)
+            // The worktree directory is passed via query.directory in prompt/command calls
+            if (worktreeInfo.project_directory) {
+              projectDirectory = worktreeInfo.project_directory
+              discordLogger.log(
+                `Using project directory: ${projectDirectory} (worktree: ${worktreeInfo.workspace_directory})`,
+              )
+            }
+          }
+
+          if (projectDirectory && !fs.existsSync(projectDirectory)) {
+            discordLogger.error(`Directory does not exist: ${projectDirectory}`)
+            await message.reply({
+              content: `✗ Directory does not exist: ${JSON.stringify(projectDirectory).slice(0, 1900)}`,
               flags: NOTIFY_MESSAGE_FLAGS,
             })
             return
           }
-          // Use original project directory for OpenCode server (session lives there)
-          // The worktree directory is passed via query.directory in prompt/command calls
-          if (worktreeInfo.project_directory) {
-            projectDirectory = worktreeInfo.project_directory
-            discordLogger.log(
-              `Using project directory: ${projectDirectory} (worktree: ${worktreeInfo.workspace_directory})`,
-            )
+
+          // ZK-005: resolve the durable backend before any dispatch on this
+          // thread. A zc: session must never fall through to an OpenCode path;
+          // a reserved ID without a sidecar throws here and surfaces as an error
+          // reply (integrity failure, never permission to use OpenCode).
+          const threadBackend = await resolveIngressBackend(hasExistingSession || null)
+
+          // ! prefix runs a shell command instead of starting/continuing a session.
+          // Use worktree directory if available, so commands run in the worktree cwd.
+          // Skip shell commands while worktree is pending — they'd run in the base dir.
+          if (
+            message.content?.startsWith('!') &&
+            projectDirectory &&
+            worktreeInfo?.status !== 'pending'
+          ) {
+            const shellCmd = message.content.slice(1).trim()
+            if (shellCmd) {
+              // ZK-005: the shell is a host-owned capability — it runs in the
+              // thread's workspace directory without touching any agent runtime,
+              // so it stays available for native sessions too.
+              if (threadBackend === 'zcode') {
+                discordLogger.log(`[ZCODE] host shell on native session thread ${thread.id}`)
+              }
+              threadIngressSlot?.release()
+              const shellDir =
+                worktreeInfo?.status === 'ready' && worktreeInfo.workspace_directory
+                  ? worktreeInfo.workspace_directory
+                  : projectDirectory
+              const loadingReply = await message.reply({
+                content: `Running \`${shellCmd.slice(0, 1900)}\`...`,
+              })
+              const result = await runShellCommand({
+                command: shellCmd,
+                directory: shellDir,
+              })
+              await loadingReply.edit({ content: result })
+              return
+            }
           }
-        }
 
-        if (projectDirectory && !fs.existsSync(projectDirectory)) {
-          discordLogger.error(`Directory does not exist: ${projectDirectory}`)
-          await message.reply({
-            content: `✗ Directory does not exist: ${JSON.stringify(projectDirectory).slice(0, 1900)}`,
-            flags: NOTIFY_MESSAGE_FLAGS,
-          })
-          return
-        }
-
-        // ! prefix runs a shell command instead of starting/continuing a session.
-        // Use worktree directory if available, so commands run in the worktree cwd.
-        // Skip shell commands while worktree is pending — they'd run in the base dir.
-        if (
-          message.content?.startsWith('!') &&
-          projectDirectory &&
-          worktreeInfo?.status !== 'pending'
-        ) {
-          const shellCmd = message.content.slice(1).trim()
-          if (shellCmd) {
+          // `. btw` suffix mirrors /btw for fast side-question forks.
+          // Works like queue: just the word "btw" at the end after punctuation
+          // or newline. The whole message (minus the suffix) becomes the fork prompt.
+          const btwResult =
+            projectDirectory && worktreeInfo?.status !== 'pending'
+              ? extractBtwSuffix(message.content || '')
+              : null
+          if (btwResult?.forceBtw && projectDirectory && !isLeadingMentionToOtherUser) {
+            // ZK-005: `.btw` forks via the OpenCode SDK — on a native session the
+            // fork capability must be provided natively (ZK-011); until then this
+            // is a visible refusal, never an OpenCode fallback.
+            const btwGate = gateThreadCommand(threadBackend, 'btw')
+            if (btwGate.kind === 'refuse') {
+              threadIngressSlot?.release()
+              await message.reply({
+                content: btwGate.reason,
+                flags: SILENT_MESSAGE_FLAGS,
+              })
+              return
+            }
             threadIngressSlot?.release()
-            const shellDir =
-              worktreeInfo?.status === 'ready' &&
-              worktreeInfo.workspace_directory
+            const btwSdkDir =
+              worktreeInfo?.status === 'ready' && worktreeInfo.workspace_directory
                 ? worktreeInfo.workspace_directory
                 : projectDirectory
-            const loadingReply = await message.reply({
-              content: `Running \`${shellCmd.slice(0, 1900)}\`...`,
+            const result = await forkSessionToBtwThread({
+              sourceThread: thread,
+              projectDirectory,
+              sdkDirectory: btwSdkDir,
+              prompt: btwResult.prompt,
+              userId: message.author.id,
+              username: message.member?.displayName || message.author.displayName,
+              appId: currentAppId,
             })
-            const result = await runShellCommand({
-              command: shellCmd,
-              directory: shellDir,
+
+            if (result instanceof Error) {
+              await message.reply({
+                content: result.message,
+                flags: SILENT_MESSAGE_FLAGS,
+              })
+              return
+            }
+
+            await message.reply({
+              content: `Session forked! Continue in ${result.thread.toString()}`,
+              flags: SILENT_MESSAGE_FLAGS,
             })
-            await loadingReply.edit({ content: result })
             return
           }
-        }
 
-        // `. btw` suffix mirrors /btw for fast side-question forks.
-        // Works like queue: just the word "btw" at the end after punctuation
-        // or newline. The whole message (minus the suffix) becomes the fork prompt.
-        const btwResult =
-          projectDirectory && worktreeInfo?.status !== 'pending'
-            ? extractBtwSuffix(message.content || '')
-            : null
-        if (btwResult?.forceBtw && projectDirectory && !isLeadingMentionToOtherUser) {
-          threadIngressSlot?.release()
-          const btwSdkDir =
-            worktreeInfo?.status === 'ready' &&
-            worktreeInfo.workspace_directory
+          const hasVoiceAttachment = message.attachments.some((attachment) => {
+            return isVoiceAttachment(attachment)
+          })
+
+          if (!projectDirectory) {
+            discordLogger.log(
+              `Cannot process message: no project directory for thread ${thread.id}`,
+            )
+            return
+          }
+
+          if (isMissingReadableMessageContent(message)) {
+            await message.reply({
+              content: MISSING_MESSAGE_CONTENT_REPLY,
+              flags: SILENT_MESSAGE_FLAGS,
+            })
+            return
+          }
+
+          // ZK-005: CLI-injected sends that fork a native parent session need the
+          // native fork capability (ZK-011) — visible refusal, never an OpenCode
+          // fork of a zc: parent.
+          if (cliInjectedParentSessionId) {
+            const parentBackend = await resolveIngressBackend(cliInjectedParentSessionId)
+            const parentGate = gateThreadCommand(parentBackend, 'fork')
+            if (parentGate.kind === 'refuse') {
+              await message.reply({
+                content: parentGate.reason,
+                flags: SILENT_MESSAGE_FLAGS,
+              })
+              return
+            }
+          }
+
+          // ZK-005: native sessions never start the OpenCode runtime. The native
+          // runtime itself lands with ZK-008; until then this visible refusal
+          // keeps zc: threads off every OpenCode path (messages, voice-derived
+          // prompts, sleep wakes, CLI-injected prompts alike).
+          const messageGate = gateThreadMessage(threadBackend)
+          if (messageGate.kind === 'refuse') {
+            await message.reply({
+              content: messageGate.reason,
+              flags: SILENT_MESSAGE_FLAGS,
+            })
+            return
+          }
+
+          const resolvedProjectDir = projectDirectory
+
+          const sdkDir =
+            worktreeInfo?.status === 'ready' && worktreeInfo.workspace_directory
               ? worktreeInfo.workspace_directory
-              : projectDirectory
-          const result = await forkSessionToBtwThread({
-            sourceThread: thread,
-            projectDirectory,
-            sdkDirectory: btwSdkDir,
-            prompt: btwResult.prompt,
-            userId: message.author.id,
-            username:
-              message.member?.displayName || message.author.displayName,
+              : resolvedProjectDir
+          const runtime = getOrCreateRuntime({
+            threadId: thread.id,
+            thread,
+            projectDirectory: resolvedProjectDir,
+            sdkDirectory: sdkDir,
+            channelId: parent?.id || undefined,
             appId: currentAppId,
           })
 
-          if (result instanceof Error) {
-            await message.reply({
-              content: result.message,
-              flags: SILENT_MESSAGE_FLAGS,
-            })
+          // Cancel interactive UI when a real user sends a message.
+          // Context-only messages (user-to-user replies) should not interrupt
+          // the active run or dismiss pending UI.
+          const dismissSourceUi = async () => {
+            if (message.author.bot || isCliInjectedPrompt || isLeadingMentionToOtherUser) return
+            cancelPendingActionButtons(thread.id)
+            cancelHtmlActionsForThread(thread.id)
+            const dismissedPermission = await cancelPendingPermission(thread.id)
+            if (dismissedPermission) {
+              await runtime.abortActiveRunAndWait({
+                reason: 'user sent a new message while permission was pending',
+              })
+            }
+            const dismissedQuestion = hasPendingQuestionForThread(thread.id)
+            if (dismissedQuestion) {
+              await cancelPendingQuestion(thread.id)
+              await runtime.abortActiveRunAndWait({
+                reason: 'user sent a new message while question was pending',
+              })
+            }
+            void cancelPendingFileUpload(thread.id)
+          }
+          if (!hasVoiceAttachment) {
+            await dismissSourceUi()
+          }
+
+          // A sleep wake only becomes a turn if it can still claim its own row.
+          // The claim fails when the user cancelled the sleep while the wake was
+          // being posted, so the superseded wake is dropped instead of starting a
+          // turn the user already replaced. Cancellation for every other kind of
+          // message happens inside runtime.enqueueIncoming().
+          const isSleepWake = Boolean(promptMarker?.sleepWake)
+          if (isSleepWake) {
+            const claimedWake = promptMarker?.sleepId
+              ? await consumeSessionSleepWake({ deliveryId: promptMarker.sleepId })
+              : false
+            if (!claimedWake) {
+              discordLogger.log(`[SLEEP] ignoring superseded wake in thread ${thread.id}`)
+              return
+            }
+          }
+
+          // Expensive pre-processing (voice transcription, context fetch,
+          // attachment download) runs inside the runtime's serialized
+          // preprocess chain, preserving Discord arrival order without
+          // blocking SSE event handling in dispatchAction.
+          const enqueueResult = await runtime.enqueueIncoming({
+            prompt: '',
+            userId: cliInjectedUserId || message.author.id,
+            username:
+              cliInjectedUsername || message.member?.displayName || message.author.displayName,
+            sourceMessageId: message.id,
+            sourceThreadId: thread.id,
+            appId: currentAppId,
+            agent: cliInjectedAgent,
+            model: cliInjectedModel,
+            permissions: cliInjectedPermissions,
+            injectionGuardPatterns: cliInjectedInjectionGuardPatterns,
+            parentSessionId: cliInjectedParentSessionId,
+            isSleepWake: isSleepWake || undefined,
+            noReply: isLeadingMentionToOtherUser || undefined,
+            sessionStartSource: sessionStartSource
+              ? {
+                  scheduleKind: sessionStartSource.scheduleKind,
+                  scheduledTaskId: sessionStartSource.scheduledTaskId,
+                  scheduledTaskRunId: sessionStartSource.scheduledTaskRunId,
+                }
+              : undefined,
+            preprocess: async () => {
+              const result = await preprocessExistingThreadMessage({
+                message,
+                thread,
+                projectDirectory: resolvedProjectDir,
+                channelId: parent?.id || undefined,
+                isCliInjected: isCliInjectedPrompt,
+                hasVoiceAttachment,
+                appId: currentAppId,
+              })
+              // Routing must finish before touching source UI. This chain is separate
+              // from dispatchAction, so abort waiting does not block session events.
+              if (hasVoiceAttachment && !result.skip) {
+                await dismissSourceUi()
+              }
+              return result
+            },
+          })
+
+          // Notify when a voice message was queued instead of sent immediately
+          if (enqueueResult.queued && enqueueResult.position) {
+            await sendThreadMessage(
+              thread,
+              `Queued at position ${enqueueResult.position}. Edit or delete your message to update the queue`,
+            )
+          }
+        }
+
+        if (channel.type === ChannelType.GuildText) {
+          // `kimaki send` posts a starter message with a `start` embed marker,
+          // then creates the thread via REST. The ThreadCreate handler picks up
+          // that thread and starts the session. If we don't skip here, this
+          // handler races the CLI to call startThread() on the same message,
+          // causing DiscordAPIError[160004] "A thread has already been created
+          // for this message".
+          if (promptMarker?.start) {
             return
           }
 
-          await message.reply({
-            content: `Session forked! Continue in ${result.thread.toString()}`,
-            flags: SILENT_MESSAGE_FLAGS,
-          })
-          return
-        }
+          voiceLogger.log(`[GUILD_TEXT] Message in text channel #${channel.name} (${channel.id})`)
 
-        const hasVoiceAttachment = message.attachments.some((attachment) => {
-          return isVoiceAttachment(attachment)
-        })
+          const channelConfig = await getChannelDirectory(channel.id)
 
-        if (!projectDirectory) {
-          discordLogger.log(
-            `Cannot process message: no project directory for thread ${thread.id}`,
-          )
-          return
-        }
-
-        if (isMissingReadableMessageContent(message)) {
-          await message.reply({
-            content: MISSING_MESSAGE_CONTENT_REPLY,
-            flags: SILENT_MESSAGE_FLAGS,
-          })
-          return
-        }
-
-        const resolvedProjectDir = projectDirectory
-
-        const sdkDir =
-          worktreeInfo?.status === 'ready' &&
-          worktreeInfo.workspace_directory
-            ? worktreeInfo.workspace_directory
-            : resolvedProjectDir
-        const runtime = getOrCreateRuntime({
-          threadId: thread.id,
-          thread,
-          projectDirectory: resolvedProjectDir,
-          sdkDirectory: sdkDir,
-          channelId: parent?.id || undefined,
-          appId: currentAppId,
-        })
-
-        // Cancel interactive UI when a real user sends a message.
-        // Context-only messages (user-to-user replies) should not interrupt
-        // the active run or dismiss pending UI.
-        const dismissSourceUi = async () => {
-          if (message.author.bot || isCliInjectedPrompt || isLeadingMentionToOtherUser) return
-          cancelPendingActionButtons(thread.id)
-          cancelHtmlActionsForThread(thread.id)
-          const dismissedPermission = await cancelPendingPermission(thread.id)
-          if (dismissedPermission) {
-            await runtime.abortActiveRunAndWait({
-              reason: 'user sent a new message while permission was pending',
-            })
-          }
-          const dismissedQuestion = hasPendingQuestionForThread(thread.id)
-          if (dismissedQuestion) {
-            await cancelPendingQuestion(thread.id)
-            await runtime.abortActiveRunAndWait({
-              reason: 'user sent a new message while question was pending',
-            })
-          }
-          void cancelPendingFileUpload(thread.id)
-        }
-        if (!hasVoiceAttachment) {
-          await dismissSourceUi()
-        }
-
-        // A sleep wake only becomes a turn if it can still claim its own row.
-        // The claim fails when the user cancelled the sleep while the wake was
-        // being posted, so the superseded wake is dropped instead of starting a
-        // turn the user already replaced. Cancellation for every other kind of
-        // message happens inside runtime.enqueueIncoming().
-        const isSleepWake = Boolean(promptMarker?.sleepWake)
-        if (isSleepWake) {
-          const claimedWake = promptMarker?.sleepId
-            ? await consumeSessionSleepWake({ deliveryId: promptMarker.sleepId })
-            : false
-          if (!claimedWake) {
-            discordLogger.log(
-              `[SLEEP] ignoring superseded wake in thread ${thread.id}`,
+          if (!channelConfig) {
+            const botMentioned = Boolean(
+              discordClient.user && message.mentions.has(discordClient.user.id),
+            )
+            if (botMentioned) {
+              // TODO: Consider creating/using a session for any text channel when Kimaki is
+              // explicitly @mentioned, so the bot can answer quick questions even before
+              // the channel is linked to a project.
+              await message.reply({
+                content:
+                  'This channel is not connected to an OpenCode project.\nSend your message in a project channel, or use `/add-project` for an existing project, or `/create-new-project` to make a new one.',
+                flags: SILENT_MESSAGE_FLAGS,
+              })
+              return
+            }
+            voiceLogger.log(
+              `[IGNORED] Channel #${channel.name} has no project directory configured`,
             )
             return
           }
-        }
 
-        // Expensive pre-processing (voice transcription, context fetch,
-        // attachment download) runs inside the runtime's serialized
-        // preprocess chain, preserving Discord arrival order without
-        // blocking SSE event handling in dispatchAction.
-        const enqueueResult = await runtime.enqueueIncoming({
-          prompt: '',
-          userId: cliInjectedUserId || message.author.id,
-          username:
-            cliInjectedUsername ||
-            message.member?.displayName ||
-            message.author.displayName,
-          sourceMessageId: message.id,
-          sourceThreadId: thread.id,
-          appId: currentAppId,
-          agent: cliInjectedAgent,
-          model: cliInjectedModel,
-          permissions: cliInjectedPermissions,
-          injectionGuardPatterns: cliInjectedInjectionGuardPatterns,
-          parentSessionId: cliInjectedParentSessionId,
-          isSleepWake: isSleepWake || undefined,
-          noReply: isLeadingMentionToOtherUser || undefined,
-          sessionStartSource: sessionStartSource
-            ? {
-                scheduleKind: sessionStartSource.scheduleKind,
-                scheduledTaskId: sessionStartSource.scheduledTaskId,
-                scheduledTaskRunId: sessionStartSource.scheduledTaskRunId,
-              }
-            : undefined,
-          preprocess: async () => {
-            const result = await preprocessExistingThreadMessage({
-              message,
-              thread,
-              projectDirectory: resolvedProjectDir,
-              channelId: parent?.id || undefined,
-              isCliInjected: isCliInjectedPrompt,
-              hasVoiceAttachment,
-              appId: currentAppId,
-            })
-            // Routing must finish before touching source UI. This chain is separate
-            // from dispatchAction, so abort waiting does not block session events.
-            if (hasVoiceAttachment && !result.skip) {
-              await dismissSourceUi()
-            }
-            return result
-          },
-        })
+          const projectDirectory = channelConfig.directory
 
-        // Notify when a voice message was queued instead of sent immediately
-        if (enqueueResult.queued && enqueueResult.position) {
-          await sendThreadMessage(
-            thread,
-            `Queued at position ${enqueueResult.position}. Edit or delete your message to update the queue`,
-          )
-        }
-      }
+          // Note: Mention mode is checked early in the handler (before permission check)
+          // to avoid sending permission errors to users who just didn't @mention the bot.
 
-      if (channel.type === ChannelType.GuildText) {
-        // `kimaki send` posts a starter message with a `start` embed marker,
-        // then creates the thread via REST. The ThreadCreate handler picks up
-        // that thread and starts the session. If we don't skip here, this
-        // handler races the CLI to call startThread() on the same message,
-        // causing DiscordAPIError[160004] "A thread has already been created
-        // for this message".
-        if (promptMarker?.start) {
-          return
-        }
+          discordLogger.log(`DIRECTORY: Found kimaki.directory: ${projectDirectory}`)
 
-        voiceLogger.log(
-          `[GUILD_TEXT] Message in text channel #${channel.name} (${channel.id})`,
-        )
-
-        const channelConfig = await getChannelDirectory(channel.id)
-
-        if (!channelConfig) {
-          const botMentioned = Boolean(
-            discordClient.user && message.mentions.has(discordClient.user.id),
-          )
-          if (botMentioned) {
-            // TODO: Consider creating/using a session for any text channel when Kimaki is
-            // explicitly @mentioned, so the bot can answer quick questions even before
-            // the channel is linked to a project.
+          if (!fs.existsSync(projectDirectory)) {
+            discordLogger.error(`Directory does not exist: ${projectDirectory}`)
             await message.reply({
-              content:
-                'This channel is not connected to an OpenCode project.\nSend your message in a project channel, or use `/add-project` for an existing project, or `/create-new-project` to make a new one.',
+              content: `✗ Directory does not exist: ${JSON.stringify(projectDirectory).slice(0, 1900)}`,
+              flags: NOTIFY_MESSAGE_FLAGS,
+            })
+            return
+          }
+
+          if (isMissingReadableMessageContent(message)) {
+            await message.reply({
+              content: MISSING_MESSAGE_CONTENT_REPLY,
               flags: SILENT_MESSAGE_FLAGS,
             })
             return
           }
-          voiceLogger.log(
-            `[IGNORED] Channel #${channel.name} has no project directory configured`,
-          )
-          return
+
+          // ! prefix runs a shell command instead of starting a session
+          if (message.content?.startsWith('!')) {
+            const shellCmd = message.content.slice(1).trim()
+            if (shellCmd) {
+              threadIngressSlot?.release()
+              const loadingReply = await message.reply({
+                content: `Running \`${shellCmd.slice(0, 1900)}\`...`,
+              })
+              const result = await runShellCommand({
+                command: shellCmd,
+                directory: projectDirectory,
+              })
+              await loadingReply.edit({ content: result })
+              return
+            }
+          }
+
+          const hasVoice = message.attachments.some((attachment) => {
+            return isVoiceAttachment(attachment)
+          })
+
+          const baseThreadName = hasVoice
+            ? 'Voice Message'
+            : stripMentions(message.content || '')
+                .replace(/\s+/g, ' ')
+                .trim() || 'kimaki thread'
+
+          // Check if worktrees should be enabled (CLI flag OR channel setting).
+          // Only create worktrees from the configured project directory when that
+          // directory is itself the git root. If the user registered a non-git
+          // workspace folder under a larger repo, git would create the worktree
+          // from the parent repo and strand follow-up messages on failure.
+          const wantsWorktrees = useWorktrees || (await getChannelWorktreesEnabled(channel.id))
+          const shouldUseWorktrees = wantsWorktrees && (await isGitRepositoryRoot(projectDirectory))
+
+          if (wantsWorktrees && !shouldUseWorktrees) {
+            discordLogger.warn(
+              `[WORKTREE] Skipping automatic worktree for non-git project directory: ${projectDirectory}`,
+            )
+          }
+
+          // Add worktree prefix if worktrees are enabled
+          const threadName = shouldUseWorktrees
+            ? `${WORKTREE_PREFIX}${baseThreadName}`
+            : baseThreadName
+
+          const thread = await message.startThread({
+            name: threadName.slice(0, 80),
+            autoArchiveDuration: ThreadAutoArchiveDuration.OneDay,
+            reason: 'Start Claude session',
+          })
+
+          // Add user to thread so it appears in their sidebar
+          await thread.members.add(message.author.id)
+
+          discordLogger.log(`Created thread "${thread.name}" (${thread.id})`)
+
+          // Create runtime immediately so follow-up messages queue naturally
+          // via the preprocess chain instead of being rejected with "please wait".
+          // When worktrees are enabled, the worktree promise runs concurrently
+          // and the first message's preprocess callback awaits it before resolving.
+          let worktreePromise: Promise<string | Error> | undefined
+          if (shouldUseWorktrees) {
+            // Auto-derived from thread name -- compress long slugs so the
+            // folder path stays short and the agent doesn't reuse old worktrees.
+            const worktreeName = formatAutoWorktreeName(
+              hasVoice ? `voice-${Date.now()}` : threadName.slice(0, 50),
+            )
+            discordLogger.log(`[WORKTREE] Creating worktree: ${worktreeName}`)
+
+            const worktreeStatusMessage = await thread
+              .send({
+                content: worktreeCreatingMessage(worktreeName),
+                flags: SILENT_MESSAGE_FLAGS,
+              })
+              .catch(() => undefined)
+
+            worktreePromise = createWorktreeInBackground({
+              thread,
+              starterMessage: worktreeStatusMessage,
+              worktreeName,
+              projectDirectory,
+              rest: discordClient.rest,
+            })
+          }
+
+          const worktreeResult = worktreePromise ? await worktreePromise : projectDirectory
+          if (worktreeResult instanceof Error) return
+          const sessionDirectory = worktreeResult
+
+          const channelRuntime = getOrCreateRuntime({
+            threadId: thread.id,
+            thread,
+            projectDirectory,
+            sdkDirectory: sessionDirectory,
+            channelId: channel.id,
+            appId: currentAppId,
+          })
+          await channelRuntime.enqueueIncoming({
+            prompt: '',
+            userId: message.author.id,
+            username: message.member?.displayName || message.author.displayName,
+            sourceMessageId: message.id,
+            sourceThreadId: thread.id,
+            appId: currentAppId,
+            preprocess: async () => {
+              return preprocessNewThreadMessage({
+                message,
+                thread,
+                projectDirectory: sessionDirectory,
+                hasVoiceAttachment: hasVoice,
+                appId: currentAppId,
+              })
+            },
+          })
+        } else {
+          // discordLogger.log(`Channel type ${channel.type} is not supported`)
         }
-
-        const projectDirectory = channelConfig.directory
-
-        // Note: Mention mode is checked early in the handler (before permission check)
-        // to avoid sending permission errors to users who just didn't @mention the bot.
-
-        discordLogger.log(`DIRECTORY: Found kimaki.directory: ${projectDirectory}`)
-
-        if (!fs.existsSync(projectDirectory)) {
-          discordLogger.error(`Directory does not exist: ${projectDirectory}`)
+      } catch (error) {
+        voiceLogger.error('Discord handler error:', error)
+        void notifyError(error, 'MessageCreate handler error')
+        try {
+          const errMsg = (error instanceof Error ? error.message : String(error)).slice(0, 1900)
           await message.reply({
-            content: `✗ Directory does not exist: ${JSON.stringify(projectDirectory).slice(0, 1900)}`,
+            content: `Error: ${errMsg}`,
             flags: NOTIFY_MESSAGE_FLAGS,
           })
-          return
-        }
-
-        if (isMissingReadableMessageContent(message)) {
-          await message.reply({
-            content: MISSING_MESSAGE_CONTENT_REPLY,
-            flags: SILENT_MESSAGE_FLAGS,
-          })
-          return
-        }
-
-        // ! prefix runs a shell command instead of starting a session
-        if (message.content?.startsWith('!')) {
-          const shellCmd = message.content.slice(1).trim()
-          if (shellCmd) {
-            threadIngressSlot?.release()
-            const loadingReply = await message.reply({
-              content: `Running \`${shellCmd.slice(0, 1900)}\`...`,
-            })
-            const result = await runShellCommand({
-              command: shellCmd,
-              directory: projectDirectory,
-            })
-            await loadingReply.edit({ content: result })
-            return
-          }
-        }
-
-        const hasVoice = message.attachments.some((attachment) => {
-          return isVoiceAttachment(attachment)
-        })
-
-        const baseThreadName = hasVoice
-          ? 'Voice Message'
-          : stripMentions(message.content || '')
-              .replace(/\s+/g, ' ')
-              .trim() || 'kimaki thread'
-
-        // Check if worktrees should be enabled (CLI flag OR channel setting).
-        // Only create worktrees from the configured project directory when that
-        // directory is itself the git root. If the user registered a non-git
-        // workspace folder under a larger repo, git would create the worktree
-        // from the parent repo and strand follow-up messages on failure.
-        const wantsWorktrees =
-          useWorktrees || (await getChannelWorktreesEnabled(channel.id))
-        const shouldUseWorktrees =
-          wantsWorktrees && (await isGitRepositoryRoot(projectDirectory))
-
-        if (wantsWorktrees && !shouldUseWorktrees) {
-          discordLogger.warn(
-            `[WORKTREE] Skipping automatic worktree for non-git project directory: ${projectDirectory}`,
+        } catch (sendError) {
+          voiceLogger.error(
+            'Discord handler error (fallback):',
+            sendError instanceof Error ? sendError.message : String(sendError),
           )
         }
-
-        // Add worktree prefix if worktrees are enabled
-        const threadName = shouldUseWorktrees
-          ? `${WORKTREE_PREFIX}${baseThreadName}`
-          : baseThreadName
-
-        const thread = await message.startThread({
-          name: threadName.slice(0, 80),
-          autoArchiveDuration: ThreadAutoArchiveDuration.OneDay,
-          reason: 'Start Claude session',
-        })
-
-        // Add user to thread so it appears in their sidebar
-        await thread.members.add(message.author.id)
-
-        discordLogger.log(`Created thread "${thread.name}" (${thread.id})`)
-
-        // Create runtime immediately so follow-up messages queue naturally
-        // via the preprocess chain instead of being rejected with "please wait".
-        // When worktrees are enabled, the worktree promise runs concurrently
-        // and the first message's preprocess callback awaits it before resolving.
-        let worktreePromise: Promise<string | Error> | undefined
-        if (shouldUseWorktrees) {
-          // Auto-derived from thread name -- compress long slugs so the
-          // folder path stays short and the agent doesn't reuse old worktrees.
-          const worktreeName = formatAutoWorktreeName(
-            hasVoice ? `voice-${Date.now()}` : threadName.slice(0, 50),
-          )
-          discordLogger.log(`[WORKTREE] Creating worktree: ${worktreeName}`)
-
-          const worktreeStatusMessage = await thread
-            .send({
-              content: worktreeCreatingMessage(worktreeName),
-              flags: SILENT_MESSAGE_FLAGS,
-            })
-            .catch(() => undefined)
-
-          worktreePromise = createWorktreeInBackground({
-            thread,
-            starterMessage: worktreeStatusMessage,
-            worktreeName,
-            projectDirectory,
-            rest: discordClient.rest,
-          })
-        }
-
-        const worktreeResult = worktreePromise ? await worktreePromise : projectDirectory
-        if (worktreeResult instanceof Error) return
-        const sessionDirectory = worktreeResult
-
-        const channelRuntime = getOrCreateRuntime({
-          threadId: thread.id,
-          thread,
-          projectDirectory,
-          sdkDirectory: sessionDirectory,
-          channelId: channel.id,
-          appId: currentAppId,
-        })
-        await channelRuntime.enqueueIncoming({
-          prompt: '',
-          userId: message.author.id,
-          username:
-            message.member?.displayName || message.author.displayName,
-          sourceMessageId: message.id,
-          sourceThreadId: thread.id,
-          appId: currentAppId,
-          preprocess: async () => {
-            return preprocessNewThreadMessage({
-              message,
-              thread,
-              projectDirectory: sessionDirectory,
-              hasVoiceAttachment: hasVoice,
-              appId: currentAppId,
-            })
-          },
-        })
-      } else {
-        // discordLogger.log(`Channel type ${channel.type} is not supported`)
       }
-    } catch (error) {
-      voiceLogger.error('Discord handler error:', error)
-      void notifyError(error, 'MessageCreate handler error')
-      try {
-        const errMsg = (
-          error instanceof Error ? error.message : String(error)
-        ).slice(0, 1900)
-        await message.reply({
-          content: `Error: ${errMsg}`,
-          flags: NOTIFY_MESSAGE_FLAGS,
-        })
-      } catch (sendError) {
-        voiceLogger.error(
-          'Discord handler error (fallback):',
-          sendError instanceof Error ? sendError.message : String(sendError),
-        )
-      }
-    }
     })
   })
 
@@ -1146,9 +1142,7 @@ export async function startDiscordBot({
     try {
       // Fetch full message if partial (cache miss). Needed for mentions
       // and content to be fully resolved.
-      const message = newMessage.partial
-        ? await newMessage.fetch().catch(() => null)
-        : newMessage
+      const message = newMessage.partial ? await newMessage.fetch().catch(() => null) : newMessage
       if (!message) return
       if (message.author.bot) return
       if (!message.content) return
@@ -1171,20 +1165,14 @@ export async function startDiscordBot({
       // Use resolveMentions to match initial preprocessing and preserve
       // newlines (stripMentions collapses them, breaking final-line queue
       // suffix detection).
-      const { prompt, forceQueue } = extractQueueSuffix(
-        resolveMentions(message),
-      )
+      const { prompt, forceQueue } = extractQueueSuffix(resolveMentions(message))
 
       // If the edit removed the queue suffix, remove the item from the queue.
       // If the suffix is still present, update the prompt.
-      const result = runtime.updateQueuedMessage(
-        message.id,
-        forceQueue ? prompt : '',
-      )
+      const result = runtime.updateQueuedMessage(message.id, forceQueue ? prompt : '')
 
       if (result.found && channel.isThread()) {
-        const displayName =
-          message.member?.displayName ?? message.author.displayName
+        const displayName = message.member?.displayName ?? message.author.displayName
         if (result.removed) {
           discordLogger.log(
             `[MESSAGE_EDIT] Removed queued message ${message.id} in thread ${channel.id}`,
@@ -1255,19 +1243,15 @@ export async function startDiscordBot({
       }
 
       // Get the starter message to check for auto-start marker
-      const starterMessage = await thread
-        .fetchStarterMessage()
-        .catch((error) => {
-          discordLogger.warn(
-            `[THREAD_CREATE] Failed to fetch starter message for thread ${thread.id}:`,
-            error instanceof Error ? error.stack : String(error),
-          )
-          return null
-        })
-      if (!starterMessage) {
-        discordLogger.log(
-          `[THREAD_CREATE] Could not fetch starter message for thread ${thread.id}`,
+      const starterMessage = await thread.fetchStarterMessage().catch((error) => {
+        discordLogger.warn(
+          `[THREAD_CREATE] Failed to fetch starter message for thread ${thread.id}:`,
+          error instanceof Error ? error.stack : String(error),
         )
+        return null
+      })
+      if (!starterMessage) {
+        discordLogger.log(`[THREAD_CREATE] Could not fetch starter message for thread ${thread.id}`)
         return
       }
 
@@ -1293,9 +1277,7 @@ export async function startDiscordBot({
         return // Not an auto-start thread
       }
 
-      discordLogger.log(
-        `[BOT_SESSION] Detected bot-initiated thread: ${thread.name}`,
-      )
+      discordLogger.log(`[BOT_SESSION] Detected bot-initiated thread: ${thread.name}`)
 
       const [textAttachmentsContent, fileAttachments] = await Promise.all([
         getTextAttachments(starterMessage),
@@ -1314,18 +1296,14 @@ export async function startDiscordBot({
       const channelConfig = await getChannelDirectory(parent.id)
 
       if (!channelConfig) {
-        discordLogger.log(
-          `[BOT_SESSION] No project directory configured for parent channel`,
-        )
+        discordLogger.log(`[BOT_SESSION] No project directory configured for parent channel`)
         return
       }
 
       const projectDirectory = channelConfig.directory
 
       if (!fs.existsSync(projectDirectory)) {
-        discordLogger.error(
-          `[BOT_SESSION] Directory does not exist: ${projectDirectory}`,
-        )
+        discordLogger.error(`[BOT_SESSION] Directory does not exist: ${projectDirectory}`)
         await thread.send({
           content: `✗ Directory does not exist: ${JSON.stringify(projectDirectory).slice(0, 1900)}`,
           flags: NOTIFY_MESSAGE_FLAGS,
@@ -1340,13 +1318,10 @@ export async function startDiscordBot({
       const autoWorktreeEnabled =
         !marker.worktree &&
         !marker.cwd &&
-        (store.getState().useWorktrees ||
-          (await getChannelWorktreesEnabled(parent.id)))
+        (store.getState().useWorktrees || (await getChannelWorktreesEnabled(parent.id)))
       const effectiveWorktreeName =
         marker.worktree ||
-        (autoWorktreeEnabled
-          ? formatAutoWorktreeName(thread.name.slice(0, 50))
-          : undefined)
+        (autoWorktreeEnabled ? formatAutoWorktreeName(thread.name.slice(0, 50)) : undefined)
 
       let worktreePromise: Promise<string | Error> | undefined
       if (effectiveWorktreeName && (await isGitRepositoryRoot(projectDirectory))) {
@@ -1403,9 +1378,8 @@ export async function startDiscordBot({
         if (cwdResult.kind === 'worktree' && cwdDirectory) {
           // Resolve actual branch name instead of using directory basename
           const branchResult = await git(cwdDirectory, 'symbolic-ref --short HEAD')
-          const cwdWorktreeName = branchResult instanceof Error
-            ? path.basename(cwdDirectory)
-            : branchResult
+          const cwdWorktreeName =
+            branchResult instanceof Error ? path.basename(cwdDirectory) : branchResult
 
           await createPendingWorkspace({
             threadId: thread.id,
@@ -1473,15 +1447,10 @@ export async function startDiscordBot({
         },
       })
     } catch (error) {
-      voiceLogger.error(
-        '[BOT_SESSION] Error handling bot-initiated thread:',
-        error,
-      )
+      voiceLogger.error('[BOT_SESSION] Error handling bot-initiated thread:', error)
       void notifyError(error, 'ThreadCreate handler error')
       try {
-        const errMsg = (
-          error instanceof Error ? error.message : String(error)
-        ).slice(0, 1900)
+        const errMsg = (error instanceof Error ? error.message : String(error)).slice(0, 1900)
         await thread.send({
           content: `Error: ${errMsg}`,
           flags: NOTIFY_MESSAGE_FLAGS,
@@ -1519,9 +1488,7 @@ export async function startDiscordBot({
 
       const deleted = await deleteChannelDirectoryById(channel.id)
       if (deleted) {
-        discordLogger.log(
-          `Cleaned up channel_directories for deleted channel ${channel.id}`,
-        )
+        discordLogger.log(`Cleaned up channel_directories for deleted channel ${channel.id}`)
       }
     } catch (error) {
       notifyError(
@@ -1571,10 +1538,7 @@ export async function startDiscordBot({
       stopStdinCpuProfListener()
       const flushed = await flushCpuProfiling()
       if (flushed instanceof Error) {
-        discordLogger.warn(
-          'Failed to flush CPU profile on shutdown:',
-          flushed.message,
-        )
+        discordLogger.warn('Failed to flush CPU profile on shutdown:', flushed.message)
       }
       await stopRuntimeIdleSweeper()
       await stopTaskRunner()
@@ -1590,17 +1554,12 @@ export async function startDiscordBot({
 
       // Cancel pending IPC requests so plugin tools don't hang
       await cancelAllPendingIpcRequests().catch((e) => {
-        discordLogger.warn(
-          'Failed to cancel pending IPC requests:',
-          (e as Error).message,
-        )
+        discordLogger.warn('Failed to cancel pending IPC requests:', (e as Error).message)
       })
 
       const cleanupPromises: Promise<void>[] = []
       for (const [guildId] of voiceConnections) {
-        voiceLogger.log(
-          `[SHUTDOWN] Cleaning up voice connection for guild ${guildId}`,
-        )
+        voiceLogger.log(`[SHUTDOWN] Cleaning up voice connection for guild ${guildId}`)
         cleanupPromises.push(cleanupVoiceConnection(guildId))
       }
 
@@ -1716,14 +1675,12 @@ export async function startDiscordBot({
     }
     discordLogger.error('Uncaught exception:', formatErrorWithStack(error))
     notifyError(error, 'Uncaught exception in bot process')
-    void handleShutdown('uncaughtException', { skipExit: true }).catch(
-      (shutdownError) => {
-        discordLogger.error(
-          '[uncaughtException] shutdown failed:',
-          formatErrorWithStack(shutdownError),
-        )
-      },
-    )
+    void handleShutdown('uncaughtException', { skipExit: true }).catch((shutdownError) => {
+      discordLogger.error(
+        '[uncaughtException] shutdown failed:',
+        formatErrorWithStack(shutdownError),
+      )
+    })
     setTimeout(() => {
       process.exit(1)
     }, 250).unref()
@@ -1740,10 +1697,7 @@ export async function startDiscordBot({
       'at promise:',
       promise,
     )
-    const error =
-      reason instanceof Error
-        ? reason
-        : new Error(formatErrorWithStack(reason))
+    const error = reason instanceof Error ? reason : new Error(formatErrorWithStack(reason))
     void notifyError(error, 'Unhandled rejection in bot process')
   })
 }

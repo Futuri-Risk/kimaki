@@ -29,6 +29,8 @@ import {
 import { execAsync } from './exec-async.js'
 import { QUEUE_PREFIX } from './message-formatting.js'
 import { initializeOpencodeForDirectory } from './opencode.js'
+import { isZcodeSessionId } from './agent/registry.js'
+import { countActiveNativeOperations } from './agent/host-sidecar.js'
 import { createLogger, formatErrorWithStack, LogPrefix } from './logger.js'
 import { notifyError } from './sentry.js'
 import type { ThreadStartMarker } from './system-message.js'
@@ -112,10 +114,9 @@ async function executeThreadScheduledTask({
       userId: payload.userId,
     })
     if (addMemberResult instanceof Error) {
-      return new Error(
-        `Failed to add user to scheduled thread for task ${task.id}`,
-        { cause: addMemberResult },
-      )
+      return new Error(`Failed to add user to scheduled thread for task ${task.id}`, {
+        cause: addMemberResult,
+      })
     }
   }
 
@@ -192,14 +193,11 @@ async function postSessionSleepWake({
       // Only an unknown channel/message is genuinely unrecoverable. A 403 is
       // often temporary (permissions revoked, thread locked) so it keeps
       // retrying until the attempt budget runs out.
-      const permanent =
-        error instanceof DiscordAPIError &&
-        error.status === 404
+      const permanent = error instanceof DiscordAPIError && error.status === 404
       return {
-        error: new Error(
-          `Failed to post sleep wake for session ${sleep.session_id}`,
-          { cause: error },
-        ),
+        error: new Error(`Failed to post sleep wake for session ${sleep.session_id}`, {
+          cause: error,
+        }),
         permanent,
       }
     })
@@ -321,10 +319,7 @@ async function executeChannelScheduledTask({
     })
   }
 
-  const threadName = (payload.name || getPromptPreview(prompt)).slice(
-    0,
-    100,
-  )
+  const threadName = (payload.name || getPromptPreview(prompt)).slice(0, 100)
   const threadResult = await rest
     .post(Routes.threads(payload.channelId, starterMessageId), {
       body: {
@@ -355,10 +350,9 @@ async function executeChannelScheduledTask({
     userId: payload.userId,
   })
   if (addMemberResult instanceof Error) {
-    return new Error(
-      `Failed to add user to scheduled thread for task ${task.id}`,
-      { cause: addMemberResult },
-    )
+    return new Error(`Failed to add user to scheduled thread for task ${task.id}`, {
+      cause: addMemberResult,
+    })
   }
   return threadIdResult
 }
@@ -376,18 +370,12 @@ export async function runTaskCommand({
   }
 
   const command = payload.preRunCommand
-  const result = await execAsync(command, { cwd: task.project_directory }).catch(
-    (error) => error instanceof Error ? error : new Error(String(error)),
+  const result = await execAsync(command, { cwd: task.project_directory }).catch((error) =>
+    error instanceof Error ? error : new Error(String(error)),
   )
-  const stdout = isRecord(result) && typeof result.stdout === 'string'
-    ? result.stdout
-    : ''
-  const stderr = isRecord(result) && typeof result.stderr === 'string'
-    ? result.stderr
-    : ''
-  const exitCode = result instanceof Error && isRecord(result)
-    ? result.code ?? 1
-    : 0
+  const stdout = isRecord(result) && typeof result.stdout === 'string' ? result.stdout : ''
+  const stderr = isRecord(result) && typeof result.stderr === 'string' ? result.stderr : ''
+  const exitCode = result instanceof Error && isRecord(result) ? (result.code ?? 1) : 0
   if (stdout) taskLogger.log(`[task-runner] task ${task.id} pre-run stdout:\n${stdout}`)
   if (stderr) taskLogger.log(`[task-runner] task ${task.id} pre-run stderr:\n${stderr}`)
   taskLogger.log(`[task-runner] task ${task.id} pre-run exited with ${exitCode}`)
@@ -402,12 +390,25 @@ export async function runTaskCommand({
   return { kind: 'run', prompt }
 }
 
-async function hasRunningSession(task: ScheduledTask): Promise<boolean | Error> {
+// Exported for the ZK-005 ingress matrix test (native runs never touch the
+// OpenCode status endpoint).
+export async function hasRunningSession(task: ScheduledTask): Promise<boolean | Error> {
   const runs = await getActiveScheduledTaskRuns(task.id)
   if (runs.length === 0) return false
 
   let active = false
   for (const run of runs) {
+    // ZK-005: a native run's status lives in the durable agent sidecar — asking
+    // the OpenCode server about a zc: session is a prohibited cross-backend call.
+    if (run.session_id && isZcodeSessionId(run.session_id)) {
+      const activeOperations = await countActiveNativeOperations(run.session_id)
+      if (activeOperations > 0) {
+        active = true
+        continue
+      }
+      await finishScheduledTaskRun({ runId: run.id, status: 'completed' })
+      continue
+    }
     if (!run.session_id) {
       if (Date.now() - run.started_at.getTime() < PENDING_RUN_TIMEOUT_MS) {
         active = true
@@ -425,11 +426,16 @@ async function hasRunningSession(task: ScheduledTask): Promise<boolean | Error> 
     }
     const getClient = await initializeOpencodeForDirectory(run.project_directory)
     if (getClient instanceof Error) return getClient
-    const statusResponse = await getClient().session.status({
-      directory: run.project_directory,
-    }).catch((error) => new Error('Failed to check scheduled session status', {
-      cause: error,
-    }))
+    const statusResponse = await getClient()
+      .session.status({
+        directory: run.project_directory,
+      })
+      .catch(
+        (error) =>
+          new Error('Failed to check scheduled session status', {
+            cause: error,
+          }),
+      )
     if (statusResponse instanceof Error) return statusResponse
     if (statusResponse.error) return new Error('Failed to check scheduled session status')
     const status = statusResponse.data?.[run.session_id]
@@ -592,9 +598,7 @@ async function processDueTask({
     await finalizeFailedTask({ task, failedAt: new Date(), error: payload })
     return { kind: 'failed', error: payload }
   }
-  const activeSession = payload.allowConcurrency
-    ? false
-    : await hasRunningSession(task)
+  const activeSession = payload.allowConcurrency ? false : await hasRunningSession(task)
   if (activeSession instanceof Error) {
     await releaseScheduledTaskClaim(task.id)
     taskLogger.warn(
@@ -611,17 +615,16 @@ async function processDueTask({
     return { kind: 'concurrency-blocked' }
   }
 
-  const runId = task.schedule_kind === 'cron'
-    ? await createScheduledTaskRun({ taskId: task.id, startedAt })
-    : undefined
+  const runId =
+    task.schedule_kind === 'cron'
+      ? await createScheduledTaskRun({ taskId: task.id, startedAt })
+      : undefined
 
   const executeResult = await executeScheduledTask({ rest, task, runId })
   const finishedAt = new Date()
 
   if (executeResult instanceof Error) {
-    taskLogger.warn(
-      `[task-runner] task ${task.id} failed: ${formatErrorWithStack(executeResult)}`,
-    )
+    taskLogger.warn(`[task-runner] task ${task.id} failed: ${formatErrorWithStack(executeResult)}`)
     await finalizeFailedTask({
       task,
       failedAt: finishedAt,
@@ -660,9 +663,7 @@ export async function runScheduledTaskNow({
     return new Error(`Task #${taskId} not found`)
   }
   if (task.status !== 'planned') {
-    return new Error(
-      `Task #${taskId} is ${task.status}; only planned tasks can be run now`,
-    )
+    return new Error(`Task #${taskId} is ${task.status}; only planned tasks can be run now`)
   }
 
   const rest = createDiscordRest(token)
@@ -683,9 +684,7 @@ async function runTaskRunnerTick({
     staleBefore,
   })
   if (recoveredCount > 0) {
-    taskLogger.warn(
-      `[task-runner] Recovered ${recoveredCount} stale running task(s)`,
-    )
+    taskLogger.warn(`[task-runner] Recovered ${recoveredCount} stale running task(s)`)
   }
 
   const dueTasks = await getDuePlannedScheduledTasks({
