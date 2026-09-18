@@ -52,10 +52,15 @@ export async function stageAttachment(
   await mkdir(root, { recursive: true, mode: 0o700 })
   const canonical = await realpath(root)
   const directory = await stat(canonical)
+  // POSIX permission/ownership hygiene. Windows stat() reports fake mode bits
+  // (mkdtemp under %TEMP% carries no POSIX permissions), so the mode/uid check
+  // is advisory there and the structural guards (O_EXCL/O_NOFOLLOW, realpath
+  // containment below) carry the safety. — ZK-013 adaptation note
+  const posix = process.platform !== 'win32'
   if (
     !directory.isDirectory() ||
-    (directory.mode & 0o022) !== 0 ||
-    (process.getuid && directory.uid !== process.getuid())
+    (posix && (directory.mode & 0o022) !== 0) ||
+    (posix && process.getuid && directory.uid !== process.getuid())
   )
     throw fail(
       'ATTACHMENT_STORE_UNSAFE',

@@ -4,6 +4,7 @@
 // invariants are preserved verbatim. — ZAI 2026-09-17
 import { randomUUID, createHash } from 'node:crypto'
 import { fail, text, integer, record, safeJson } from './errors.js'
+import type { Attachment } from './attachments.js'
 import { transaction, type SqlClient, type SqlTransaction, type SqlRow } from './sql.js'
 import type {
   AgentSession,
@@ -159,6 +160,60 @@ export class AgentStore {
     await this.db.execute(
       q('UPDATE agent_sessions SET state=?,updated_at=? WHERE id=?', state, Date.now(), id),
     )
+  }
+  async recordAttachment(
+    sessionId: string,
+    attachment: Attachment,
+    nativeRef: string | null = null,
+  ) {
+    await this.db.execute(
+      q(
+        `INSERT INTO agent_attachments(id,agent_session_id,display_name,storage_path,media_type,byte_length,sha256,native_ref,transformation,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)`,
+        attachment.id,
+        sessionId,
+        attachment.filename,
+        attachment.storagePath,
+        attachment.mimeType,
+        attachment.sizeBytes,
+        attachment.sha256,
+        nativeRef,
+        null,
+        Date.now(),
+      ),
+    )
+  }
+  async attachmentById(id: string) {
+    const r = (await this.db.execute(q('SELECT * FROM agent_attachments WHERE id=?', id))).rows[0]
+    return r
+      ? {
+          id: text(r.id),
+          sessionId: text(r.agent_session_id),
+          filename: text(r.display_name),
+          storagePath: text(r.storage_path),
+          mimeType: text(r.media_type),
+          sizeBytes: Number(r.byte_length),
+          sha256: text(r.sha256),
+          nativeRef: typeof r.native_ref === 'string' ? r.native_ref : null,
+        }
+      : null
+  }
+  async pruneAttachments(sessionId: string, keepIds: readonly string[]) {
+    // Retention: drop durable records for a session that are no longer
+    // referenced by any live admission. File cleanup is best-effort.
+    const rows = (
+      await this.db.execute(
+        q('SELECT id FROM agent_attachments WHERE agent_session_id=?', sessionId),
+      )
+    ).rows
+    const keep = new Set(keepIds)
+    let removed = 0
+    for (const row of rows) {
+      if (!keep.has(text(row.id))) {
+        await this.db.execute(q('DELETE FROM agent_attachments WHERE id=?', text(row.id)))
+        removed++
+      }
+    }
+    return removed
   }
   async latestChildSession(parentId: string) {
     const r = (
