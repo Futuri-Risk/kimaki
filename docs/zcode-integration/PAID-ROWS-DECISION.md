@@ -58,3 +58,28 @@ Independent of A/B/C, when you do opt in, the recorded limits should be:
 - Code: no certified profile is registered anywhere — `native-profile.ts` registry
   is empty by default; `ZcodeBackend.prepare` refuses with `RUNTIME_UNCERTIFIED`.
 - Matrix: `CAPABILITY_MATRIX.md` (N07+ BLOCKED, double gate).
+
+## RECORDED 2026-09-18 — Cody's opt-in is GIVEN
+
+Decided by Cody in the ZCode desktop session, 2026-09-18 (quoted on forge
+`projects/zcode-kimaki` #16, comment 3207): "....sure you ARE ZAI, you've run
+over a hundred million tokens on this project so far, make a new session with
+glm 5.3 on max, get it to work on the problem."
+
+Recorded limits (the proposal above, accepted as-is):
+
+- **Models:** the certified profile's advertised Z.AI GLM models (workspace
+  default). No third-party providers — N06 stays out of scope.
+- **Caps:** ≤3 model turns per paid row; ~20–30 small turns total across
+  N07–N18; **hard stop** if any row exceeds its cap.
+- **Tasks:** disposable sentinel repos/tasks only; no production Discord, no
+  real project work, no real credentials in test homes.
+- **Session budget:** the working agent session's own token budget is
+  explicitly not a constraint; the caps bind the certification rows being
+  tested, not the operator session.
+
+Scope note: this covers **ZK-016 rows N07–N18 only**. ZK-017 fidelity
+matched-pairs are additional paid runs and are NOT covered; they need either
+remaining cap headroom explicitly re-pointed or a fresh opt-in. `tools/certify.mjs`
+must refuse any paid row unless this RECORDED section is present in the tree
+and the run is invoked with an explicit paid acknowledgment flag.
