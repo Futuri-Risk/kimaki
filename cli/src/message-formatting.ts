@@ -34,6 +34,36 @@ export const QUEUE_PREFIX = '» '
 export const WORKTREE_PREFIX = STATUS_PREFIX
 
 /**
+ * Built-in read-only tools that are hidden in default verbosity mode.
+ * Any tool NOT in this list is considered "essential" and shown,
+ * which means custom tools, MCP tools, and plugin tools are visible by default.
+ */
+export const HIDDEN_READONLY_TOOLS = ['read', 'glob', 'grep', 'describe-media', 'todoread']
+
+/** Check if a tool part is "essential" (shown in text-and-essential-tools mode). */
+export function isEssentialToolName(toolName: string): boolean {
+  // Hide known read-only built-in tools; show everything else
+  // (custom tools, MCP tools, plugin tools are visible by default)
+  return !HIDDEN_READONLY_TOOLS.some((name) => {
+    return toolName === name || toolName.endsWith(`_${name}`)
+  })
+}
+
+export function isEssentialToolPart(part: Part): boolean {
+  if (part.type !== 'tool') {
+    return false
+  }
+  if (!isEssentialToolName(part.tool)) {
+    return false
+  }
+  if (part.tool === 'bash') {
+    const hasSideEffect = part.state.input?.hasSideEffect
+    return hasSideEffect !== false
+  }
+  return true
+}
+
+/**
  * Serialize Discord embeds into plain text so the AI model can read them.
  * Each embed becomes an <embed> XML block with title, author, description,
  * fields, footer, and URL when present.
@@ -91,9 +121,7 @@ export function serializePoll(poll: Poll | null): string {
  * Serialize forwarded message snapshots into plain text. Each snapshot is a
  * partial Message with content and embeds.
  */
-export function serializeMessageSnapshots(
-  snapshots: Message['messageSnapshots'],
-): string {
+export function serializeMessageSnapshots(snapshots: Message['messageSnapshots']): string {
   if (snapshots.size === 0) return ''
   const parts: string[] = []
   for (const [, snapshot] of snapshots) {
@@ -125,10 +153,7 @@ export function resolveMentions(message: Message): string {
   for (const [userId, user] of message.mentions.users) {
     const member = message.guild?.members.cache.get(userId)
     const displayName = member?.displayName || user.displayName || user.username
-    content = content.replace(
-      new RegExp(`<@!?${userId}>`, 'g'),
-      `@${displayName}`,
-    )
+    content = content.replace(new RegExp(`<@!?${userId}>`, 'g'), `@${displayName}`)
   }
 
   // Replace role mentions <@&roleId> with @roleName
@@ -204,10 +229,16 @@ export function sessionPartContent({
 export function asDiscordQuote(text: string): string {
   const lead = text.startsWith('\n') ? '\n' : ''
   const body = lead ? text.slice(1) : text
-  return lead + body.split('\n').map((line) => {
-    if (line.startsWith('>')) return line
-    return `> ${line}`
-  }).join('\n')
+  return (
+    lead +
+    body
+      .split('\n')
+      .map((line) => {
+        if (line.startsWith('>')) return line
+        return `> ${line}`
+      })
+      .join('\n')
+  )
 }
 
 function isNonEmptyTextPart(part: { type: string; text?: string }): boolean {
@@ -245,9 +276,9 @@ export function shouldQuoteIntermediateTextPart({
   if (text.includes('<callout')) return false
   if (text.trim().split('\n').length > 2) return false
   if (
-    nextToolName === 'question'
-    || nextToolName?.endsWith('kimaki_sleep')
-    || nextToolName?.endsWith('kimaki_action_buttons')
+    nextToolName === 'question' ||
+    nextToolName?.endsWith('kimaki_sleep') ||
+    nextToolName?.endsWith('kimaki_action_buttons')
   ) {
     return false
   }
@@ -261,13 +292,15 @@ export type PlannedAssistantTurnPart<T extends { id: string; type: string; text?
   quoteText: boolean
 }
 
-export function planAssistantTurnFlush<T extends {
-  id: string
-  type: string
-  text?: string
-  tool?: string
-  time?: { end?: number; created?: number }
-}>({
+export function planAssistantTurnFlush<
+  T extends {
+    id: string
+    type: string
+    text?: string
+    tool?: string
+    time?: { end?: number; created?: number }
+  },
+>({
   parts,
   mode,
   throughPartId,
@@ -281,12 +314,8 @@ export function planAssistantTurnFlush<T extends {
   sendParts: Array<PlannedAssistantTurnPart<T>>
 } {
   const lastText = parts.filter(isNonEmptyTextPart).at(-1)
-  const lastTextIndex = lastText
-    ? parts.findLastIndex((part) => part.id === lastText.id)
-    : -1
-  const throughIndex = throughPartId
-    ? parts.findIndex((part) => part.id === throughPartId)
-    : -1
+  const lastTextIndex = lastText ? parts.findLastIndex((part) => part.id === lastText.id) : -1
+  const throughIndex = throughPartId ? parts.findIndex((part) => part.id === throughPartId) : -1
 
   const sendUntil = (() => {
     if (mode === 'final') return parts.length
@@ -309,8 +338,7 @@ export function planAssistantTurnFlush<T extends {
         quoteText: shouldQuoteIntermediateTextPart({
           part,
           isLastInTurn:
-            mode !== 'progress'
-            && parts.filter(isRenderableTurnPart).at(-1)?.id === part.id,
+            mode !== 'progress' && parts.filter(isRenderableTurnPart).at(-1)?.id === part.id,
           nextToolName: nextToolNameAfter({ parts, fromIndex: index }),
         }),
       })
@@ -469,10 +497,7 @@ function formatAttachmentSize(bytes: number): string {
   return `${mb < 10 ? mb.toFixed(1) : mb.toFixed(0)} MB`
 }
 
-function shouldInlineTextAttachment(attachment: {
-  name: string
-  size: number
-}): boolean {
+function shouldInlineTextAttachment(attachment: { name: string; size: number }): boolean {
   if (attachment.name === KIMAKI_SEND_PROMPT_ATTACHMENT_NAME) return true
   return attachment.size <= TEXT_ATTACHMENT_INLINE_LIMIT_BYTES
 }
@@ -502,8 +527,8 @@ function localAttachmentPath(attachment: { id?: string; name: string; url: strin
 }
 
 export async function getTextAttachments(message: Message): Promise<string> {
-  const textAttachments = Array.from(message.attachments.values()).filter(
-    (attachment) => isTextMimeType(attachment.contentType),
+  const textAttachments = Array.from(message.attachments.values()).filter((attachment) =>
+    isTextMimeType(attachment.contentType),
   )
 
   if (textAttachments.length === 0) {
@@ -515,8 +540,9 @@ export async function getTextAttachments(message: Message): Promise<string> {
 
   const textContents = await Promise.all(
     textAttachments.map(async (attachment) => {
-      const response = await fetch(attachment.url)
-        .catch((e) => new FetchError({ url: attachment.url, cause: e }))
+      const response = await fetch(attachment.url).catch(
+        (e) => new FetchError({ url: attachment.url, cause: e }),
+      )
       if (response instanceof Error) {
         return `<attachment ${textAttachmentAttrs(attachment)} error="${response.message}" />`
       }
@@ -550,17 +576,11 @@ export async function getTextAttachments(message: Message): Promise<string> {
   return textContents.join('\n\n')
 }
 
-export async function getFileAttachments(
-  message: Message,
-): Promise<DiscordFileAttachment[]> {
-  const fileAttachments = Array.from(message.attachments.values()).filter(
-    (attachment) => {
-      const contentType = attachment.contentType || ''
-      return (
-        contentType.startsWith('image/') || contentType === 'application/pdf'
-      )
-    },
-  )
+export async function getFileAttachments(message: Message): Promise<DiscordFileAttachment[]> {
+  const fileAttachments = Array.from(message.attachments.values()).filter((attachment) => {
+    const contentType = attachment.contentType || ''
+    return contentType.startsWith('image/') || contentType === 'application/pdf'
+  })
 
   if (fileAttachments.length === 0) {
     return []
@@ -568,19 +588,15 @@ export async function getFileAttachments(
 
   const results = await Promise.all(
     fileAttachments.map(async (attachment) => {
-      const response = await fetch(attachment.url)
-        .catch((e) => new FetchError({ url: attachment.url, cause: e }))
+      const response = await fetch(attachment.url).catch(
+        (e) => new FetchError({ url: attachment.url, cause: e }),
+      )
       if (response instanceof Error) {
-        logger.error(
-          `Error downloading attachment ${attachment.name}:`,
-          response.message,
-        )
+        logger.error(`Error downloading attachment ${attachment.name}:`, response.message)
         return null
       }
       if (!response.ok) {
-        logger.error(
-          `Failed to fetch attachment ${attachment.name}: ${response.status}`,
-        )
+        logger.error(`Failed to fetch attachment ${attachment.name}: ${response.status}`)
         return null
       }
 
@@ -698,9 +714,7 @@ export function getToolSummaryText(part: Part): string {
   if (part.tool === 'webfetch') {
     const url = (part.state.input?.url as string) || ''
     const urlWithoutProtocol = url.replace(/^https?:\/\//, '')
-    return urlWithoutProtocol
-      ? `*${escapeInlineMarkdown(urlWithoutProtocol)}*`
-      : ''
+    return urlWithoutProtocol ? `*${escapeInlineMarkdown(urlWithoutProtocol)}*` : ''
   }
 
   if (part.tool === 'read') {
@@ -725,11 +739,7 @@ export function getToolSummaryText(part: Part): string {
     return pattern ? `*${escapeInlineMarkdown(pattern)}*` : ''
   }
 
-  if (
-    part.tool === 'bash' ||
-    part.tool === 'todoread' ||
-    part.tool === 'todowrite'
-  ) {
+  if (part.tool === 'bash' || part.tool === 'todoread' || part.tool === 'todowrite') {
     return ''
   }
 
@@ -760,9 +770,7 @@ export function getToolSummaryText(part: Part): string {
     const reason = (part.state.input?.reason as string) || ''
     const when = until ? `until ${until}` : duration ? `for ${duration}` : ''
     const reasonText = reason ? `_${escapeInlineMarkdown(reason)}_` : ''
-    return [when && escapeInlineMarkdown(when), reasonText]
-      .filter(Boolean)
-      .join(' ')
+    return [when && escapeInlineMarkdown(when), reasonText].filter(Boolean).join(' ')
   }
 
   if (!part.state.input) return ''
@@ -770,11 +778,9 @@ export function getToolSummaryText(part: Part): string {
   const inputFields = Object.entries(part.state.input)
     .map(([key, value]) => {
       if (value === null || value === undefined) return null
-      const stringValue =
-        typeof value === 'string' ? value : JSON.stringify(value)
+      const stringValue = typeof value === 'string' ? value : JSON.stringify(value)
       const normalized = normalizeWhitespace(stringValue)
-      const truncatedValue =
-        normalized.length > 50 ? normalized.slice(0, 50) + '…' : normalized
+      const truncatedValue = normalized.length > 50 ? normalized.slice(0, 50) + '…' : normalized
       return `${key}: ${truncatedValue}`
     })
     .filter(Boolean)
@@ -797,8 +803,7 @@ export function formatTodoList(part: Part): string {
   const activeTodo = todos[activeIndex]
   if (activeIndex === -1 || !activeTodo) return ''
   const todoNumber = activeIndex + 1
-  const content =
-    activeTodo.content.charAt(0).toLowerCase() + activeTodo.content.slice(1)
+  const content = activeTodo.content.charAt(0).toLowerCase() + activeTodo.content.slice(1)
   return `${todoNumber}.  **${escapeInlineMarkdown(content)}**`
 }
 
@@ -808,11 +813,12 @@ export function formatTaskToolTitle(part: Extract<Part, { type: 'tool' }>): stri
 
   const description = part.state.input?.description
   const stateTitle = part.state.title
-  const title = typeof description === 'string' && description
-    ? description
-    : typeof stateTitle === 'string'
-      ? stateTitle
-      : ''
+  const title =
+    typeof description === 'string' && description
+      ? description
+      : typeof stateTitle === 'string'
+        ? stateTitle
+        : ''
   if (!title) return ''
 
   const subagentType = part.state.input?.subagent_type
@@ -838,9 +844,7 @@ export function formatPart(part: Part, prefix?: string): string {
   }
 
   if (part.type === 'file') {
-    return prefix
-      ? `📄 ${pfx}${part.filename || 'File'}`
-      : `📄 ${part.filename || 'File'}`
+    return prefix ? `📄 ${pfx}${part.filename || 'File'}` : `📄 ${part.filename || 'File'}`
   }
 
   if (
@@ -926,18 +930,12 @@ export function formatPart(part: Part, prefix?: string): string {
       if (part.state.status === 'error') {
         return '⨯'
       }
-      if (
-        part.tool === 'edit' ||
-        part.tool === 'write' ||
-        part.tool === 'apply_patch'
-      ) {
+      if (part.tool === 'edit' || part.tool === 'write' || part.tool === 'apply_patch') {
         return FILE_EDIT_PREFIX
       }
       return TOOL_PREFIX
     })()
-    const toolParts = [part.tool, toolTitle, summaryText]
-      .filter(Boolean)
-      .join(' ')
+    const toolParts = [part.tool, toolTitle, summaryText].filter(Boolean).join(' ')
     if (icon === '⨯') {
       return `${icon} ${pfx}${toolParts}`
     }

@@ -82,7 +82,7 @@ Discord ─▶ Kimaki frontend (discord-bot, preprocessing, interactions, comman
 | ZK-005 | Frontend ingress normalization + capability routing | ZK-003 | DONE | local | ingress-gate+host-sidecar modules; discord-bot/interaction-handler/task-runner gated; 12-test zero-OpenCode matrix; new-session gating folded into ZK-007 |
 | ZK-006 | OpenCode preservation regression pin | ZK-003 | TODO | local | |
 | ZK-007 | Native host wiring (coordinator + ZcodeBackend on real store/auth) | ZK-002..004 | DONE | local | runtime + host wiring (identity/authorizer/lazy construction + serializeWrites); 15 new tests green; Linux lifecycle execution environment-gated |
-| ZK-008 | Renderer + projector integration | ZK-007 | TODO | local | |
+| ZK-008 | Renderer + projector integration | ZK-007 | DONE | local | 2026-09-18 |
 | ZK-009 | Native interactions (questions/permissions/components) | ZK-007,008 | TODO | local | |
 | ZK-010 | Controls: queue/guide/cancel/compact/model readback | ZK-007 | TODO | local | |
 | ZK-011 | /btw conversation-only fork UX | ZK-010 | TODO | local (capability-gated) | |
@@ -164,7 +164,7 @@ basic native profile certified (see mission Subrouter phase).
 ## Forge issue mapping (projects/zcode-kimaki, filed 2026-09-17 by ZCode)
 
 ZK-001=#1 (closed) · ZK-002=#2 (closed) · ZK-003=#3 (closed) · ZK-004=#4 (closed) ·
-ZK-005=#5 (closed DONE 2026-09-17) · ZK-006=#6 (closed DONE 2026-09-17) · ZK-007=#7 (closed DONE 2026-09-17, Linux run gated) · ZK-008=#8 · ZK-009=#9 ·
+ZK-005=#5 (closed DONE 2026-09-17) · ZK-006=#6 (closed DONE 2026-09-17) · ZK-007=#7 (closed DONE 2026-09-17, Linux run gated) · ZK-008=#8 (closed DONE 2026-09-18) · ZK-009=#9 ·
 ZK-010=#10 · ZK-011=#11 · ZK-012=#12 · ZK-013=#13 · ZK-014=#14 · ZK-015=#15 ·
 ZK-016=#16 · ZK-017=#17 · ZK-018=#18 · ZS-PHASE=#19 (gated umbrella).
 Board: http://127.0.0.1:3000/projects/zcode-kimaki/issues — these files remain the
