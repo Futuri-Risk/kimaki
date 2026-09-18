@@ -1,7 +1,7 @@
 # ZK-012 — Writer/worktree/process ownership fencing
 
 ## Status
-TODO
+DONE
 
 ## Objective
 Fence all managed writers against the native workspace lease: `!` shell, merge/delete,
@@ -38,19 +38,46 @@ Two managed writers never concurrently mutate one working tree; no root fallback
 ownership outlives uncertain process death (recovery lock).
 
 ## Acceptance criteria
-- [ ] Writer-fence tests: second writer refused during active native operation.
-- [ ] Worktree setup failure ⇒ explicit error, never repo-root execution.
-- [ ] Sweeper cannot remove ownership during background/goal (fake-native test).
-- [ ] OpenCode-only threads: worktree behavior byte-identical (baseline tests).
+- [x] Writer-fence tests: second writer refused during active native operation.
+- [x] Worktree setup failure ⇒ explicit error, never repo-root execution.
+- [x] Sweeper cannot remove ownership during background/goal (fake-native test).
+- [x] OpenCode-only threads: worktree behavior byte-identical (baseline tests).
 
 ## Tests
-New fence tests + existing worktree tests regression.
+`cli/src/agent/workspace-fence.test.ts` — 15 tests (5 new + coordinator suite via
+shared harness): active-turn lease refuses shell/delete/merge BEFORE any git call,
+canonical matching (separators/trailing slash/case cannot bypass), no-lease =
+no refusal, idle-sweep veto (active/uncertain keeps runtime, quiet sweeps, non-native
+always sweeps), and source-order pins for all five fence sites.
 
 ## Evidence
-(to fill)
+`docs/zcode-integration/evidence/zk12-subset.log` — non-e2e subset: 20 failed / 847
+passed / 12 skipped; failing file set byte-identical to base-subset.log (worktrees /
+markdown baselines unchanged = OpenCode-only worktree behavior byte-identical). tsc 0
+errors. Post-format fence suite 15/15.
 
 ## Blockers
 None.
 
 ## Completion notes
-(to fill)
+Delivered 2026-09-18 by ZCode (session sess_c9526de2-64fc-4ae3-bf30-1a3bda206f32).
+
+- New `agent/workspace-fence.ts`: `nativeWorkspaceWriter` (read-only lease projection,
+  canonicalized matching so separator/case variants cannot bypass), `writerFenceRefusal`
+  (visible refusal naming the owning session), `nativeDisposalAllowed` (idle-sweep veto:
+  native sessions with any non-terminal — including uncertain — operation keep their
+  runtime and ownership).
+- Fenced writers, each BEFORE any write runs (source-order pinned): `!` shell in the
+  thread branch (visible reply refusal), `deleteWorktree` (returns Error), `mergeWorktree`
+  (returns GitCommandError), `createWorktreeInBackground` (returns Error BEFORE the
+  pending row is written — a fenced thread never carries a pending workspace that could
+  fall back to the repo root). Leases only ever exist for native sessions, so
+  OpenCode-only threads are unaffected by construction (and the byte-identical
+  worktrees/markdown baselines prove it).
+- Sweeper: `disposeInactiveRuntimes` gained an optional async `shouldDispose` veto
+  (its only caller is the sweeper); the sweeper passes `nativeDisposalAllowed`.
+  Background/goal/control work and uncertainty keep the lease; quiet threads sweep as
+  before.
+- Native-home lease: sticky while a process is resident (the coordinator already holds
+  `home:` leases; retirement/transfer stays the conservative safe refusal per G04).
+  Windows native process supervision remains disabled (PLATFORM_UNCERTIFIED).

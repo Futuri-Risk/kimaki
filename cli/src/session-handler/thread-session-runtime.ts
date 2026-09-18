@@ -338,23 +338,33 @@ export function getRuntimeCount(): number {
   return runtimes.size
 }
 
-export function disposeInactiveRuntimes({
+export async function disposeInactiveRuntimes({
   idleMs,
   nowMs = Date.now(),
+  shouldDispose,
 }: {
   idleMs: number
   nowMs?: number
-}): {
+  /**
+   * Optional async veto (ZK-012): return false to keep a runtime alive. The
+   * idle sweeper uses it so a native session with active or uncertain work
+   * (background/goal/control) never loses its runtime or ownership.
+   */
+  shouldDispose?: (threadId: string) => Promise<boolean> | boolean
+}): Promise<{
   disposedThreadIds: string[]
   disposedDirectories: string[]
-} {
-  const candidates = [...runtimes.entries()].filter(([, runtime]) => {
+}> {
+  const idleCandidates = [...runtimes.entries()].filter(([, runtime]) => {
     return runtime.isIdleForInactivityTimeout({ idleMs, nowMs })
   })
   const disposedDirectories = new Set<string>()
   const disposedThreadIds: string[] = []
 
-  for (const [threadId, runtime] of candidates) {
+  for (const [threadId, runtime] of idleCandidates) {
+    if (shouldDispose && !(await shouldDispose(threadId))) {
+      continue
+    }
     runtime.dispose()
     runtimes.delete(threadId)
     threadState.removeThread(threadId)

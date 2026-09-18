@@ -7,6 +7,7 @@ import path from 'node:path'
 import { getDataDir } from './config.js'
 import { execAsync } from './exec-async.js'
 import { createLogger, LogPrefix } from './logger.js'
+import { writerFenceRefusal } from './agent/workspace-fence.js'
 
 export { execAsync } from './exec-async.js'
 
@@ -36,14 +37,8 @@ export function getManagedWorktreeDirectory({
   directory: string
   name: string
 }): string {
-  const projectHash = crypto
-    .createHash('sha1')
-    .update(directory)
-    .digest('hex')
-    .slice(0, 8)
-  const withoutPrefix = name
-    .replace(/^opencode\/kimaki-/, '')
-    .replaceAll('/', '-')
+  const projectHash = crypto.createHash('sha1').update(directory).digest('hex').slice(0, 8)
+  const withoutPrefix = name.replace(/^opencode\/kimaki-/, '').replaceAll('/', '-')
   return path.join(getDataDir(), 'worktrees', projectHash, withoutPrefix)
 }
 
@@ -101,10 +96,9 @@ export async function git(
   const commandLabel = Array.isArray(args)
     ? ['git', '-C', dir, ...args].join(' ')
     : `git -C "${dir}" ${args}`
-  const result = await execAsync(
-    command,
-    opts ? { timeout: opts.timeout } : undefined,
-  ).catch((e) => new GitCommandError({ command: commandLabel, cause: e }))
+  const result = await execAsync(command, opts ? { timeout: opts.timeout } : undefined).catch(
+    (e) => new GitCommandError({ command: commandLabel, cause: e }),
+  )
   if (result instanceof Error) return result
   return result.stdout.trim()
 }
@@ -186,10 +180,7 @@ function truncateFormattedError(text: string, maxLength: number): string {
   return text.slice(0, Math.max(0, maxLength - ellipsis.length)) + ellipsis
 }
 
-export function formatMergeWorktreeError(
-  error: Error,
-  opts?: { maxLength?: number },
-): string {
+export function formatMergeWorktreeError(error: Error, opts?: { maxLength?: number }): string {
   const maxLength = opts?.maxLength ?? 1900
   const output = extractGitExecOutput(error)
   const lines: string[] = [`Merge failed: ${error.message}`]
@@ -252,6 +243,12 @@ export async function deleteWorktree({
   // Pass empty string for detached HEAD worktrees — branch deletion is skipped.
   worktreeName: string
 }): Promise<void | Error> {
+  // ZK-012: a native lease (including an uncertain-death recovery fence) owns
+  // the tree — refuse instead of becoming a second managed writer.
+  const deleteFence = await writerFenceRefusal(worktreeDirectory, 'Worktree delete')
+  if (deleteFence) {
+    return new Error(deleteFence)
+  }
   let removeResult = await git(
     projectDirectory,
     `worktree remove ${JSON.stringify(worktreeDirectory)}`,
@@ -264,8 +261,7 @@ export async function deleteWorktree({
   // Retry with --force which bypasses this guard. This is safe because
   // canDeleteWorktree already verified the worktree is clean and merged.
   if (removeResult instanceof Error) {
-    const stderr =
-      (removeResult.cause as { stderr?: string } | undefined)?.stderr ?? ''
+    const stderr = (removeResult.cause as { stderr?: string } | undefined)?.stderr ?? ''
     if (stderr.includes('containing submodules')) {
       removeResult = await git(
         projectDirectory,
@@ -323,17 +319,15 @@ async function getGitCommonDir(dir: string): Promise<GitCommandError | string> {
   return path.resolve(dir, commonDir)
 }
 
-async function isAncestor(
-  {
-    dir,
-    ref1,
-    ref2,
-  }: {
-    dir: string
-    ref1: string
-    ref2: string
-  },
-): Promise<boolean> {
+async function isAncestor({
+  dir,
+  ref1,
+  ref2,
+}: {
+  dir: string
+  ref1: string
+  ref2: string
+}): Promise<boolean> {
   const result = await git(dir, ['merge-base', '--is-ancestor', ref1, ref2])
   return !(result instanceof Error)
 }
@@ -372,9 +366,7 @@ async function isRebaseInProgress(dir: string): Promise<boolean> {
   for (const rebaseDir of ['rebase-merge', 'rebase-apply']) {
     const gitPath = await git(dir, ['rev-parse', '--git-path', rebaseDir])
     if (gitPath instanceof Error) continue
-    const resolvedPath = path.isAbsolute(gitPath)
-      ? gitPath
-      : path.resolve(dir, gitPath)
+    const resolvedPath = path.isAbsolute(gitPath) ? gitPath : path.resolve(dir, gitPath)
     const exists = await fs.promises
       .access(resolvedPath)
       .then(() => {
@@ -403,14 +395,7 @@ async function createSquashCommit({
   if (tree instanceof Error) return tree
   const parent = await git(worktreeDir, ['rev-parse', `${target}^{commit}`])
   if (parent instanceof Error) return parent
-  return git(worktreeDir, [
-    'commit-tree',
-    tree,
-    '-p',
-    parent,
-    '-m',
-    `Merge worktree ${branchName}`,
-  ])
+  return git(worktreeDir, ['commit-tree', tree, '-p', parent, '-m', `Merge worktree ${branchName}`])
 }
 
 /**
@@ -434,6 +419,13 @@ export async function mergeWorktree({
   strategy?: MergeStrategy
   onProgress?: (message: string) => void
 }): Promise<MergeWorktreeErrors | MergeSuccess> {
+  // ZK-012: merging rewrites the tree — a native lease refuses first.
+  const mergeFence = await writerFenceRefusal(worktreeDir, 'Worktree merge')
+  if (mergeFence) {
+    return new GitCommandError({
+      command: `writer fence: ${mergeFence}`,
+    })
+  }
   const log = (msg: string) => {
     logger.log(msg)
     onProgress?.(msg)
@@ -485,11 +477,7 @@ export async function mergeWorktree({
       )
     }
 
-    const deleteTempBranchResult = await git(worktreeDir, [
-      'branch',
-      '-D',
-      tempBranch,
-    ])
+    const deleteTempBranchResult = await git(worktreeDir, ['branch', '-D', tempBranch])
     if (deleteTempBranchResult instanceof Error) {
       logger.warn(
         `[MERGE CLEANUP] Failed to delete temp branch ${tempBranch}: ${deleteTempBranchResult.message}`,
@@ -514,19 +502,10 @@ export async function mergeWorktree({
   // half; we keep it implicit here.
   const alreadyRebased = await isRebasedOnto(worktreeDir, defaultBranch)
 
-  const mergeBaseResult = await git(worktreeDir, [
-    'merge-base',
-    'HEAD',
-    defaultBranch,
-  ])
-  const mergeBase =
-    mergeBaseResult instanceof Error ? defaultBranch : mergeBaseResult
+  const mergeBaseResult = await git(worktreeDir, ['merge-base', 'HEAD', defaultBranch])
+  const mergeBase = mergeBaseResult instanceof Error ? defaultBranch : mergeBaseResult
 
-  const commitCountResult = await git(worktreeDir, [
-    'rev-list',
-    '--count',
-    `${mergeBase}..HEAD`,
-  ])
+  const commitCountResult = await git(worktreeDir, ['rev-list', '--count', `${mergeBase}..HEAD`])
   if (commitCountResult instanceof Error) {
     await cleanupTempBranch()
     return commitCountResult
@@ -563,13 +542,14 @@ export async function mergeWorktree({
   }
 
   // ── Step 3: Optionally create one commit for the complete rebased tree ──
-  const mergeRef = strategy === 'squash'
-    ? await createSquashCommit({
-        worktreeDir,
-        target: defaultBranch,
-        branchName,
-      })
-    : 'HEAD'
+  const mergeRef =
+    strategy === 'squash'
+      ? await createSquashCommit({
+          worktreeDir,
+          target: defaultBranch,
+          branchName,
+        })
+      : 'HEAD'
   if (mergeRef instanceof Error) {
     await cleanupTempBranch()
     return mergeRef
@@ -604,12 +584,16 @@ export async function mergeWorktree({
   }
 
   log(`Pushing to ${defaultBranch}...`)
-  const pushResult = await git(worktreeDir, [
-    'push',
-    '--receive-pack=git -c receive.denyCurrentBranch=updateInstead receive-pack',
-    gitCommonDir,
-    `${mergeRef}:${defaultBranch}`,
-  ], { timeout: 30_000 })
+  const pushResult = await git(
+    worktreeDir,
+    [
+      'push',
+      '--receive-pack=git -c receive.denyCurrentBranch=updateInstead receive-pack',
+      gitCommonDir,
+      `${mergeRef}:${defaultBranch}`,
+    ],
+    { timeout: 30_000 },
+  )
   if (pushResult instanceof Error) {
     await cleanupTempBranch()
     return new PushError({ target: defaultBranch, cause: pushResult })
@@ -624,11 +608,7 @@ export async function mergeWorktree({
 
   // ── Step 5: Clean up -- detach HEAD and delete branch ──
   log('Cleaning up worktree...')
-  const detachResult = await git(worktreeDir, [
-    'checkout',
-    '--detach',
-    defaultBranch,
-  ])
+  const detachResult = await git(worktreeDir, ['checkout', '--detach', defaultBranch])
   if (detachResult instanceof Error) {
     logger.warn(
       `[MERGE CLEANUP] Failed to detach worktree HEAD after push: ${detachResult.message}`,
@@ -820,9 +800,7 @@ export async function validateWorktreeDirectory({
     })
 
   if (!worktreePaths.includes(absoluteCandidate)) {
-    return new Error(
-      `Directory is not a git worktree of ${projectDirectory}: ${absoluteCandidate}`,
-    )
+    return new Error(`Directory is not a git worktree of ${projectDirectory}: ${absoluteCandidate}`)
   }
 
   return absoluteCandidate
@@ -841,10 +819,7 @@ function isSameOrInsideDirectory({
   candidateDirectory: string
 }) {
   const relativePath = path.relative(parentDirectory, candidateDirectory)
-  return (
-    relativePath === '' ||
-    (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
-  )
+  return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
 }
 
 export async function resolveSessionWorkingDirectory({
@@ -926,9 +901,7 @@ function flushGitWorktreeEntry(current: PartialGitWorktree): GitWorktree | null 
 
 // Parse `git worktree list --porcelain` output into structured entries.
 // Skips the first entry (the main checkout) since that's the project root.
-export function parseGitWorktreeListPorcelain(
-  output: string,
-): GitWorktree[] {
+export function parseGitWorktreeListPorcelain(output: string): GitWorktree[] {
   const entries: GitWorktree[] = []
   let current: PartialGitWorktree = {}
 

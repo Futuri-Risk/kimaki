@@ -2,9 +2,8 @@
 // Periodically disposes thread runtimes that stayed idle past a timeout.
 
 import { createLogger, LogPrefix } from './logger.js'
-import {
-  disposeInactiveRuntimes,
-} from './session-handler/thread-session-runtime.js'
+import { disposeInactiveRuntimes } from './session-handler/thread-session-runtime.js'
+import { nativeDisposalAllowed } from './agent/workspace-fence.js'
 
 const logger = createLogger(LogPrefix.SESSION)
 
@@ -32,16 +31,18 @@ export function startRuntimeIdleSweeper({
 
     const currentSweepPromise = (async () => {
       const nowMs = Date.now()
-      const disposeResult = disposeInactiveRuntimes({
+      const disposeResult = await disposeInactiveRuntimes({
         idleMs: runtimeIdleMs,
         nowMs,
+        // ZK-012: native sessions with active or uncertain operations keep
+        // their runtime and ownership; only truly quiet threads sweep.
+        shouldDispose: nativeDisposalAllowed,
       })
       if (disposeResult.disposedThreadIds.length > 0) {
         logger.log(
           `[IDLE SWEEP] Disposed ${disposeResult.disposedThreadIds.length} inactive runtime(s) after ${runtimeIdleMs}ms`,
         )
       }
-
     })()
 
     sweepPromise = currentSweepPromise
@@ -57,9 +58,7 @@ export function startRuntimeIdleSweeper({
 
   void sweep()
 
-  logger.log(
-    `[IDLE SWEEP] Started (runtimeIdleMs=${runtimeIdleMs}, intervalMs=${sweepIntervalMs})`,
-  )
+  logger.log(`[IDLE SWEEP] Started (runtimeIdleMs=${runtimeIdleMs}, intervalMs=${sweepIntervalMs})`)
 
   return async () => {
     if (stopped) {

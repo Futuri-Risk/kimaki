@@ -1,0 +1,771 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.6 [39m[90mC:/Dev/kimaki-zcode/cli[39m
+
+ [31m❯[39m src/markdown.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 16967[2mms[22m[39m
+   [32m✓[39m generate markdown with system info[32m 29[2mms[22m[39m
+   [32m✓[39m generate markdown without system info[32m 23[2mms[22m[39m
+   [32m✓[39m error handling for non-existent session[32m 4[2mms[22m[39m
+   [32m✓[39m getCompactSessionContext generates compact format[32m 11[2mms[22m[39m
+   [32m✓[39m generate markdown with lastAssistantOnly[32m 17[2mms[22m[39m
+   [32m✓[39m compact tools: tool calls show one-liner with line count[32m 6[2mms[22m[39m
+   [32m✓[39m verbose tools: tool calls show full input and output[32m 15[2mms[22m[39m
+ [31m❯[39m src/worktrees.test.ts [2m([22m[2m27 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 14883[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mplugin-safe gitmodules parser handles standard indented entries[32m 9[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mworktree creation resolves local-only submodule commits from local source checkout [33m 3807[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mworktree creation uses current HEAD even when origin does not have the commit [33m 976[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mworktree creation survives an unavailable submodule remote [33m 3106[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mworktree removal succeeds when its branch was already deleted [33m 433[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mworktree identity mismatch is detected and cleaned from its actual clone [33m 1128[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mmergeWorktree rejects dirty checked-out target before local push [33m 821[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mformatMergeWorktreeError includes git command, exit code, and stderr[32m 1[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mformatMergeWorktreeError keeps timeout cause when git has no stderr[32m 1[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mformatMergeWorktreeError truncates to maxLength[32m 1[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mmergeWorktree push failure includes git stderr in formatted error [33m 902[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mmergeWorktree squash creates one target commit with the complete tree [33m 2118[2mms[22m[39m
+   [33m[2m✓[22m[39m worktrees[2m > [22mmergeWorktree keeps reporting a paused rebase conflict on retry [33m 951[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mvalidateBranchRef does not execute shell syntax from a branch value[32m 85[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mshortenWorktreeSlug leaves short slugs alone[32m 1[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mshortenWorktreeSlug strips vowels from long slugs[32m 1[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mformatWorktreeName keeps user-provided slugs verbatim[32m 1[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mformatAutoWorktreeName compresses long auto-derived slugs[32m 0[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mgetManagedWorktreeDirectory writes under kimaki data dir and strips prefix[32m 1[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mresolveSessionWorkingDirectory accepts the project root[32m 2[2mms[22m[39m
+   [32m✓[39m worktrees[2m > [22mresolveSessionWorkingDirectory accepts project subfolders[32m 2[2mms[22m[39m
+[31m   [31m×[31m worktrees[2m > [22mresolveSessionWorkingDirectory accepts project worktrees[39m[33m 427[2mms[22m[39m
+[31m     → Working directory must be inside C:\Dev\kimaki-zcode\cli\tmp\worktrees-test-SpomCp\project or a git worktree of it: C:\Dev\kimaki-zcode\cli\tmp\worktrees-test-SpomCp\feature-worktree[39m
+   [32m✓[39m worktrees[2m > [22mresolveSessionWorkingDirectory rejects unrelated directories[32m 103[2mms[22m[39m
+   [32m✓[39m parseGitWorktreeListPorcelain[2m > [22mparses porcelain output, skips main worktree[32m 1[2mms[22m[39m
+   [32m✓[39m parseGitWorktreeListPorcelain[2m > [22mhandles detached HEAD worktrees[32m 0[2mms[22m[39m
+   [32m✓[39m parseGitWorktreeListPorcelain[2m > [22mparses locked and prunable flags[32m 0[2mms[22m[39m
+   [32m✓[39m parseGitWorktreeListPorcelain[2m > [22mreturns empty array when only main worktree exists[32m 0[2mms[22m[39m
+ [31m❯[39m src/default-channel-provisioning.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[33m 1721[2mms[22m[39m
+[31m   [31m×[31m self-hosted startup does not configure any guild without a live local mapping[39m[33m 341[2mms[22m[39m
+[31m     → EPERM, Permission denied: \\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-SIbwcZ '\\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-SIbwcZ'[39m
+[31m   [31m×[31m setup commands require a local channel mapping even for the server owner[39m[33m 481[2mms[22m[39m
+[31m     → EPERM, Permission denied: \\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-WgzxzY '\\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-WgzxzY'[39m
+[31m   [31m×[31m self-hosted startup provisions only the configured guild after legacy mapping[39m[32m 288[2mms[22m[39m
+[31m     → EPERM, Permission denied: \\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-4OraOu '\\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-4OraOu'[39m
+[31m   [31m×[31m self-hosted startup provisions only the configured guild after explicit onboarding[39m[32m 290[2mms[22m[39m
+[31m     → EPERM, Permission denied: \\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-vm0t2b '\\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-vm0t2b'[39m
+[31m   [31m×[31m gateway startup provisions every proxy-authorized guild without local mappings[39m[33m 319[2mms[22m[39m
+[31m     → EPERM, Permission denied: \\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-A8ZCf9 '\\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-A8ZCf9'[39m
+ [31m❯[39m src/cli-parsing.test.ts [2m([22m[2m15 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1766[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mkeeps large Discord IDs as strings[32m 251[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mpreserves leading zeros in Discord IDs[32m 73[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mkeeps session title and session ID as strings[32m 72[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mkeeps session archive thread ID as string[32m 86[2mms[22m[39m
+[31m   [31m×[31m goke CLI ID parsing[2m > [22mkeeps session search regex and channel ID as strings[39m[32m 89[2mms[22m[39m
+[31m     → expected '/error\\s+42/i' to be '/error\s+42/i' // Object.is equality[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mparses session search --all as a boolean[32m 81[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mparses session search --days as a string[32m 74[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mkeeps session export options as strings[32m 122[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mkeeps --send-at cron string intact[32m 194[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mkeeps task delete ID as string before validation[32m 127[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mparses empty --user on task edit so the stored user can be cleared[32m 153[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mmultioauth account remove parses index and email as strings[32m 225[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mmultioauth commands are included in help output[32m 102[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mmerge-worktree parses strategy and target branch[32m 7[2mms[22m[39m
+   [32m✓[39m goke CLI ID parsing[2m > [22mparses root bot boolean flags[32m 107[2mms[22m[39m
+ [31m❯[39m src/task-schedule.test.ts [2m([22m[2m22 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 525[2mms[22m[39m
+   [32m✓[39m parseSendAtValue[2m > [22maccepts UTC ISO date ending with Z[32m 1[2mms[22m[39m
+   [32m✓[39m parseSendAtValue[2m > [22mrejects ISO date with non-UTC offset[32m 0[2mms[22m[39m
+   [32m✓[39m parseSendAtValue[2m > [22mrejects local ISO date without timezone suffix[32m 0[2mms[22m[39m
+   [32m✓[39m parseSendAtValue[2m > [22mrejects UTC dates in the past[32m 0[2mms[22m[39m
+   [32m✓[39m parseSendAtValue[2m > [22maccepts cron expressions[32m 13[2mms[22m[39m
+   [32m✓[39m parseSleepWakeAt[2m > [22madds 2h to now[32m 0[2mms[22m[39m
+   [32m✓[39m parseSleepWakeAt[2m > [22madds 30s and 1d[32m 0[2mms[22m[39m
+   [32m✓[39m parseSleepWakeAt[2m > [22maccepts until UTC ISO date ending with Z[32m 0[2mms[22m[39m
+   [32m✓[39m parseSleepWakeAt[2m > [22mrejects past until[32m 0[2mms[22m[39m
+   [32m✓[39m parseSleepWakeAt[2m > [22mrejects both duration and until[32m 0[2mms[22m[39m
+   [32m✓[39m parseSleepWakeAt[2m > [22mrejects neither duration nor until[32m 0[2mms[22m[39m
+   [32m✓[39m parseSleepWakeAt[2m > [22mrejects until with a non-UTC offset[32m 0[2mms[22m[39m
+   [32m✓[39m formatSessionSleepToolOutput[2m > [22mstarts with Sleeping until and tells the model to wait[32m 0[2mms[22m[39m
+   [32m✓[39m formatSessionSleepToolOutput[2m > [22momits reason when none is passed[32m 0[2mms[22m[39m
+   [32m✓[39m formatSessionSleepToolOutput[2m > [22mwake prompt stays a separate later message[32m 0[2mms[22m[39m
+   [32m✓[39m scheduled task execution options[2m > [22mdefaults old payloads to no command and no concurrency[32m 6[2mms[22m[39m
+   [32m✓[39m scheduled task execution options[2m > [22mclears the stored user when task edit passes an empty --user[32m 1[2mms[22m[39m
+   [32m✓[39m scheduled task execution options[2m > [22msets the stored user when task edit passes a resolved --user[32m 1[2mms[22m[39m
+   [32m✓[39m scheduled task execution options[2m > [22madds command stdout to the prompt[32m 0[2mms[22m[39m
+[31m   [31m×[31m scheduled task execution options[2m > [22mruns the pre-run command in the project directory[39m[33m 426[2mms[22m[39m
+[31m     → Snapshot `scheduled task execution options > runs the pre-run command in the project directory 1` mismatched[39m
+   [32m✓[39m scheduled task execution options[2m > [22mskips the task when the pre-run command exits nonzero[32m 65[2mms[22m[39m
+   [32m✓[39m scheduled task execution options[2m > [22mtracks active runs until their OpenCode session completes[32m 10[2mms[22m[39m
+ [31m❯[39m src/project-add.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[33m 434[2mms[22m[39m
+[31m   [31m×[31m project add duplicate directory[2m > [22mreturns the existing text channel for a registered folder[39m[32m 113[2mms[22m[39m
+[31m     → EPERM, Permission denied: \\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-Wh5Bvm '\\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-Wh5Bvm'[39m
+[31m   [31m×[31m project add duplicate directory[2m > [22mmatches a symlink to the same registered folder[39m[32m 115[2mms[22m[39m
+[31m     → EPERM: operation not permitted, symlink 'C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-HVy71c\repo' -> 'C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-HVy71c\alias'[39m
+[31m     → EPERM, Permission denied: \\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-HVy71c '\\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-HVy71c'[39m
+[31m   [31m×[31m project add duplicate directory[2m > [22mreturns null when the folder is not registered[39m[32m 101[2mms[22m[39m
+[31m     → EPERM, Permission denied: \\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-HB8r2K '\\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-HB8r2K'[39m
+[31m   [31m×[31m project add duplicate directory[2m > [22merror message tells the user how to remove the mapping[39m[32m 104[2mms[22m[39m
+[31m     → EPERM, Permission denied: \\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-6vrtSJ '\\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-6vrtSJ'[39m
+ [31m❯[39m src/message-formatting.test.ts [2m([22m[2m66 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[32m 35[2mms[22m[39m
+   [32m✓[39m formatPart[2m > [22mcallout text is returned without a diamond prefix[32m 6[2mms[22m[39m
+   [32m✓[39m formatPart[2m > [22mregular text has no diamond prefix[32m 0[2mms[22m[39m
+   [32m✓[39m formatPart[2m > [22mheading text has no diamond prefix[32m 0[2mms[22m[39m
+   [32m✓[39m asDiscordQuote[2m > [22mprefixes every line[32m 0[2mms[22m[39m
+   [32m✓[39m asDiscordQuote[2m > [22mdoes not double-quote already quoted text[32m 0[2mms[22m[39m
+   [32m✓[39m asDiscordQuote[2m > [22mprefixes blank lines and later lines, not only the first[32m 0[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22mprogress quotes completed short text immediately[32m 1[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22mprogress quotes a lone completed short text[32m 0[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22mprogress quotes completed short text before following tools[32m 0[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22mprogress quotes each short text that precedes a tool[32m 0[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22mprogress holds unfinished last text and following tools[32m 0[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22mprogress holds unfinished last text until it ends[32m 0[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22mfinal quotes earlier text and leaves the last text plain[32m 0[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22mfinal quotes short text before a tool[32m 0[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22minteractive without throughPartId sends the last text unquoted[32m 0[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22minteractive leaves preceding text unquoted and flushes through the interactive tool[32m 0[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22mprogress does not quote earlier text longer than two lines[32m 0[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22mprogress still quotes two-line earlier text[32m 0[2mms[22m[39m
+   [32m✓[39m planAssistantTurnFlush[2m > [22mprogress does not quote earlier text before an interactive tool[32m 0[2mms[22m[39m
+   [32m✓[39m shouldLeadWithBlankLine[2m > [22mnever leads on the first part[32m 0[2mms[22m[39m
+   [32m✓[39m shouldLeadWithBlankLine[2m > [22mleads on both text and tool transitions[32m 0[2mms[22m[39m
+   [32m✓[39m sessionPartContent[2m > [22mleaves the first part unchanged[32m 0[2mms[22m[39m
+   [32m✓[39m sessionPartContent[2m > [22mprepends a newline on text and tool transitions[32m 0[2mms[22m[39m
+   [32m✓[39m collectSessionChunks[2m > [22mquotes short text throughout a turn[32m 0[2mms[22m[39m
+   [32m✓[39m collectSessionChunks[2m > [22mquotes short text before a tool[32m 0[2mms[22m[39m
+   [32m✓[39m collectSessionChunks[2m > [22mdoes not quote earlier text longer than two lines[32m 0[2mms[22m[39m
+   [32m✓[39m collectSessionChunks[2m > [22mdoes not quote text flushed before a question tool[32m 0[2mms[22m[39m
+   [32m✓[39m collectSessionChunks[2m > [22mquotes within each user turn separately[32m 0[2mms[22m[39m
+   [32m✓[39m batchChunksForDiscord[2m > [22mdoes not merge text chunks with tool chunks[32m 0[2mms[22m[39m
+   [32m✓[39m formatTaskToolTitle[2m > [22muses the running task title when OpenAI omits the description[32m 0[2mms[22m[39m
+   [32m✓[39m formatTaskToolTitle[2m > [22mprefers input description on running parts[32m 0[2mms[22m[39m
+   [32m✓[39m formatTaskToolTitle[2m > [22mdoes not format completed parts so Discord does not post the line at the end[32m 0[2mms[22m[39m
+   [32m✓[39m formatTaskToolTitle[2m > [22mshows queued task calls before the child session exists[32m 0[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22mshort single-line command shown in full[32m 0[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22mmultiline command without description truncates to first line[32m 0[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22mlong single-line command is truncated with ellipsis[32m 0[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22mdescription is preferred over truncated command when present[32m 0[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22m50-char single-line command is shown in full[32m 0[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22m51-char single-line command uses description[32m 0[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22m51-char single-line command uses summary when description is missing[32m 0[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22mdescription wins over summary for long commands[32m 0[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22mstateTitle used as last resort[32m 0[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22mempty inputs return empty string[32m 0[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22mleading blank line skipped, uses first meaningful line[32m 0[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22mwhitespace-only first line skipped[32m 1[2mms[22m[39m
+   [32m✓[39m formatBashToolTitle[2m > [22mno description field (new opencode) with multiline command[32m 0[2mms[22m[39m
+   [32m✓[39m formatTodoList[2m > [22mformats active todo with number, dot, and two spaces[32m 0[2mms[22m[39m
+   [32m✓[39m formatTodoList[2m > [22mformats double digit todo numbers[32m 0[2mms[22m[39m
+   [32m✓[39m formatTodoList[2m > [22mlowercases first letter of content[32m 0[2mms[22m[39m
+   [32m✓[39m serializeEmbeds[2m > [22mserializes a full embed with all fields[32m 0[2mms[22m[39m
+   [32m✓[39m serializeEmbeds[2m > [22mserializes description-only embed (link preview)[32m 0[2mms[22m[39m
+   [32m✓[39m serializeEmbeds[2m > [22mreturns empty string for no embeds[32m 0[2mms[22m[39m
+   [32m✓[39m serializeEmbeds[2m > [22mskips embeds with no text content[32m 0[2mms[22m[39m
+   [32m✓[39m serializeEmbeds[2m > [22mserializes multiple embeds[32m 0[2mms[22m[39m
+   [32m✓[39m serializePoll[2m > [22mserializes a poll with question and answers[32m 0[2mms[22m[39m
+   [32m✓[39m serializePoll[2m > [22mreturns empty string for null poll[32m 0[2mms[22m[39m
+   [32m✓[39m serializePoll[2m > [22mskips answers with no text[32m 0[2mms[22m[39m
+   [32m✓[39m serializeMessageSnapshots[2m > [22mserializes a forwarded message with content[32m 0[2mms[22m[39m
+   [32m✓[39m serializeMessageSnapshots[2m > [22mserializes forwarded message with content and embeds[32m 0[2mms[22m[39m
+   [32m✓[39m serializeMessageSnapshots[2m > [22mreturns empty string for no snapshots[32m 0[2mms[22m[39m
+   [32m✓[39m serializeMessageSnapshots[2m > [22mskips snapshots with no content[32m 0[2mms[22m[39m
+   [32m✓[39m serializeMessageSnapshots[2m > [22mserializes multiple forwarded messages[32m 0[2mms[22m[39m
+[31m   [31m×[31m getTextAttachments[2m > [22minlines small text files and saves them locally[39m[32m 8[2mms[22m[39m
+[31m     → Snapshot `getTextAttachments > inlines small text files and saves them locally 1` mismatched[39m
+[31m   [31m×[31m getTextAttachments[2m > [22msaves large text files locally without inlining contents[39m[32m 3[2mms[22m[39m
+[31m     → Snapshot `getTextAttachments > saves large text files locally without inlining contents 1` mismatched[39m
+[31m   [31m×[31m getTextAttachments[2m > [22mstill inlines large prompt.md attachments from kimaki send[39m[32m 2[2mms[22m[39m
+[31m     → Snapshot `getTextAttachments > still inlines large prompt.md attachments from kimaki send 1` mismatched[39m
+[31m   [31m×[31m getTextAttachments[2m > [22mkeeps small files inlined next to large file references[39m[32m 2[2mms[22m[39m
+[31m     → Snapshot `getTextAttachments > keeps small files inlined next to large file references 1` mismatched[39m
+ [31m❯[39m src/file-edit-log.test.ts [2m([22m[2m7 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[32m 32[2mms[22m[39m
+[31m   [31m×[31m extractEditedFiles[2m > [22mextracts edit and write filePath and ignores other tools[39m[32m 8[2mms[22m[39m
+[31m     → Snapshot `extractEditedFiles > extracts edit and write filePath and ignores other tools 1` mismatched[39m
+[31m   [31m×[31m extractEditedFiles[2m > [22mextracts apply_patch paths and resolves them against directory[39m[32m 1[2mms[22m[39m
+[31m     → Snapshot `extractEditedFiles > extracts apply_patch paths and resolves them against directory 1` mismatched[39m
+   [32m✓[39m editorsForFile[2m > [22morders unique sessions by last edit and matches relative paths[32m 1[2mms[22m[39m
+   [32m✓[39m file edit jsonl log[2m > [22mappends events and loads them back[32m 4[2mms[22m[39m
+   [32m✓[39m file edit jsonl log[2m > [22mcompacts to the newest events when the log is too large[32m 6[2mms[22m[39m
+   [32m✓[39m file edit jsonl log[2m > [22mcompacts repeated edits of the same session and file to one row[32m 6[2mms[22m[39m
+[31m   [31m×[31m fileEditTrackerPlugin[2m > [22mrecords edit and apply_patch and ignores bash[39m[32m 5[2mms[22m[39m
+[31m     → Snapshot `fileEditTrackerPlugin > records edit and apply_patch and ignores bash 1` mismatched[39m
+ [31m❯[39m src/system-message.test.ts [2m([22m[2m20 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 29[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mrequires kimaki upload for Discord images, not markdown[32m 3[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mrequires reading the report-bugs guide before filing kimaki issues[32m 0[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mincludes callout guidance for important content[32m 1[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mtells the model the sleep tool result is not a wake[32m 0[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mtells the model to stay quiet between tool calls[32m 0[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mrequires interactive tools after all text, using exact tool names[32m 0[2mms[22m[39m
+[31m   [31m×[31m system-message[2m > [22mpersists and reads session system prompt for command path[39m[32m 11[2mms[22m[39m
+[31m     → expected 438 to be 384 // Object.is equality[39m
+   [32m✓[39m system-message[2m > [22mreadSessionSystemPrompt returns null when missing[32m 1[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mreadSessionSystemPrompt rethrows non-ENOENT errors[32m 4[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mincludes all-projects session search example[32m 0[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mincludes session title update guidance when scope or goal changed[32m 0[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mincludes parent session context when parentSessionId is set[32m 0[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mscheduled cron task section shows task id, cron and no-sleep rule[32m 0[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mcron task without timezone says UTC[32m 0[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mone-shot at task says it does not repeat and skips sleep[32m 0[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mno scheduled task section by default (normal sessions)[32m 0[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mlets agents omit --user for quiet scheduled work[32m 0[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22momits parent session system block by default (btw/task/fork cache)[32m 0[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mkeeps the system prompt session-scoped[32m 5[2mms[22m[39m
+   [32m✓[39m system-message[2m > [22mmoves per-turn discord metadata into synthetic prompt context[32m 1[2mms[22m[39m
+ [32m✓[39m src/agent/interaction-bridge.test.ts [2m([22m[2m23 tests[22m[2m)[22m[33m 8280[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mqueued prompts run strictly FIFO and each completes exactly once [33m 475[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mduplicate admission of the same source returns the same operation and never resubmits [33m 492[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22ma lost native ACK after SEND_INTENT becomes submission-unknown and is never replayed [33m 408[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mclosed controller refuses new admissions [33m 365[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22munauthorized actor and missing sessions are refused before admission [33m 359[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mcancellation completes only after verified stop and fences concurrent guidance (H12) [33m 434[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22ma stale terminal event cannot undo a completed cancellation (H19) [33m 407[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mnative interaction pauses the turn and a validated answer resumes it [33m 421[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mevents from a superseded connection generation are dropped [33m 360[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mevent backlog beyond the configured limit halts the coordinator safely [33m 395[2mms[22m[39m
+   [33m[2m✓[22m[39m InteractionBridge over a real coordinator[2m > [22mpermission component answers the original native RPC once and resumes the turn [33m 408[2mms[22m[39m
+   [33m[2m✓[22m[39m InteractionBridge over a real coordinator[2m > [22ma double-fired component is denied and answers exactly once [33m 404[2mms[22m[39m
+   [33m[2m✓[22m[39m InteractionBridge over a real coordinator[2m > [22mwrong actor is denied and the request stays answerable by the right actor [33m 404[2mms[22m[39m
+   [33m[2m✓[22m[39m InteractionBridge over a real coordinator[2m > [22munknown custom ids and foreign threads are refused without touching native state [33m 397[2mms[22m[39m
+   [33m[2m✓[22m[39m InteractionBridge over a real coordinator[2m > [22mH25/H26: reused numeric native RPC id gets a fresh opaque token; the old one cannot answer [33m 432[2mms[22m[39m
+   [33m[2m✓[22m[39m InteractionBridge over a real coordinator[2m > [22mno autoapprove: rendering and waiting alone never answer the request [33m 904[2mms[22m[39m
+   [33m[2m✓[22m[39m InteractionBridge over a real coordinator[2m > [22mexpired request is denied at the durable consume even with a valid component id [33m 402[2mms[22m[39m
+   [33m[2m✓[22m[39m InteractionBridge over a real coordinator[2m > [22mquestion select answers flow as structured values the codec accepts [33m 405[2mms[22m[39m
+   [33m[2m✓[22m[39m InteractionBridge over a real coordinator[2m > [22mplan approval buttons map to an explicit approved/rejected answer [33m 402[2mms[22m[39m
+ [32m✓[39m src/agent/store.test.ts [2m([22m[2m18 tests[22m[2m)[22m[33m 7560[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore admission[2m > [22madmission is immutable and retains the initial model across later default changes [33m 393[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore admission[2m > [22mH03 JSON escaping cannot hide a configured secret from persistence protection [33m 362[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore admission[2m > [22mH05 invalid persisted operation state fails closed at read [33m 379[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore admission[2m > [22ma full prompt queue still admits cancellation [33m 1432[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore transitions[2m > [22matomic state claim permits only one sender and retains durable send intent timestamp [33m 369[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore transitions[2m > [22mrestart marks uncertain operations, stale questions, and unknown display delivery [33m 384[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore transitions[2m > [22mqueue clearing removes only unsent prompts, not controls or uncertain native work [33m 376[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore interactions[2m > [22mH25/H26 a reused native RPC id gets a new one-use interaction; two pending cannot coexist [33m 365[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore leases[2m > [22mworkspace and native-home leases require exact owner nonce, never stale auto-takeover [33m 379[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore leases[2m > [22manother machine cannot resolve or admit an existing native session [33m 367[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore intents and views[2m > [22mchannel defaults are frozen before asynchronous worktree setup [33m 375[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore intents and views[2m > [22mfailed view/outbox transaction does not advance native cursor [33m 370[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore intents and views[2m > [22msnapshot replay cannot create new live messages or duplicate cursor application [33m 372[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore intents and views[2m > [22munsent display updates coalesce without overwriting an in-flight message [33m 377[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore outbox receipts[2m > [22mH01 claim is bound to the exact selected content revision [33m 373[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore outbox receipts[2m > [22mH02 a late uncertain receipt cannot downgrade a confirmed send [33m 376[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentStore session identity[2m > [22mmissing zc sidecar fails closed; legacy IDs resolve null [33m 390[2mms[22m[39m
+ [32m✓[39m src/commands/btw-native.test.ts [2m([22m[2m17 tests[22m[2m)[22m[33m 5940[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mqueued prompts run strictly FIFO and each completes exactly once [33m 454[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mduplicate admission of the same source returns the same operation and never resubmits [33m 395[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22ma lost native ACK after SEND_INTENT becomes submission-unknown and is never replayed [33m 399[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mclosed controller refuses new admissions [33m 359[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22munauthorized actor and missing sessions are refused before admission [33m 375[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mcancellation completes only after verified stop and fences concurrent guidance (H12) [33m 439[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22ma stale terminal event cannot undo a completed cancellation (H19) [33m 413[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mnative interaction pauses the turn and a validated answer resumes it [33m 427[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mevents from a superseded connection generation are dropped [33m 363[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mevent backlog beyond the configured limit halts the coordinator safely [33m 403[2mms[22m[39m
+   [33m[2m✓[22m[39m native /btw forks before thread creation, activates the orphan, and dispatches on the child [33m 398[2mms[22m[39m
+   [33m[2m✓[22m[39m capability off refuses visibly and creates nothing [33m 373[2mms[22m[39m
+   [33m[2m✓[22m[39m an invalid fork point (H41 semantics) rejects the control and creates no thread or child [33m 380[2mms[22m[39m
+   [33m[2m✓[22m[39m controller activation is one-shot: only an orphan-bound child can bind [33m 394[2mms[22m[39m
+   [33m[2m✓[22m[39m attachments on native forks fail closed [33m 364[2mms[22m[39m
+ [32m✓[39m src/agent/control-commands.test.ts [2m([22m[2m16 tests[22m[2m)[22m[33m 5869[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mqueued prompts run strictly FIFO and each completes exactly once [33m 453[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mduplicate admission of the same source returns the same operation and never resubmits [33m 394[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22ma lost native ACK after SEND_INTENT becomes submission-unknown and is never replayed [33m 389[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mclosed controller refuses new admissions [33m 361[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22munauthorized actor and missing sessions are refused before admission [33m 360[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mcancellation completes only after verified stop and fences concurrent guidance (H12) [33m 425[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22ma stale terminal event cannot undo a completed cancellation (H19) [33m 412[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mnative interaction pauses the turn and a validated answer resumes it [33m 439[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mevents from a superseded connection generation are dropped [33m 360[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mevent backlog beyond the configured limit halts the coordinator safely [33m 406[2mms[22m[39m
+   [33m[2m✓[22m[39m cancel runs the verified-stop control and reports the durable state [33m 408[2mms[22m[39m
+   [33m[2m✓[22m[39m non-native threads and a dead coordinator fall through visibly [33m 371[2mms[22m[39m
+   [33m[2m✓[22m[39m compact is native-only: control path runs and no OpenCode summarize exists in the module [33m 387[2mms[22m[39m
+   [33m[2m✓[22m[39m queued prompts are durable FIFO and clearing removes only pre-intent prompts [33m 403[2mms[22m[39m
+ [32m✓[39m src/agent/workspace-fence.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 5737[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mqueued prompts run strictly FIFO and each completes exactly once [33m 460[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mduplicate admission of the same source returns the same operation and never resubmits [33m 401[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22ma lost native ACK after SEND_INTENT becomes submission-unknown and is never replayed [33m 401[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mclosed controller refuses new admissions [33m 406[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22munauthorized actor and missing sessions are refused before admission [33m 364[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mcancellation completes only after verified stop and fences concurrent guidance (H12) [33m 444[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22ma stale terminal event cannot undo a completed cancellation (H19) [33m 439[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mnative interaction pauses the turn and a validated answer resumes it [33m 436[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mevents from a superseded connection generation are dropped [33m 375[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mevent backlog beyond the configured limit halts the coordinator safely [33m 418[2mms[22m[39m
+   [33m[2m✓[22m[39m an active native turn holds the lease and refuses every managed writer [33m 400[2mms[22m[39m
+   [33m[2m✓[22m[39m fence matching is canonical: separators, trailing slashes, and case do not bypass it [33m 407[2mms[22m[39m
+   [33m[2m✓[22m[39m no lease means no refusal — OpenCode-only threads keep byte-identical behavior [33m 372[2mms[22m[39m
+   [33m[2m✓[22m[39m idle-sweep veto: active or uncertain native work keeps the runtime, quiet threads sweep [33m 406[2mms[22m[39m
+ [32m✓[39m src/agent/renderer.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 4986[2mms[22m[39m
+   [33m[2m✓[22m[39m done part sends once with a receipt and never resends [33m 381[2mms[22m[39m
+   [33m[2m✓[22m[39m long content splits into a receipt group ordered by chunk [33m 369[2mms[22m[39m
+   [33m[2m✓[22m[39m next revision edits the previous receipt group in place instead of appending [33m 376[2mms[22m[39m
+   [33m[2m✓[22m[39m growing revision extends the group; shrinking revision deletes the surplus message [33m 381[2mms[22m[39m
+   [33m[2m✓[22m[39m uncertain send stays delivery-unknown, never resends, and reconciles via verified lookup [33m 376[2mms[22m[39m
+   [33m[2m✓[22m[39m partial split uncertainty requires every chunk verified before receipt [33m 373[2mms[22m[39m
+   [33m[2m✓[22m[39m uncertain edit reconciles through verified content at a known message id [33m 384[2mms[22m[39m
+   [33m[2m✓[22m[39m H01 coalescing between selection and claim cannot acknowledge unsent newer text [33m 380[2mms[22m[39m
+   [33m[2m✓[22m[39m H02 late uncertain receipt cannot downgrade a confirmed group [33m 374[2mms[22m[39m
+   [33m[2m✓[22m[39m host verbosity rules hide thinking, read-only tools, and side-effect-free bash [33m 393[2mms[22m[39m
+   [33m[2m✓[22m[39m tools_and_text shows thinking; text_only sends only text parts [33m 750[2mms[22m[39m
+   [33m[2m✓[22m[39m file-change parts render with the host edit prefix [33m 443[2mms[22m[39m
+ [32m✓[39m src/agent/schema-gate.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 4810[2mms[22m[39m
+   [33m[2m✓[22m[39m preBootstrapAgentSchemaGate[2m > [22mnewer and missing version stamps refuse before any write [33m 564[2mms[22m[39m
+   [33m[2m✓[22m[39m preBootstrapAgentSchemaGate[2m > [22mH04 a stamped schema missing the operation journal is refused, not recreated [33m 644[2mms[22m[39m
+   [33m[2m✓[22m[39m preBootstrapAgentSchemaGate[2m > [22mH29 a version stamp cannot authorize a missing pending-interaction index [33m 563[2mms[22m[39m
+   [33m[2m✓[22m[39m preBootstrapAgentSchemaGate[2m > [22mv1 standalone databases require explicit conversion; startup refuses them [33m 332[2mms[22m[39m
+   [33m[2m✓[22m[39m upgradeAgentSchemaV1ToV2[2m > [22mH27 history is preserved byte-for-byte and pending index becomes partial [33m 393[2mms[22m[39m
+   [33m[2m✓[22m[39m upgradeAgentSchemaV1ToV2[2m > [22mH28 a failed conversion leaves the v1 tables and version intact [33m 344[2mms[22m[39m
+   [33m[2m✓[22m[39m finalizeAgentSchema[2m > [22mbootstrap + finalize is idempotent and stamps v2 [33m 580[2mms[22m[39m
+   [33m[2m✓[22m[39m finalizeAgentSchema[2m > [22mbootstrap creates all ten agent tables and preserves legacy rows [33m 588[2mms[22m[39m
+ [32m✓[39m src/agent/coordinator.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 4022[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mqueued prompts run strictly FIFO and each completes exactly once [33m 465[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mduplicate admission of the same source returns the same operation and never resubmits [33m 409[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22ma lost native ACK after SEND_INTENT becomes submission-unknown and is never replayed [33m 395[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mclosed controller refuses new admissions [33m 361[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22munauthorized actor and missing sessions are refused before admission [33m 356[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mcancellation completes only after verified stop and fences concurrent guidance (H12) [33m 435[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22ma stale terminal event cannot undo a completed cancellation (H19) [33m 407[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mnative interaction pauses the turn and a validated answer resumes it [33m 423[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mevents from a superseded connection generation are dropped [33m 372[2mms[22m[39m
+   [33m[2m✓[22m[39m AgentCoordinator (in-process fake-native)[2m > [22mevent backlog beyond the configured limit halts the coordinator safely [33m 398[2mms[22m[39m
+ [32m✓[39m src/opencode-interrupt-plugin.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 1005[2mms[22m[39m
+   [33m[2m✓[22m[39m interruptOpencodeSessionOnUserMessage[2m > [22mdrains multiple queued messages in order [33m 303[2mms[22m[39m
+ [32m✓[39m src/db.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 831[2mms[22m[39m
+ [32m✓[39m src/cpu-profiler.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 559[2mms[22m[39m
+ [32m✓[39m src/hrana-server.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 237[2mms[22m[39m
+ [32m✓[39m src/session-sleep.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 222[2mms[22m[39m
+ [32m✓[39m src/agent/host-coordinator.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 221[2mms[22m[39m
+ [32m✓[39m src/agent/native/client.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 170[2mms[22m[39m
+ [32m✓[39m src/agent/opencode-preservation.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 185[2mms[22m[39m
+ [32m✓[39m src/agent/native/native-boundary.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 129[2mms[22m[39m
+ [32m✓[39m src/session-handler/model-utils.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 136[2mms[22m[39m
+ [32m✓[39m src/agent/native/native-core.test.ts [2m([22m[2m19 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m[32m 83[2mms[22m[39m
+[90mstdout[2m | src/voice.test.ts[2m > [22m[2mconvertOggToWav[2m > [22m[2mconverts OGG Opus to valid WAV
+[22m[39mConverted OGG (61176 bytes) to WAV (625964 bytes)
+
+ [32m✓[39m src/voice.test.ts [2m([22m[2m20 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m src/opencode-command.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+ [32m✓[39m src/session-search.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+ [32m✓[39m src/xai-auth-state.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m src/anthropic-auth-state.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 73[2mms[22m[39m
+ [32m✓[39m src/discord-utils.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+ [32m✓[39m src/format-tables.test.ts [2m([22m[2m34 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m src/html-actions.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m src/unnest-code-blocks.test.ts [2m([22m[2m34 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m src/session-handler/thread-ingress.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m src/escape-backticks.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m src/session-handler/event-stream-state.test.ts [2m([22m[2m56 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m src/limit-heading-depth.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m src/kimaki-opencode-plugin.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32m✓[39m src/ai-tool-to-genai.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/analytics.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m src/opencode-command-detection.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/commands/ask-question.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/eventsource-parser.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/session-title-rename.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/parse-permission-rules.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/btw-prefix-detection.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/context-awareness-plugin.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/skill-filter.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/anthropic-auth-plugin.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/bash-tool-schema-plugin.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/discord-command-registration.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/xml.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/html-components.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/extract-sdk-error-message.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/agent/ingress-routing.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/external-opencode-sync.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/cli-runner.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/session-handler/thread-session-runtime-summary.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/agent/zcode-projector.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/agent/registry.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/commands/screenshare.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/thinking-utils.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 2[2mms[22m[39m
+ [32m✓[39m src/anthropic-account-identity.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/agent/preprocess-backend-plan.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [2m[90m↓[39m[22m src/agent/lifecycle.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/markdown.test.ts[2m [ src/markdown.test.ts ][22m
+[31m[1mError[22m: EPERM, Permission denied: \\?\C:\Dev\kimaki-zcode\cli\tmp\markdown-test\data-zF73CX '\\?\C:\Dev\kimaki-zcode\cli\tmp\markdown-test\data-zF73CX'[39m
+[36m [2m❯[22m src/markdown.test.ts:[2m216:8[22m[39m
+    [90m214| [39m  [35mawait[39m [34mstopOpencodeServer[39m()
+    [90m215| [39m  [35mif[39m (directories) {
+    [90m216| [39m    fs[33m.[39m[34mrmSync[39m(directories[33m.[39mdataDir[33m,[39m { recursive[33m:[39m [35mtrue[39m[33m,[39m force[33m:[39m [35mtrue[39m })
+    [90m   | [39m       [31m^[39m
+    [90m217| [39m  }
+    [90m218| [39m}[33m,[39m [34m5_000[39m)
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/22]⎯[22m[39m
+
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 20 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/cli-parsing.test.ts[2m > [22mgoke CLI ID parsing[2m > [22mkeeps session search regex and channel ID as strings
+[31m[1mAssertionError[22m: expected '/error\\s+42/i' to be '/error\s+42/i' // Object.is equality[39m
+
+Expected: [32m"/error\s+42/i"[39m
+Received: [31m"/error\[7m\[27ms+42/i"[39m
+
+[36m [2m❯[22m src/cli-parsing.test.ts:[2m153:28[22m[39m
+    [90m151| [39m    )
+    [90m152| [39m
+    [90m153| [39m    [34mexpect[39m(result[33m.[39margs[[34m0[39m])[33m.[39m[34mtoBe[39m(query)
+    [90m   | [39m                           [31m^[39m
+    [90m154| [39m    [34mexpect[39m([35mtypeof[39m result[33m.[39margs[[34m0[39m])[33m.[39m[34mtoBe[39m([32m'string'[39m)
+    [90m155| [39m    [34mexpect[39m(result[33m.[39moptions[33m.[39mchannel)[33m.[39m[34mtoBe[39m(channelId)
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/default-channel-provisioning.test.ts[2m > [22mself-hosted startup does not configure any guild without a live local mapping
+[31m[1mError[22m: EPERM, Permission denied: \\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-SIbwcZ '\\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-SIbwcZ'[39m
+[36m [2m❯[22m src/default-channel-provisioning.test.ts:[2m54:6[22m[39m
+    [90m 52| [39m  [35mawait[39m discord[33m?.[39m[34mstop[39m()
+    [90m 53| [39m  [35mawait[39m [34mcloseDb[39m()
+    [90m 54| [39m  fs[33m.[39m[34mrmSync[39m(directory[33m,[39m { recursive[33m:[39m [35mtrue[39m[33m,[39m force[33m:[39m [35mtrue[39m })
+    [90m   | [39m     [31m^[39m
+    [90m 55| [39m})
+    [90m 56| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/default-channel-provisioning.test.ts[2m > [22msetup commands require a local channel mapping even for the server owner
+[31m[1mError[22m: EPERM, Permission denied: \\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-WgzxzY '\\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-WgzxzY'[39m
+[36m [2m❯[22m src/default-channel-provisioning.test.ts:[2m54:6[22m[39m
+    [90m 52| [39m  [35mawait[39m discord[33m?.[39m[34mstop[39m()
+    [90m 53| [39m  [35mawait[39m [34mcloseDb[39m()
+    [90m 54| [39m  fs[33m.[39m[34mrmSync[39m(directory[33m,[39m { recursive[33m:[39m [35mtrue[39m[33m,[39m force[33m:[39m [35mtrue[39m })
+    [90m   | [39m     [31m^[39m
+    [90m 55| [39m})
+    [90m 56| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/default-channel-provisioning.test.ts[2m > [22mself-hosted startup provisions only the configured guild after legacy mapping
+[31m[1mError[22m: EPERM, Permission denied: \\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-4OraOu '\\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-4OraOu'[39m
+[36m [2m❯[22m src/default-channel-provisioning.test.ts:[2m54:6[22m[39m
+    [90m 52| [39m  [35mawait[39m discord[33m?.[39m[34mstop[39m()
+    [90m 53| [39m  [35mawait[39m [34mcloseDb[39m()
+    [90m 54| [39m  fs[33m.[39m[34mrmSync[39m(directory[33m,[39m { recursive[33m:[39m [35mtrue[39m[33m,[39m force[33m:[39m [35mtrue[39m })
+    [90m   | [39m     [31m^[39m
+    [90m 55| [39m})
+    [90m 56| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/default-channel-provisioning.test.ts[2m > [22mself-hosted startup provisions only the configured guild after explicit onboarding
+[31m[1mError[22m: EPERM, Permission denied: \\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-vm0t2b '\\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-vm0t2b'[39m
+[36m [2m❯[22m src/default-channel-provisioning.test.ts:[2m54:6[22m[39m
+    [90m 52| [39m  [35mawait[39m discord[33m?.[39m[34mstop[39m()
+    [90m 53| [39m  [35mawait[39m [34mcloseDb[39m()
+    [90m 54| [39m  fs[33m.[39m[34mrmSync[39m(directory[33m,[39m { recursive[33m:[39m [35mtrue[39m[33m,[39m force[33m:[39m [35mtrue[39m })
+    [90m   | [39m     [31m^[39m
+    [90m 55| [39m})
+    [90m 56| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/default-channel-provisioning.test.ts[2m > [22mgateway startup provisions every proxy-authorized guild without local mappings
+[31m[1mError[22m: EPERM, Permission denied: \\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-A8ZCf9 '\\?\C:\Dev\kimaki-zcode\cli\tmp\default-channel-provisioning\run-A8ZCf9'[39m
+[36m [2m❯[22m src/default-channel-provisioning.test.ts:[2m54:6[22m[39m
+    [90m 52| [39m  [35mawait[39m discord[33m?.[39m[34mstop[39m()
+    [90m 53| [39m  [35mawait[39m [34mcloseDb[39m()
+    [90m 54| [39m  fs[33m.[39m[34mrmSync[39m(directory[33m,[39m { recursive[33m:[39m [35mtrue[39m[33m,[39m force[33m:[39m [35mtrue[39m })
+    [90m   | [39m     [31m^[39m
+    [90m 55| [39m})
+    [90m 56| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/file-edit-log.test.ts[2m > [22mextractEditedFiles[2m > [22mextracts edit and write filePath and ignores other tools
+[31m[1mError[22m: Snapshot `extractEditedFiles > extracts edit and write filePath and ignores other tools 1` mismatched[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[32m-   "[7m/[27mrepo[7m/[27msrc[7m/[27mfoo.ts",[39m
+[31m+   "[7mC:\[27mrepo[7m\[27msrc[7m\[27mfoo.ts",[39m
+[2m  ][22m
+
+[36m [2m❯[22m src/file-edit-log.test.ts:[2m47:7[22m[39m
+    [90m 45| [39m        directory[33m:[39m [32m'/repo'[39m[33m,[39m
+    [90m 46| [39m      })[33m,[39m
+    [90m 47| [39m    )[33m.[39m[34mtoMatchInlineSnapshot[39m([32m`
+    [90m   | [39m      [31m^[39m
+    [90m 48| [39m      [
+    [90m 49| [39m        "/repo/src/foo.ts",
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/file-edit-log.test.ts[2m > [22mextractEditedFiles[2m > [22mextracts apply_patch paths and resolves them against directory
+[31m[1mError[22m: Snapshot `extractEditedFiles > extracts apply_patch paths and resolves them against directory 1` mismatched[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[32m-   "[7m/[27mrepo[7m/[27msrc[7m/[27mfoo.ts",[39m
+[31m+   "[7mC:\[27mrepo[7m\[27msrc[7m\[27mfoo.ts",[39m
+[32m-   "[7m/[27mrepo[7m/[27msrc[7m/[27mbar.ts",[39m
+[31m+   "[7mC:\[27mrepo[7m\[27msrc[7m\[27mbar.ts",[39m
+[32m-   "[7m/[27mrepo[7m/[27msrc[7m/[27mold.ts",[39m
+[31m+   "[7mC:\[27mrepo[7m\[27msrc[7m\[27mold.ts",[39m
+[32m-   "[7m/[27mrepo[7m/[27msrc[7m/[27mrenamed.ts",[39m
+[31m+   "[7mC:\[27mrepo[7m\[27msrc[7m\[27mrenamed.ts",[39m
+[2m  ][22m
+
+[36m [2m❯[22m src/file-edit-log.test.ts:[2m103:7[22m[39m
+    [90m101| [39m        directory[33m:[39m [32m'/repo'[39m[33m,[39m
+    [90m102| [39m      })[33m,[39m
+    [90m103| [39m    )[33m.[39m[34mtoMatchInlineSnapshot[39m([32m`
+    [90m   | [39m      [31m^[39m
+    [90m104| [39m      [
+    [90m105| [39m        "/repo/src/foo.ts",
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/file-edit-log.test.ts[2m > [22mfileEditTrackerPlugin[2m > [22mrecords edit and apply_patch and ignores bash
+[31m[1mError[22m: Snapshot `fileEditTrackerPlugin > records edit and apply_patch and ignores bash 1` mismatched[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[2m    {[22m
+[32m-     "file": "[7m/[27mrepo[7m/[27msrc[7m/[27ma.ts",[39m
+[31m+     "file": "[7mC:\[27mrepo[7m\[27msrc[7m\[27ma.ts",[39m
+[2m      "sessionId": "ses_x",[22m
+[2m      "tool": "edit",[22m
+[2m    },[22m
+[2m    {[22m
+[32m-     "file": "[7m/[27mrepo[7m/[27msrc[7m/[27mb.ts",[39m
+[31m+     "file": "[7mC:\[27mrepo[7m\[27msrc[7m\[27mb.ts",[39m
+[2m      "sessionId": "ses_x",[22m
+[2m      "tool": "apply_patch",[22m
+[2m    },[22m
+[2m  ][22m
+
+[36m [2m❯[22m src/file-edit-log.test.ts:[2m272:9[22m[39m
+    [90m270| [39m    [34mexpect[39m(loaded[33m.[39m[34mmap[39m((entry) [33m=>[39m {
+    [90m271| [39m      return { sessionId: entry.sessionId, file: entry.file, tool: ent…
+    [90m272| [39m    }))[33m.[39m[34mtoMatchInlineSnapshot[39m([32m`
+    [90m   | [39m        [31m^[39m
+    [90m273| [39m      [
+    [90m274| [39m        {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/message-formatting.test.ts[2m > [22mgetTextAttachments[2m > [22minlines small text files and saves them locally
+[31m[1mError[22m: Snapshot `getTextAttachments > inlines small text files and saves them locally 1` mismatched[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- "<attachment filename="notes.txt" mime="text/plain" size="16" url="https://cdn.example/notes.txt" path="<dataDir>[7m/[27mattachments[7m/[27matt1-notes.txt">[39m
+[31m+ "<attachment filename="notes.txt" mime="text/plain" size="16" url="https://cdn.example/notes.txt" path="<dataDir>[7m\[27mattachments[7m\[27matt1-notes.txt">[39m
+[2m  hello from file[22m
+[2m  </attachment>"[22m
+
+[36m [2m❯[22m src/message-formatting.test.ts:[2m1162:41[22m[39m
+    [90m1160| [39m    [34mexpect[39m(result)[33m.[39m[34mtoContain[39m([32m'https://cdn.example/notes.txt'[39m)
+    [90m1161| [39m    [34mexpect[39m(result)[33m.[39m[34mtoContain[39m(savedPath)
+    [90m1162| [39m    [34mexpect[39m([34msnapshotAttachments[39m(result))[33m.[39m[34mtoMatchInlineSnapshot[39m([32m`
+    [90m   | [39m                                        [31m^[39m
+    [90m1163| [39m      "<attachment filename="notes.txt" mime="text/plain" size="16" ur…
+    [90m1164| [39m      hello from file
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/message-formatting.test.ts[2m > [22mgetTextAttachments[2m > [22msaves large text files locally without inlining contents
+[31m[1mError[22m: Snapshot `getTextAttachments > saves large text files locally without inlining contents 1` mismatched[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- "<attachment filename="huge.log" mime="text/plain" size="65537" url="https://cdn.discordapp.com/attachments/1/2/huge.log" path="<dataDir>[7m/[27mattachments[7m/[27matt2-huge.log" large="true">[39m
+[31m+ "<attachment filename="huge.log" mime="text/plain" size="65537" url="https://cdn.discordapp.com/attachments/1/2/huge.log" path="<dataDir>[7m\[27mattachments[7m\[27matt2-huge.log" large="true">[39m
+[2m  This file is large (64 KB, text/plain). Contents were not inlined to save context. Read the local path.[22m
+[2m  </attachment>"[22m
+
+[36m [2m❯[22m src/message-formatting.test.ts:[2m1193:41[22m[39m
+    [90m1191| [39m    [34mexpect[39m(result)[33m.[39m[34mtoContain[39m([32m'text/plain'[39m)
+    [90m1192| [39m    expect(result).toContain(String(TEXT_ATTACHMENT_INLINE_LIMIT_BYTES…
+    [90m1193| [39m    [34mexpect[39m([34msnapshotAttachments[39m(result))[33m.[39m[34mtoMatchInlineSnapshot[39m([32m`
+    [90m   | [39m                                        [31m^[39m
+    [90m1194| [39m      "<attachment filename="huge.log" mime="text/plain" size="65537" …
+    [90m1195| [39m      This file is large (64 KB, text/plain). Contents were not inline…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/message-formatting.test.ts[2m > [22mgetTextAttachments[2m > [22mstill inlines large prompt.md attachments from kimaki send
+[31m[1mError[22m: Snapshot `getTextAttachments > still inlines large prompt.md attachments from kimaki send 1` mismatched[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- "<attachment filename="prompt.md" mime="text/markdown" size="65537" url="https://cdn.example/prompt.md" path="<dataDir>[7m/[27mattachments[7m/[27matt3-prompt.md">[39m
+[31m+ "<attachment filename="prompt.md" mime="text/markdown" size="65537" url="https://cdn.example/prompt.md" path="<dataDir>[7m\[27mattachments[7m\[27matt3-prompt.md">[39m
+[2m  the actual long prompt[22m
+[2m  </attachment>"[22m
+
+[36m [2m❯[22m src/message-formatting.test.ts:[2m1222:41[22m[39m
+    [90m1220| [39m    [34mexpect[39m(result)[33m.[39m[34mtoContain[39m([32m'https://cdn.example/prompt.md'[39m)
+    [90m1221| [39m    [34mexpect[39m(result)[33m.[39m[34mtoContain[39m(savedPath)
+    [90m1222| [39m    [34mexpect[39m([34msnapshotAttachments[39m(result))[33m.[39m[34mtoMatchInlineSnapshot[39m([32m`
+    [90m   | [39m                                        [31m^[39m
+    [90m1223| [39m      "<attachment filename="prompt.md" mime="text/markdown" size="655…
+    [90m1224| [39m      the actual long prompt
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/message-formatting.test.ts[2m > [22mgetTextAttachments[2m > [22mkeeps small files inlined next to large file references
+[31m[1mError[22m: Snapshot `getTextAttachments > keeps small files inlined next to large file references 1` mismatched[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- "<attachment filename="small.txt" mime="text/plain" size="4" url="https://cdn.example/small.txt" path="<dataDir>[7m/[27mattachments[7m/[27matt4-small.txt">[39m
+[31m+ "<attachment filename="small.txt" mime="text/plain" size="4" url="https://cdn.example/small.txt" path="<dataDir>[7m\[27mattachments[7m\[27matt4-small.txt">[39m
+[2m  tiny[22m
+[2m  </attachment>[22m
+
+[32m- <attachment filename="dump.json" mime="application/json" size="65586" url="https://cdn.example/dump.json" path="<dataDir>[7m/[27mattachments[7m/[27matt5-dump.json" large="true">[39m
+[31m+ <attachment filename="dump.json" mime="application/json" size="65586" url="https://cdn.example/dump.json" path="<dataDir>[7m\[27mattachments[7m\[27matt5-dump.json" large="true">[39m
+[2m  This file is large (64 KB, application/json). Contents were not inlined to save context. Read the local path.[22m
+[2m  </attachment>"[22m
+
+[36m [2m❯[22m src/message-formatting.test.ts:[2m1263:41[22m[39m
+    [90m1261| [39m    expect(result).toContain(path.join(getDataDir(), 'attachments', 'a…
+    [90m1262| [39m    [34mexpect[39m(result)[33m.[39m[34mtoContain[39m([32m'application/json'[39m)
+    [90m1263| [39m    [34mexpect[39m([34msnapshotAttachments[39m(result))[33m.[39m[34mtoMatchInlineSnapshot[39m([32m`
+    [90m   | [39m                                        [31m^[39m
+    [90m1264| [39m      "<attachment filename="small.txt" mime="text/plain" size="4" url…
+    [90m1265| [39m      tiny
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/project-add.test.ts[2m > [22mproject add duplicate directory[2m > [22mreturns the existing text channel for a registered folder
+[31m[1mError[22m: EPERM, Permission denied: \\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-Wh5Bvm '\\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-Wh5Bvm'[39m
+[36m [2m❯[22m src/project-add.test.ts:[2m31:8[22m[39m
+    [90m 29| [39m  [34mafterEach[39m([35masync[39m () [33m=>[39m {
+    [90m 30| [39m    [35mawait[39m [34mcloseDb[39m()
+    [90m 31| [39m    fs[33m.[39m[34mrmSync[39m(tmpDir[33m,[39m { recursive[33m:[39m [35mtrue[39m[33m,[39m force[33m:[39m [35mtrue[39m })
+    [90m   | [39m       [31m^[39m
+    [90m 32| [39m  })
+    [90m 33| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/project-add.test.ts[2m > [22mproject add duplicate directory[2m > [22mmatches a symlink to the same registered folder
+[31m[1mError[22m: EPERM: operation not permitted, symlink 'C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-HVy71c\repo' -> 'C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-HVy71c\alias'[39m
+[36m [2m❯[22m src/project-add.test.ts:[2m57:8[22m[39m
+    [90m 55| [39m
+    [90m 56| [39m    [35mconst[39m alias [33m=[39m path[33m.[39m[34mjoin[39m(tmpDir[33m,[39m [32m'alias'[39m)
+    [90m 57| [39m    fs[33m.[39m[34msymlinkSync[39m(projectDir[33m,[39m alias)
+    [90m   | [39m       [31m^[39m
+    [90m 58| [39m
+    [90m 59| [39m    [35mconst[39m existing [33m=[39m [35mawait[39m [34mfindRegisteredTextChannelForDirectory[39m(alias)
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/project-add.test.ts[2m > [22mproject add duplicate directory[2m > [22mmatches a symlink to the same registered folder
+[31m[1mError[22m: EPERM, Permission denied: \\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-HVy71c '\\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-HVy71c'[39m
+[36m [2m❯[22m src/project-add.test.ts:[2m31:8[22m[39m
+    [90m 29| [39m  [34mafterEach[39m([35masync[39m () [33m=>[39m {
+    [90m 30| [39m    [35mawait[39m [34mcloseDb[39m()
+    [90m 31| [39m    fs[33m.[39m[34mrmSync[39m(tmpDir[33m,[39m { recursive[33m:[39m [35mtrue[39m[33m,[39m force[33m:[39m [35mtrue[39m })
+    [90m   | [39m       [31m^[39m
+    [90m 32| [39m  })
+    [90m 33| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/project-add.test.ts[2m > [22mproject add duplicate directory[2m > [22mreturns null when the folder is not registered
+[31m[1mError[22m: EPERM, Permission denied: \\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-HB8r2K '\\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-HB8r2K'[39m
+[36m [2m❯[22m src/project-add.test.ts:[2m31:8[22m[39m
+    [90m 29| [39m  [34mafterEach[39m([35masync[39m () [33m=>[39m {
+    [90m 30| [39m    [35mawait[39m [34mcloseDb[39m()
+    [90m 31| [39m    fs[33m.[39m[34mrmSync[39m(tmpDir[33m,[39m { recursive[33m:[39m [35mtrue[39m[33m,[39m force[33m:[39m [35mtrue[39m })
+    [90m   | [39m       [31m^[39m
+    [90m 32| [39m  })
+    [90m 33| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/project-add.test.ts[2m > [22mproject add duplicate directory[2m > [22merror message tells the user how to remove the mapping
+[31m[1mError[22m: EPERM, Permission denied: \\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-6vrtSJ '\\?\C:\Users\Cody\AppData\Local\Temp\kimaki-project-add-6vrtSJ'[39m
+[36m [2m❯[22m src/project-add.test.ts:[2m31:8[22m[39m
+    [90m 29| [39m  [34mafterEach[39m([35masync[39m () [33m=>[39m {
+    [90m 30| [39m    [35mawait[39m [34mcloseDb[39m()
+    [90m 31| [39m    fs[33m.[39m[34mrmSync[39m(tmpDir[33m,[39m { recursive[33m:[39m [35mtrue[39m[33m,[39m force[33m:[39m [35mtrue[39m })
+    [90m   | [39m       [31m^[39m
+    [90m 32| [39m  })
+    [90m 33| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/system-message.test.ts[2m > [22msystem-message[2m > [22mpersists and reads session system prompt for command path
+[31m[1mAssertionError[22m: expected 438 to be 384 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 384[39m
+[31m+ 438[39m
+
+[36m [2m❯[22m src/system-message.test.ts:[2m116:22[22m[39m
+    [90m114| [39m    [35mconst[39m fileMode [33m=[39m ([35mawait[39m fs[33m.[39mpromises[33m.[39m[34mstat[39m(filePath))[33m.[39mmode [33m&[39m [34m0o777[39m
+    [90m115| [39m    const dirMode = (await fs.promises.stat(path.dirname(filePath))).m…
+    [90m116| [39m    [34mexpect[39m(fileMode)[33m.[39m[34mtoBe[39m([34m0o600[39m)
+    [90m   | [39m                     [31m^[39m
+    [90m117| [39m    [34mexpect[39m(dirMode)[33m.[39m[34mtoBe[39m([34m0o700[39m)
+    [90m118| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/task-schedule.test.ts[2m > [22mscheduled task execution options[2m > [22mruns the pre-run command in the project directory
+[31m[1mError[22m: Snapshot `scheduled task execution options > runs the pre-run command in the project directory 1` mismatched[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[33m@@ -2,7 +2,7 @@[39m
+[2m    "kind": "run",[22m
+[2m    "prompt": "Handle support requests[22m
+
+[2m  ## Pre-run command output[22m
+
+[32m- {"cwd":"[7m<project-directory>[27m","ticketId":"ticket-123"}",[39m
+[31m+ {"cwd":"[7mC:\\Users\\Cody\\AppData\\Local\\Temp\\kimaki-task-vrCkxk[27m","ticketId":"ticket-123"}",[39m
+[2m  }[22m
+
+[36m [2m❯[22m src/task-schedule.test.ts:[2m352:8[22m[39m
+    [90m350| [39m      [33m...[39mresult[33m,[39m
+    [90m351| [39m      prompt: result.prompt.replace(realDirectory, '<project-directory…
+    [90m352| [39m    })[33m.[39m[34mtoMatchInlineSnapshot[39m([32m`
+    [90m   | [39m       [31m^[39m
+    [90m353| [39m      {
+    [90m354| [39m        "kind": "run",
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/22]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/worktrees.test.ts[2m > [22mworktrees[2m > [22mresolveSessionWorkingDirectory accepts project worktrees
+[31m[1mError[22m: Working directory must be inside C:\Dev\kimaki-zcode\cli\tmp\worktrees-test-SpomCp\project or a git worktree of it: C:\Dev\kimaki-zcode\cli\tmp\worktrees-test-SpomCp\feature-worktree[39m
+[36m [2m❯[22m resolveSessionWorkingDirectory src/worktrees.ts:[2m859:12[22m[39m
+    [90m857| [39m  })
+    [90m858| [39m  [35mif[39m (worktreeResult [35minstanceof[39m [33mError[39m) {
+    [90m859| [39m    [35mreturn[39m [35mnew[39m [33mError[39m(
+    [90m   | [39m           [31m^[39m
+    [90m860| [39m      `Working directory must be inside ${absoluteProjectDirectory} or…
+    [90m861| [39m      { cause[33m:[39m worktreeResult }[33m,[39m
+[90m [2m❯[22m src/worktrees.test.ts:[2m958:22[22m[39m
+
+[31m[1mCaused by: Error[22m: Directory is not a git worktree of C:\Dev\kimaki-zcode\cli\tmp\worktrees-test-SpomCp\project: C:\Dev\kimaki-zcode\cli\tmp\worktrees-test-SpomCp\feature-worktree[39m
+[36m [2m❯[22m validateWorktreeDirectory src/worktrees.ts:[2m803:12[22m[39m
+[90m [2m❯[22m resolveSessionWorkingDirectory src/worktrees.ts:[2m854:26[22m[39m
+[90m [2m❯[22m src/worktrees.test.ts:[2m958:22[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/22]⎯[22m[39m
+
+
+[2m  Snapshots [22m [1m[31m8 failed[39m[22m
+[2m Test Files [22m [1m[31m9 failed[39m[22m[2m | [22m[1m[32m59 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (69)[39m
+[2m      Tests [22m [1m[31m20 failed[39m[22m[2m | [22m[1m[32m847 passed[39m[22m[2m | [22m[33m12 skipped[39m[90m (879)[39m
+[2m   Start at [22m 11:46:09
+[2m   Duration [22m 148.61s[2m (transform 2.12s, setup 0ms, collect 44.29s, tests 88.14s, environment 9ms, prepare 5.54s)[22m
+

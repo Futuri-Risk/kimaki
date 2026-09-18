@@ -70,6 +70,7 @@ import {
   resolveIngressBackend,
 } from './agent/ingress-gate.js'
 import { isZcodeSessionId } from './agent/registry.js'
+import { writerFenceRefusal } from './agent/workspace-fence.js'
 import { cancelPendingActionButtons } from './commands/action-buttons.js'
 import { cancelPendingQuestion, hasPendingQuestionForThread } from './commands/ask-question.js'
 import { cancelPendingFileUpload } from './commands/file-upload.js'
@@ -717,6 +718,13 @@ export async function startDiscordBot({
                 worktreeInfo?.status === 'ready' && worktreeInfo.workspace_directory
                   ? worktreeInfo.workspace_directory
                   : projectDirectory
+              // ZK-012: the shell is a managed writer - a native lease on
+              // the workspace (including a recovery fence) refuses it.
+              const shellFence = await writerFenceRefusal(shellDir, 'Shell command')
+              if (shellFence) {
+                await message.reply({ content: shellFence })
+                return
+              }
               const loadingReply = await message.reply({
                 content: `Running \`${shellCmd.slice(0, 1900)}\`...`,
               })
