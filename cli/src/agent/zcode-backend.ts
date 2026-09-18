@@ -44,6 +44,8 @@ export type NativeProfile = {
   cancelGraceMs: number
   imageCapability: boolean
   attachmentRoot: string
+  /** Host-side default selection for NEW native sessions (certified profiles pin it). — ZK-015 */
+  defaultModel?: ModelSelection
   modelOverlay?: (selection: ModelSelection) => unknown
   redact: (value: string) => string
 }

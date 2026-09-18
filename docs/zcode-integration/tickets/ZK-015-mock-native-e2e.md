@@ -1,7 +1,7 @@
 # ZK-015 — Real-host mock-native E2E matrix
 
 ## Status
-TODO
+IN PROGRESS
 
 ## Objective
 Prove the whole chain on the real tree with a fake app-server: actual Kimaki coordinator,
@@ -49,10 +49,45 @@ All MASTER_PLAN §3 invariants exercised end-to-end.
 The e2e files themselves.
 
 ## Evidence
-(to fill)
+**Wiring slice committed 2026-09-18** (see Completion notes): 17/17 in
+`cli/src/agent/message-ingest.test.ts` over the real coordinator with a fake Discord
+client; tsc 0 errors; non-e2e subset 20 failed / 885 passed / 12 skipped with the
+failing file set byte-identical to base-subset.log
+(`docs/zcode-integration/evidence/zk15-wiring-subset.log`).
+
+**Remaining for full close**: the DigitalDiscord e2e file(s) (real bot loop with a
+registered synthetic profile + fake-app-server child through the runtime-launcher seam),
+zero-OC spy assertion inside the e2e run, and the default-off bot-start comparison.
 
 ## Blockers
 None expected.
 
 ## Completion notes
-(to fill)
+**Wiring slice (2026-09-18, ZCode sess_c9526de2-64fc-4ae3-bf30-1a3bda206f32):**
+
+- `agent/message-ingest.ts` (new): the single native message admission —
+  `ingestNativeThreadMessage` (source discord/cli/schedule with stable sourceKey =
+  Discord message id / schedule run key; attachments staged through the hardened
+  pipeline into `{attachments}` payloads; fire-and-forget bounded outbox flush),
+  `ingestScheduledMessage` (run-keyed schedule admission), `ensureNativeThreadSession`
+  (freezeIntent → zcode → `store.createNativeSession` with the profile's certified
+  defaultModel — refuses rather than inventing a model; thread binding via
+  upsertThreadSession), real Discord renderer ports (nonce sends, edit/delete,
+  bounded-recent verify), and the `setNativeDiscordClient` seam (default null = inert).
+- `discord-bot.ts`: native thread messages branch AFTER the ZK-005 gate allow and
+  BEFORE any runtime construction — sleep wakes still claim their row first; scheduled
+  marker messages map to source 'schedule' with `schedule-run:<id>` dedupe keys; CLI
+  prompts map to source 'cli'. Bot startup registers the native Discord client and the
+  interaction bridge's real thread resolver.
+- Store (additive): `createNativeSession` (zc: id, host-resolved workspace binding,
+  machine-scoped native home identity, controller = the thread, starts unbound).
+  NativeProfile gained optional `defaultModel` (synthetic profiles pin a fixture
+  default; certified profiles pin the real one).
+- Default-off preserved: without a registered profile, getNativeCoordinator() is null →
+  the ZK-005 gate refuses messages visibly and ingestNativeThreadMessage returns
+  'offline'; nothing constructs an OpenCode runtime for zc: threads (pinned by test).
+
+**Planned next slice**: DigitalDiscord e2e (real bot + synthetic profile + spawned
+fake-app-server via a test runtime-launcher seam that bypasses the win32
+PLATFORM_UNCERTIFIED owned launcher — coordinator-behavior scenarios only), zero-OC
+spy, default-off comparison, migration-from-old-schema scenario.

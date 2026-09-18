@@ -72,6 +72,12 @@ export function syntheticProfile(input: {
     timeoutMs: input.timeoutMs ?? 5000,
     cancelGraceMs: input.cancelGraceMs ?? 150,
     imageCapability: false,
+    defaultModel: {
+      providerId: 'fixture',
+      modelId: 'fixture-model',
+      reasoning: 'high',
+      revision: 'r1',
+    },
     attachmentRoot: input.attachmentRoot,
     ...(input.modelOverlay ? { modelOverlay: input.modelOverlay } : {}),
     redact: input.redact ?? ((value) => value),

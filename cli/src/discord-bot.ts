@@ -71,6 +71,11 @@ import {
 } from './agent/ingress-gate.js'
 import { isZcodeSessionId } from './agent/registry.js'
 import { writerFenceRefusal } from './agent/workspace-fence.js'
+import { ingestNativeThreadMessage, setNativeDiscordClient } from './agent/message-ingest.js'
+import {
+  createDiscordInteractionPorts,
+  setInteractionBridgePorts,
+} from './agent/interaction-bridge.js'
 import { cancelPendingActionButtons } from './commands/action-buttons.js'
 import { cancelPendingQuestion, hasPendingQuestionForThread } from './commands/ask-question.js'
 import { cancelPendingFileUpload } from './commands/file-upload.js'
@@ -308,6 +313,19 @@ export async function startDiscordBot({
 
   const setupHandlers = async (c: Client<true>) => {
     discordLogger.log(`Discord bot logged in as ${c.user.tag}`)
+    // ZK-015: hand the native renderer and interaction bridge their Discord
+    // delivery ports. Inert while no native profile is registered.
+    setNativeDiscordClient(c)
+    setInteractionBridgePorts(
+      createDiscordInteractionPorts(async (threadId) => {
+        try {
+          const channel = await c.channels.fetch(threadId)
+          return channel?.isThread() ? channel : null
+        } catch {
+          return null
+        }
+      }),
+    )
     discordLogger.log(`Connected to ${c.guilds.cache.size} guild(s)`)
     discordLogger.log(`Bot user ID: ${c.user.id}`)
 
@@ -831,6 +849,58 @@ export async function startDiscordBot({
               content: messageGate.reason,
               flags: SILENT_MESSAGE_FLAGS,
             })
+            return
+          }
+
+          // ZK-015: native thread messages admit through the coordinator —
+          // the OpenCode runtime is never created on a zc: thread. Scheduled
+          // markers keep their run-keyed dedupe identity; Discord attachments
+          // stage through the hardened pipeline; output renders via the
+          // outbox. A sleep wake still has to claim its row first.
+          if (threadBackend === 'zcode') {
+            const isSleepWake = Boolean(promptMarker?.sleepWake)
+            if (isSleepWake) {
+              const claimedWake = promptMarker?.sleepId
+                ? await consumeSessionSleepWake({ deliveryId: promptMarker.sleepId })
+                : false
+              if (!claimedWake) {
+                discordLogger.log(`[SLEEP] ignoring superseded wake in thread ${thread.id}`)
+                return
+              }
+            }
+            const cleaned = (message.content ?? '').trim()
+            const attachments = [...message.attachments.values()].map((attachment) => ({
+              filename: attachment.name,
+              mimeType: attachment.contentType || 'application/octet-stream',
+              url: attachment.url,
+            }))
+            if (cleaned || attachments.length > 0) {
+              const ingest = await ingestNativeThreadMessage({
+                threadId: thread.id,
+                actorId: cliInjectedUserId || message.author.id,
+                text: cleaned,
+                source: sessionStartSource?.scheduledTaskRunId
+                  ? 'schedule'
+                  : isCliInjectedPrompt
+                    ? 'cli'
+                    : 'discord',
+                sourceKey: sessionStartSource?.scheduledTaskRunId
+                  ? `schedule-run:${sessionStartSource.scheduledTaskRunId}`
+                  : message.id,
+                attachments,
+              })
+              if (ingest.kind === 'rejected') {
+                await message.reply({
+                  content: `Native session refused the message (${ingest.code}).`,
+                  flags: SILENT_MESSAGE_FLAGS,
+                })
+              } else if (ingest.kind === 'offline') {
+                await message.reply({
+                  content: 'The native runtime is not available right now.',
+                  flags: SILENT_MESSAGE_FLAGS,
+                })
+              }
+            }
             return
           }
 

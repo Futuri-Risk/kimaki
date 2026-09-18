@@ -3,6 +3,7 @@
 // agent/schema-gate.ts version/integrity gate in db.ts. All admission/CAS/lease/outbox
 // invariants are preserved verbatim. — ZAI 2026-09-17
 import { randomUUID, createHash } from 'node:crypto'
+import path from 'node:path'
 import { fail, text, integer, record, safeJson } from './errors.js'
 import type { Attachment } from './attachments.js'
 import { transaction, type SqlClient, type SqlTransaction, type SqlRow } from './sql.js'
@@ -160,6 +161,39 @@ export class AgentStore {
     await this.db.execute(
       q('UPDATE agent_sessions SET state=?,updated_at=? WHERE id=?', state, Date.now(), id),
     )
+  }
+  async createNativeSession(args: {
+    threadId: string
+    projectDirectory: string
+    ownerMachineId: string
+    profileId: string | null
+    model: import('./types.js').ModelSelection
+  }) {
+    // ZK-015: host-side native session creation for a frozen zcode thread
+    // intent. The workspace binding is the host-resolved project directory;
+    // the native home identity is machine-scoped. The session starts unbound —
+    // the first admitted turn performs the native create/resume.
+    const canonical = path.resolve(args.projectDirectory)
+    const session: AgentSession = {
+      id: `zc:${randomUUID()}`,
+      backend: 'zcode',
+      nativeSessionId: null,
+      workspace: {
+        projectDirectory: args.projectDirectory,
+        canonicalDirectory: canonical,
+        nativeWorkspacePath: canonical,
+        nativeWorkspaceKey: canonical,
+        ownerMachineId: args.ownerMachineId,
+        nativeHomeIdentity: `${args.ownerMachineId}:default`,
+      },
+      profileId: args.profileId ?? 'zcode-primary',
+      profileRevision: 'r0',
+      controllerThreadId: args.threadId,
+      state: 'unbound',
+      model: args.model,
+    }
+    await this.insertSession(session)
+    return session
   }
   async recordAttachment(
     sessionId: string,
