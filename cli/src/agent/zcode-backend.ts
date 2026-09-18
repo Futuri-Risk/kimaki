@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import { NativeClient } from './native/client.js'
 import { type LaunchProfile, type OwnedRuntime, startOwnedRuntime } from './native/process.js'
+import { spawn as childSpawn } from 'node:child_process'
 import {
   createdSessionId,
   workspaceParams,
@@ -30,6 +31,45 @@ import type {
   NativeSnapshot,
   RpcId,
 } from './types.js'
+/**
+ * Plain-spawn launcher for e2e fixtures (ZK-015): starts the entry without the
+ * owned-runtime supervisor so coordinator-behavior scenarios run on win32.
+ * TEST FIXTURES ONLY — production keeps the certified owned launcher.
+ */
+export function plainSpawnLauncher(
+  handlers: {
+    onChild?: (child: import('node:child_process').ChildProcess) => void
+  } = {},
+): (profile: LaunchProfile) => Promise<Result<OwnedRuntime>> {
+  return async (profile) => {
+    try {
+      const child = childSpawn(
+        profile.executable,
+        [...profile.args, ...((profile as { extraArgs?: string[] }).extraArgs ?? [])],
+        {
+          cwd: profile.cwd,
+          stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+        },
+      )
+      handlers.onChild?.(child)
+      return ok({
+        pid: child.pid!,
+        stop: async () => {
+          child.kill()
+          return ok(undefined)
+        },
+        write: () => undefined,
+        stderrLines: () => [] as readonly string[],
+      } as unknown as OwnedRuntime)
+    } catch (error) {
+      return {
+        ok: false,
+        error: fail('LAUNCH_FAILED', `Fixture launcher failed: ${String(error)}`, 'control'),
+      }
+    }
+  }
+}
+
 export type NativeProfile = {
   id: string
   revision: string
@@ -92,7 +132,19 @@ export class ZcodeBackend {
   }
   private interactions = new Map<string, PendingInteraction>()
   private listener: (sessionId: string, event: NativeEvent) => void = () => {}
-  constructor(readonly profile: NativeProfile) {}
+  /**
+   * ZK-015 test seam: the default launcher is the certified owned-runtime path
+   * (POSIX-only; win32 refuses with PLATFORM_UNCERTIFIED). E2E suites inject a
+   * plain-spawn launcher for coordinator-behavior scenarios — production code
+   * never passes one.
+   */
+  readonly launchRuntime: (profile: LaunchProfile) => Promise<Result<OwnedRuntime>>
+  constructor(
+    readonly profile: NativeProfile,
+    runtimeLauncher?: (profile: LaunchProfile) => Promise<Result<OwnedRuntime>>,
+  ) {
+    this.launchRuntime = runtimeLauncher ?? startOwnedRuntime
+  }
   onEvent(listener: (sessionId: string, event: NativeEvent) => void) {
     this.listener = listener
   }
@@ -241,7 +293,7 @@ export class ZcodeBackend {
       live()
     }
     const launch = p.launch(session.workspace.canonicalDirectory)
-    const runtime = unwrap(await startOwnedRuntime({ ...launch, diagnosticRedactor: p.redact }))
+    const runtime = unwrap(await this.launchRuntime({ ...launch, diagnosticRedactor: p.redact }))
     let c: Connection
     const client = new NativeClient({
       input: runtime.input,
