@@ -46,7 +46,7 @@ async function until(
  * event lane exactly like the real native projector flow: turn-started →
  * terminal → authoritative snapshot terminal for the reconcile readback.
  */
-class FakeBackend {
+export class FakeBackend {
   readonly id = 'zcode' as const
   generation: string | null = 'g1'
   submits: string[] = []
