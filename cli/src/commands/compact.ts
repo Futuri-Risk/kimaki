@@ -1,11 +1,6 @@
 // /compact command - Trigger context compaction (summarization) for the current session.
 
-import {
-  ChannelType,
-  MessageFlags,
-  type TextChannel,
-  type ThreadChannel,
-} from 'discord.js'
+import { ChannelType, MessageFlags, type TextChannel, type ThreadChannel } from 'discord.js'
 import type { CommandContext } from './types.js'
 import { getThreadSession } from '../database.js'
 import {
@@ -13,17 +8,17 @@ import {
   getOpencodeClient,
   extractSdkErrorMessage,
 } from '../opencode.js'
+import { resolveWorkingDirectory, SILENT_MESSAGE_FLAGS } from '../discord-utils.js'
 import {
-  resolveWorkingDirectory,
-  SILENT_MESSAGE_FLAGS,
-} from '../discord-utils.js'
+  describeNativeControl,
+  isNativeThread,
+  runNativeControl,
+} from '../agent/control-commands.js'
 import { createLogger, LogPrefix } from '../logger.js'
 
 const logger = createLogger(LogPrefix.COMPACT)
 
-export async function handleCompactCommand({
-  command,
-}: CommandContext): Promise<void> {
+export async function handleCompactCommand({ command }: CommandContext): Promise<void> {
   const channel = command.channel
 
   if (!channel) {
@@ -42,8 +37,7 @@ export async function handleCompactCommand({
 
   if (!isThread) {
     await command.reply({
-      content:
-        'This command can only be used in a thread with an active session',
+      content: 'This command can only be used in a thread with an active session',
       flags: MessageFlags.Ephemeral | SILENT_MESSAGE_FLAGS,
     })
     return
@@ -70,6 +64,27 @@ export async function handleCompactCommand({
       content: 'No active session in this thread',
       flags: MessageFlags.Ephemeral | SILENT_MESSAGE_FLAGS,
     })
+    return
+  }
+
+  // ZK-010: native compaction is session/compact at native quiescence — never
+  // an OpenCode summarize prompt. Branch BEFORE any OpenCode server call.
+  if (await isNativeThread(channel.id)) {
+    await command.deferReply({ flags: SILENT_MESSAGE_FLAGS })
+    const native = await runNativeControl({
+      threadId: channel.id,
+      actorId: command.user.id,
+      kind: 'compact',
+    })
+    const nativeReply = describeNativeControl(native)
+    await command.editReply(
+      native.kind === 'done' && native.state === 'completed'
+        ? '📦 Session **compacted** (native)'
+        : (nativeReply ?? 'Native compaction unavailable.'),
+    )
+    logger.log(
+      `Native session ${sessionId} compact by user → ${native.kind === 'done' ? native.state : native.kind}`,
+    )
     return
   }
 

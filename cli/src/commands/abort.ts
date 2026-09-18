@@ -1,26 +1,17 @@
 // /abort command - Abort the current OpenCode request in this thread.
 
-import {
-  ChannelType,
-  MessageFlags,
-  type TextChannel,
-  type ThreadChannel,
-} from 'discord.js'
+import { ChannelType, MessageFlags, type TextChannel, type ThreadChannel } from 'discord.js'
 import type { CommandContext } from './types.js'
 import { cancelSessionSleepForThread, getThreadSession } from '../database.js'
 import { getOpencodeClient, initializeOpencodeForDirectory } from '../opencode.js'
-import {
-  resolveWorkingDirectory,
-  SILENT_MESSAGE_FLAGS,
-} from '../discord-utils.js'
+import { resolveWorkingDirectory, SILENT_MESSAGE_FLAGS } from '../discord-utils.js'
 import { getRuntime } from '../session-handler/thread-session-runtime.js'
+import { describeNativeControl, runNativeControl } from '../agent/control-commands.js'
 import { createLogger, LogPrefix } from '../logger.js'
 
 const logger = createLogger(LogPrefix.ABORT)
 
-export async function handleAbortCommand({
-  command,
-}: CommandContext): Promise<void> {
+export async function handleAbortCommand({ command }: CommandContext): Promise<void> {
   const channel = command.channel
 
   if (!channel) {
@@ -39,8 +30,7 @@ export async function handleAbortCommand({
 
   if (!isThread) {
     await command.reply({
-      content:
-        'This command can only be used in a thread with an active session',
+      content: 'This command can only be used in a thread with an active session',
       flags: MessageFlags.Ephemeral | SILENT_MESSAGE_FLAGS,
     })
     return
@@ -70,6 +60,26 @@ export async function handleAbortCommand({
   // through enqueueIncoming, so cancel any pending sleep here too. Otherwise the
   // wake would still fire later and restart a session the user just stopped.
   await cancelSessionSleepForThread({ threadId: channel.id })
+
+  // ZK-010: native sessions stop through the coordinator's verified-stop
+  // control; ownership is retained until the native writer confirms cessation.
+  const native = await runNativeControl({
+    threadId: channel.id,
+    actorId: command.user.id,
+    kind: 'cancel',
+  })
+  const nativeReply = describeNativeControl(native)
+  if (nativeReply !== null) {
+    await command.editReply(
+      native.kind === 'done' && native.state === 'completed'
+        ? 'Request **aborted** (verified stop)'
+        : nativeReply,
+    )
+    logger.log(
+      `Native session ${sessionId} cancel by user → ${native.kind === 'done' ? native.state : native.kind}`,
+    )
+    return
+  }
 
   // abortActiveRun delegates to session.abort(), run settlement stays event-driven.
   const runtime = getRuntime(channel.id)

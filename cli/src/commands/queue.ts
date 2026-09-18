@@ -11,20 +11,17 @@ import {
 } from 'discord.js'
 import type { AutocompleteContext, CommandContext } from './types.js'
 import { getThreadSession } from '../database.js'
-import {
-  resolveWorkingDirectory,
-  SILENT_MESSAGE_FLAGS,
-} from '../discord-utils.js'
-import {
-  getOrCreateRuntime,
-  getRuntime,
-} from '../session-handler/thread-session-runtime.js'
-import {
-  buildHtmlActionCustomId,
-  registerHtmlAction,
-} from '../html-actions.js'
+import { resolveWorkingDirectory, SILENT_MESSAGE_FLAGS } from '../discord-utils.js'
+import { getOrCreateRuntime, getRuntime } from '../session-handler/thread-session-runtime.js'
+import { buildHtmlActionCustomId, registerHtmlAction } from '../html-actions.js'
 import { createLogger, LogPrefix } from '../logger.js'
 import { QUEUE_PREFIX } from '../message-formatting.js'
+import {
+  clearNativeQueue,
+  describeNativeControl,
+  isNativeThread,
+  queueNativePrompt,
+} from '../agent/control-commands.js'
 import { store } from '../store.js'
 
 const logger = createLogger(LogPrefix.QUEUE)
@@ -53,9 +50,7 @@ function buildQueueRemoveRow({
         return
       }
 
-      const label = removed.command
-        ? `/${removed.command.name}`
-        : removed.prompt.slice(0, 120)
+      const label = removed.command ? `/${removed.command.name}` : removed.prompt.slice(0, 120)
       await interaction.editReply({
         content: `Removed queued message${position ? ` (was position ${position})` : ''}: ${label}`,
         components: [],
@@ -74,10 +69,7 @@ function buildQueueRemoveRow({
   )
 }
 
-export async function handleQueueCommand({
-  command,
-  appId,
-}: CommandContext): Promise<void> {
+export async function handleQueueCommand({ command, appId }: CommandContext): Promise<void> {
   const message = command.options.getString('message', true)
   const channel = command.channel
 
@@ -97,8 +89,7 @@ export async function handleQueueCommand({
 
   if (!isThread) {
     await command.reply({
-      content:
-        'This command can only be used in a thread with an active session',
+      content: 'This command can only be used in a thread with an active session',
       flags: MessageFlags.Ephemeral | SILENT_MESSAGE_FLAGS,
     })
     return
@@ -108,10 +99,34 @@ export async function handleQueueCommand({
   const sessionId = await getThreadSession(thread.id)
   if (!sessionId) {
     await command.reply({
-      content:
-        'No active session in this thread. Send a message directly instead.',
+      content: 'No active session in this thread. Send a message directly instead.',
       flags: MessageFlags.Ephemeral | SILENT_MESSAGE_FLAGS,
     })
+    return
+  }
+
+  // ZK-010: native prompts queue durably in agent_operations behind the active
+  // turn — never through an OpenCode runtime.
+  if (await isNativeThread(thread.id)) {
+    const queued = await queueNativePrompt({
+      threadId: thread.id,
+      actorId: command.user.id,
+      text: message,
+    })
+    if (queued.kind === 'done') {
+      await command.reply({
+        content:
+          queued.state === 'queued'
+            ? `Queued message${queued.position ? ` (position ${queued.position})` : ''}`
+            : (describeNativeControl(queued) ?? 'Queued'),
+        flags: SILENT_MESSAGE_FLAGS,
+      })
+    } else {
+      await command.reply({
+        content: describeNativeControl(queued) ?? 'Failed to queue.',
+        flags: MessageFlags.Ephemeral | SILENT_MESSAGE_FLAGS,
+      })
+    }
     return
   }
 
@@ -165,9 +180,7 @@ export async function handleQueueCommand({
   })
 }
 
-export async function handleClearQueueCommand({
-  command,
-}: CommandContext): Promise<void> {
+export async function handleClearQueueCommand({ command }: CommandContext): Promise<void> {
   const channel = command.channel
   const position = command.options.getInteger('position') ?? undefined
 
@@ -188,6 +201,20 @@ export async function handleClearQueueCommand({
   if (!isThread) {
     await command.reply({
       content: 'This command can only be used in a thread',
+      flags: MessageFlags.Ephemeral | SILENT_MESSAGE_FLAGS,
+    })
+    return
+  }
+
+  // ZK-010: native queues clear only PRE-INTENT prompts (durable CAS); anything
+  // already sent to the native runtime stays owned by its operation.
+  if (await isNativeThread(channel.id)) {
+    const removed = await clearNativeQueue({ threadId: channel.id })
+    await command.reply({
+      content:
+        removed === null || removed === 0
+          ? 'No messages in queue'
+          : `Cleared ${removed} queued message${removed === 1 ? '' : 's'}`,
       flags: MessageFlags.Ephemeral | SILENT_MESSAGE_FLAGS,
     })
     return
@@ -228,9 +255,7 @@ export async function handleClearQueueCommand({
   const cleared = runtime?.clearQueue() ?? []
 
   const lines = cleared.map((item, i) => {
-    const label = item.command
-      ? `/${item.command.name}`
-      : item.prompt
+    const label = item.command ? `/${item.command.name}` : item.prompt
     return `${i + 1}. ${label}`
   })
   let list = lines.join('\n')
@@ -243,15 +268,10 @@ export async function handleClearQueueCommand({
     flags: SILENT_MESSAGE_FLAGS,
   })
 
-  logger.log(
-    `[QUEUE] User ${command.user.displayName} cleared queue in thread ${channel.id}`,
-  )
+  logger.log(`[QUEUE] User ${command.user.displayName} cleared queue in thread ${channel.id}`)
 }
 
-export async function handleQueueCommandCommand({
-  command,
-  appId,
-}: CommandContext): Promise<void> {
+export async function handleQueueCommandCommand({ command, appId }: CommandContext): Promise<void> {
   const commandName = command.options.getString('command', true)
   const args = command.options.getString('arguments') || ''
   const channel = command.channel
@@ -272,8 +292,7 @@ export async function handleQueueCommandCommand({
 
   if (!isThread) {
     await command.reply({
-      content:
-        'This command can only be used in a thread with an active session',
+      content: 'This command can only be used in a thread with an active session',
       flags: MessageFlags.Ephemeral | SILENT_MESSAGE_FLAGS,
     })
     return
@@ -283,8 +302,7 @@ export async function handleQueueCommandCommand({
 
   if (!sessionId) {
     await command.reply({
-      content:
-        'No active session in this thread. Send a message directly instead.',
+      content: 'No active session in this thread. Send a message directly instead.',
       flags: MessageFlags.Ephemeral | SILENT_MESSAGE_FLAGS,
     })
     return
@@ -375,13 +393,17 @@ export async function handleQueueCommandAutocomplete({
   }
 
   const query = focused.value.toLowerCase()
-  const choices = store.getState().registeredUserCommands
-    .filter((cmd) => {
+  const choices = store
+    .getState()
+    .registeredUserCommands.filter((cmd) => {
       return cmd.name.toLowerCase().includes(query)
     })
     .slice(0, 25)
     .map((cmd) => ({
-      name: `/${cmd.name} [${cmd.source === 'skill' ? 'skill' : cmd.source === 'mcp' ? 'mcp' : 'cmd'}] - ${cmd.description}`.slice(0, 100),
+      name: `/${cmd.name} [${cmd.source === 'skill' ? 'skill' : cmd.source === 'mcp' ? 'mcp' : 'cmd'}] - ${cmd.description}`.slice(
+        0,
+        100,
+      ),
       value: cmd.name.slice(0, 100),
     }))
 

@@ -28,10 +28,7 @@ import {
 } from '../database.js'
 import { initializeOpencodeForDirectory } from '../opencode.js'
 import { resolveTextChannel, getKimakiMetadata } from '../discord-utils.js'
-import {
-  getDefaultModel,
-  resolveDisplayedModelId,
-} from '../session-handler/model-utils.js'
+import { getDefaultModel, resolveDisplayedModelId } from '../session-handler/model-utils.js'
 import { getRuntime } from '../session-handler/thread-session-runtime.js'
 import { getThinkingValuesForModel } from '../thinking-utils.js'
 import {
@@ -42,6 +39,7 @@ import {
 import { createLogger, LogPrefix } from '../logger.js'
 import * as errore from 'errore'
 import { buildPaginatedOptions, parsePaginationValue } from './paginated-select.js'
+import { isNativeThread, nativeModelStatus } from '../agent/control-commands.js'
 
 const modelLogger = createLogger(LogPrefix.MODEL)
 
@@ -178,9 +176,7 @@ export function formatModelSource({
   }
 }
 
-function parseModelId(
-  modelString: string,
-): { providerID: string; modelID: string } | undefined {
+function parseModelId(modelString: string): { providerID: string; modelID: string } | undefined {
   const [providerID, ...modelParts] = modelString.split('/')
   const modelID = modelParts.join('/')
   if (providerID && modelID) {
@@ -480,6 +476,27 @@ export async function handleModelCommand({
     return
   }
 
+  // ZK-010: native model state is ONLY what the runtime confirmed by readback
+  // (the coordinator persists the selection after the native echo). No
+  // OpenCode provider list is consulted for zc: threads and there is no
+  // first-model fallback mapping.
+  if (thread && sessionId && (await isNativeThread(thread.id))) {
+    const status = await nativeModelStatus({ threadId: thread.id })
+    if (status.kind === 'model') {
+      await interaction.editReply({
+        content:
+          `**Native model (readback-verified)**\n${status.model.providerId} / ${status.model.modelId}` +
+          (status.model.reasoning ? ` · reasoning: ${status.model.reasoning}` : '') +
+          `\n_Model switching on native sessions switches through the native runtime with explicit readback; the provider picker becomes available with native certification (ZK-016)._`,
+      })
+    } else {
+      await interaction.editReply({
+        content: 'The native runtime is not available right now.',
+      })
+    }
+    return
+  }
+
   try {
     const getClient = await initializeOpencodeForDirectory(projectDirectory)
     if (getClient instanceof Error) {
@@ -501,29 +518,24 @@ export async function handleModelCommand({
 
     // Parallelize: fetch providers, current model info, variant cascade, and overrides.
     // getCurrentModelInfo does DB lookups first (fast) and only hits provider.list as fallback.
-    const [
-      providersResponse,
-      currentModelInfo,
-      cascadeVariant,
-      sessionPref,
-      channelPref,
-    ] = await Promise.all([
-      getClient().provider.list({ directory: projectDirectory }),
-      getCurrentModelInfo({
-        sessionId,
-        channelId: targetChannelId,
-        appId: effectiveAppId,
-        getClient,
-        directory: projectDirectory,
-      }),
-      getVariantCascade({
-        sessionId,
-        channelId: targetChannelId,
-        appId: effectiveAppId,
-      }),
-      sessionId ? getSessionModel(sessionId) : Promise.resolve(undefined),
-      getChannelModel(targetChannelId),
-    ])
+    const [providersResponse, currentModelInfo, cascadeVariant, sessionPref, channelPref] =
+      await Promise.all([
+        getClient().provider.list({ directory: projectDirectory }),
+        getCurrentModelInfo({
+          sessionId,
+          channelId: targetChannelId,
+          appId: effectiveAppId,
+          getClient,
+          directory: projectDirectory,
+        }),
+        getVariantCascade({
+          sessionId,
+          channelId: targetChannelId,
+          appId: effectiveAppId,
+        }),
+        sessionId ? getSessionModel(sessionId) : Promise.resolve(undefined),
+        getChannelModel(targetChannelId),
+      ])
 
     if (!providersResponse.data) {
       await interaction.editReply({
@@ -617,16 +629,15 @@ export async function handleModelCommand({
       .setPlaceholder('Select a provider')
       .addOptions(options)
 
-    const actionRow =
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)
+    const actionRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)
 
     const shortcutButtons: ButtonBuilder[] = []
     const ownerKey = `model-actions:${interaction.user.id}:${interaction.channelId}`
     cancelHtmlActionsForOwner(ownerKey)
 
     const hasThinkingVariants =
-      currentModelInfo.type !== 'none'
-      && getThinkingValuesForModel({
+      currentModelInfo.type !== 'none' &&
+      getThinkingValuesForModel({
         providers: allProviders,
         providerId: currentModelInfo.providerID,
         modelId: currentModelInfo.modelID,
@@ -664,9 +675,7 @@ export async function handleModelCommand({
 
     const hasClearableOverride = Boolean(sessionPref || channelPref)
     if (hasClearableOverride) {
-      const clearLabel = sessionPref
-        ? 'Clear session override'
-        : 'Clear channel override'
+      const clearLabel = sessionPref ? 'Clear session override' : 'Clear channel override'
       const clearActionId = registerHtmlAction({
         ownerKey,
         threadId: sessionId ?? targetChannelId,
@@ -688,10 +697,7 @@ export async function handleModelCommand({
             })
             return
           }
-          if (
-            buttonChannel.type !== ChannelType.GuildText
-            && !buttonChannel.isThread()
-          ) {
+          if (buttonChannel.type !== ChannelType.GuildText && !buttonChannel.isThread()) {
             await buttonInteraction.editReply({
               content: 'This action can only be used in text channels or threads',
               components: [],
@@ -714,13 +720,10 @@ export async function handleModelCommand({
     }
 
     const components: Array<
-      | ActionRowBuilder<StringSelectMenuBuilder>
-      | ActionRowBuilder<ButtonBuilder>
+      ActionRowBuilder<StringSelectMenuBuilder> | ActionRowBuilder<ButtonBuilder>
     > = [actionRow]
     if (shortcutButtons.length > 0) {
-      components.push(
-        new ActionRowBuilder<ButtonBuilder>().addComponents(...shortcutButtons),
-      )
+      components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(...shortcutButtons))
     }
 
     await interaction.editReply({
@@ -800,7 +803,10 @@ export async function handleProviderSelectMenu(
         })
       })
       .filter((option): option is NonNullable<typeof option> => !!option)
-    const { options } = buildPaginatedOptions({ allOptions: allProviderOptions, page: providerNavPage })
+    const { options } = buildPaginatedOptions({
+      allOptions: allProviderOptions,
+      page: providerNavPage,
+    })
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId(`model_provider:${contextHash}`)
       .setPlaceholder('Select a provider')
@@ -835,9 +841,7 @@ export async function handleProviderSelectMenu(
       return
     }
 
-    const provider = providersResponse.data.all.find(
-      (p) => p.id === selectedProviderId,
-    )
+    const provider = providersResponse.data.all.find((p) => p.id === selectedProviderId)
 
     if (!provider) {
       await interaction.editReply({
@@ -893,8 +897,7 @@ export async function handleProviderSelectMenu(
       .setPlaceholder('Select a model')
       .addOptions(options)
 
-    const actionRow =
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)
+    const actionRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)
 
     await interaction.editReply({
       content: `**Set Model Preference**\nProvider: **${provider.name}**\nSelect a model:`,
@@ -1028,10 +1031,9 @@ export async function handleModelSelectMenu(
             .setPlaceholder('Select a thinking level')
             .addOptions(variantOptions)
 
-          const actionRow =
-            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-              selectMenu,
-            )
+          const actionRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+            selectMenu,
+          )
 
           await interaction.editReply({
             content: `**Set Model Preference**\nModel: **${context.providerName}** / **${selectedModelId}**\n\`${fullModelId}\`\nSelect a thinking level:`,
@@ -1106,9 +1108,7 @@ async function showScopeMenu({
 }): Promise<void> {
   const modelId = context.selectedModelId!
   const modelDisplay = modelId.split('/')[1] || modelId
-  const variantSuffix = context.selectedVariant
-    ? ` (${context.selectedVariant})`
-    : ''
+  const variantSuffix = context.selectedVariant ? ` (${context.selectedVariant})` : ''
 
   const scopeOptions = [
     ...(context.isThread && context.sessionId
@@ -1137,8 +1137,7 @@ async function showScopeMenu({
     .setPlaceholder('Apply to...')
     .addOptions(scopeOptions)
 
-  const actionRow =
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)
+  const actionRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)
 
   await interaction.editReply({
     content: `**Set Model Preference**\nModel: **${context.providerName}** / **${modelDisplay}**${variantSuffix}\n\`${modelId}\`\nApply to:`,
@@ -1194,12 +1193,7 @@ export async function handleModelScopeSelectMenu(
   const contextHash = customId.replace('model_scope:', '')
   const context = pendingModelContexts.get(contextHash)
 
-  if (
-    !context ||
-    !context.providerId ||
-    !context.providerName ||
-    !context.selectedModelId
-  ) {
+  if (!context || !context.providerId || !context.providerName || !context.selectedModelId) {
     await interaction.editReply({
       content: 'Selection expired. Please run /model again.',
       components: [],
@@ -1241,9 +1235,7 @@ export async function handleModelScopeSelectMenu(
         variant,
       })
       const retryNote = retried ? '\n_Restarting current request with new model..._' : ''
-      modelLogger.log(
-        `Set model ${modelId}${variantSuffix} for session ${context.sessionId}`,
-      )
+      modelLogger.log(`Set model ${modelId}${variantSuffix} for session ${context.sessionId}`)
 
       await interaction.editReply({
         content: `Model set for this session:\n**${context.providerName}** / **${modelDisplay}**${variantSuffix}\n\`${modelId}\`${retryNote}${agentTip}`,
@@ -1287,9 +1279,7 @@ export async function handleModelScopeSelectMenu(
         variant,
       })
       const retryNote = retried ? '\n_Restarting current request with new model..._' : ''
-      modelLogger.log(
-        `Set model ${modelId}${variantSuffix} for channel ${context.channelId}`,
-      )
+      modelLogger.log(`Set model ${modelId}${variantSuffix} for channel ${context.channelId}`)
 
       await interaction.editReply({
         content: `Model preference set for this channel:\n**${context.providerName}** / **${modelDisplay}**${variantSuffix}\n\`${modelId}\`\nAll new sessions in this channel will use this model.${retryNote}${agentTip}`,
