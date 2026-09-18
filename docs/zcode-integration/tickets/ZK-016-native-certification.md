@@ -1,7 +1,7 @@
 # ZK-016 — Native certification N00–N18 (capture-backed, live gate)
 
 ## Status
-IN_PROGRESS — N00 recorded 2026-09-18 (PARTIAL: static PASS, win32 launch gate). N01-N18 BLOCKED: win32 owned-process gate; N07+ additionally the paid opt-in gate. — ZCode 2026-09-18
+IN_PROGRESS — 2026-09-18 (post-Cody-decision: BOTH platforms). Windows owned-process supervision IMPLEMENTED (job-object keeper) + drilled; N00-N04 PASS with real captures on win32 AND linux/WSL2; N05 blocked on auth; N07+ still gated on paid opt-in (not given). — ZCode 2026-09-18
 
 ## Objective
 Certify the real native runtime per NATIVE_CERTIFICATION_CHECKLIST: exact binary/entry
@@ -59,6 +59,8 @@ Row-specific; captured-fixture-driven codec tests.
 - `native-profiles/win-cody-zcode-cjs.json` — discovered profile manifest (redacted).
 - `CAPABILITY_MATRIX.md` — per-row status with gates.
 - Doctor: `tools/doctor.mjs` + `kimaki zcode doctor` (cli-commands/zcode.ts), tests `cli/src/agent/native/doctor.test.ts` (7/7).
+- `evidence/zk16-linux/certify-capture.json` + `evidence/zk16-win32/certify-capture.json` — N01-N04 real-server captures on BOTH platforms via `tools/certify.mjs` (free rows only; paid rows hard-refused in code).
+- Windows supervision: `cli/src/agent/native/supervisor.ts` job-object keeper (ACTIVE TerminateJobObject containment on EOF/EXIT/KILL; KILL_ON_JOB_CLOSE set best-effort but not trusted), drills `cli/src/agent/native/supervision-win32.test.ts` 3/3 (clean stop, brutal supervisor death, observability). native-core 19/19 after fixture fix + preflight-code preservation in process.ts.
 
 ## Blockers
 Paid-call opt-in for N07+ (Cody); certified launch profile discovery; Windows rows
@@ -70,6 +72,7 @@ certification BLOCKED on win32 (PLATFORM_UNCERTIFIED by design). Discovered
 artifacts: entry = ZCode desktop bundle `resources/glm/zcode.cjs` v0.16.5
 (`app-server` = ZCode Protocol stdio server); the npm `zcode-acp-server@0.19.0`
 present on this machine is the ACP bridge layer, reference only. No paid row
-requested or run; opt-in decision doc: `PAID-ROWS-DECISION.md`. Remaining: the
-row sequence itself needs either Windows supervision (new ticket) or a Linux
-certification host, plus recorded Cody opt-in for N07+.
+requested or run; opt-in decision doc: `PAID-ROWS-DECISION.md`. Cody decided BOTH platforms (Windows + Linux via WSL2) in-session 2026-09-18. Windows supervision landed
+same day; N00-N04 captured on both OSes. Remaining: N05 needs an authenticated config home; N07+ need
+recorded paid opt-in + cost limits; N18 protocol-level unsubscribe capture; lifecycle.test.ts win32 stall
+follow-up; codec fixtures for the captured divergences (requestRuntimePreferences, projection.sessionId).

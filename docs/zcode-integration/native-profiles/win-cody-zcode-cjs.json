@@ -1,6 +1,6 @@
 {
   "profileId": "win-cody-zcode-cjs",
-  "status": "discovered-static-only",
+  "status": "free-rows-captured-N01-N04",
   "certified": false,
   "allowSynthetic": false,
   "capturedAt": "2026-09-18T19:40+10:00",
@@ -13,7 +13,7 @@
     "entrySha256": "da61b0663336a65f7cce3dec223678794ccaa58158e304fc0d97b695434a8f01",
     "entryBytes": 11416833,
     "args": ["<entryPath>", "app-server"],
-    "environment": {}
+    "environment": { "HOME": "<home>", "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "<desktop>/resources/config/provider/zcode-builtin.json" }
   },
   "versionEvidence": {
     "entryVersion": "zcode 0.16.5",
@@ -21,5 +21,5 @@
     "bundleMeta": { "runtime": "electron-node", "platform": "win32-x64", "source": "apps/zcode-cli/packages/cli/dist/zcode.cjs" }
   },
   "nativeConfigHome": { "path": "~\\.zcode", "markers": ["cli", "v2", "workspace", "skills", "plugins"], "secretsRead": false },
-  "notes": "Private home paths redacted to ~ per evidence-manifest policy; hashes complete. Launch certification BLOCKED on win32 (PLATFORM_UNCERTIFIED — owned-process supervision unimplemented). Changing either hash invalidates this record."
+  "notes": "Private home paths redacted to ~ per evidence-manifest policy; hashes complete. Windows owned launch is SUPERVISED since ZK-016 2026-09-18 (job-object keeper); N01-N04 captured on both win32 and WSL2 Linux (WSL pins its own node v24.15.0 tarball runtime). Environment discovery: the app-server exits without ZCODE_BUILTIN_PROVIDER_CONFIG_FILE and needs HOME. Changing either hash invalidates this record."
 }

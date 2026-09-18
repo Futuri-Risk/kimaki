@@ -124,10 +124,16 @@ describe('runtimeModel overlay', () => {
 
 describe('verifyLaunch preflight', () => {
   async function launchFixture() {
+    // Entry and workspace must be SEPARATE trees: verifyLaunch refuses
+    // workspace-local executables before the checks these tests exercise.
+    // (Fixture was latently wrong; the tests were platform-skip-gated and
+    // had never actually run before ZK-016 ungated win32. — ZCode 2026-09-18)
     const root = await mkdtemp(path.join(tmpdir(), 'zc-launch-'))
-    const entry = path.join(root, 'entry.mjs')
+    const entryTree = await mkdtemp(path.join(tmpdir(), 'zc-entry-'))
+    const entry = path.join(entryTree, 'entry.mjs')
     await writeFile(entry, 'process.exit(0)\n')
     onTestFinished(() => rm(root, { recursive: true, force: true }))
+    onTestFinished(() => rm(entryTree, { recursive: true, force: true }))
     const entryHash = await fileHash(entry)
     return {
       profile: {
@@ -146,8 +152,7 @@ describe('verifyLaunch preflight', () => {
   // H14 — the fingerprinted entry must be the script actually executed.
   // Linux-gated: verifyLaunch throws PLATFORM_UNCERTIFIED on win32 before reaching the
   // argument-vector checks this test exercises (Windows native supervision is disabled by design).
-  const linuxOnly = process.platform === 'win32' ? test.skip : test
-  linuxOnly(
+  test(
     'H14 launcher cannot fingerprint an inert argument while executing another script',
     async () => {
       const { profile } = await launchFixture()
@@ -176,7 +181,7 @@ describe('verifyLaunch preflight', () => {
   })
 
   // Linux-gated for the same reason as H14: the hash comparison sits behind the platform gate.
-  linuxOnly('rejects a changed entry fingerprint', async () => {
+  test('rejects a changed entry fingerprint', async () => {
     const { profile } = await launchFixture()
     await assert.rejects(() => verifyLaunch({ ...profile, entrySha256: '0'.repeat(64) }), {
       code: 'RUNTIME_UNCERTIFIED',

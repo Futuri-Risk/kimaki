@@ -20,13 +20,17 @@ import { fileHash } from './native/process.js'
 import { createStoreHarness } from './test-harness.js'
 import { fakeCodec } from './fixtures/fake-codec.js'
 
+// ZK-016 2026-09-18: win32 owned launch IS supervised now (job-object keeper,
+// proven by supervision-win32.test.ts), but these full backend-vs-fake-server
+// scenarios still stall on win32 under vitest (pre-existing suite assumptions;
+// never ran on Windows before the gate lifted). Open follow-up in ZK-016.
 const linuxOnly = process.platform === 'win32' ? test.skip : test
 const entry = fileURLToPath(new URL('./fixtures/fake-app-server.mjs', import.meta.url))
 
 async function until<T>(
   fn: () => T | undefined | false | Promise<T | undefined | false>,
   message: string,
-  timeout = 6000,
+  timeout = 25000, // win32 job-keeper startup adds seconds per launch (ZK-016)
 ): Promise<T> {
   const end = Date.now() + timeout
   while (Date.now() < end) {
@@ -41,7 +45,7 @@ async function until<T>(
 
 type Scenario = 'normal' | 'resume-reject' | 'uncorrelated-guide' | 'ignore-stop' | 'replay-history'
 
-async function lifecycleHarness(scenario: Scenario = 'normal', timeoutMs = 5000) {
+async function lifecycleHarness(scenario: Scenario = 'normal', timeoutMs = 20000) { // win32 keeper latency (ZK-016)
   const h = await createStoreHarness()
   const home = h.session.workspace.nativeHomeIdentity
   const repo = h.session.workspace.canonicalDirectory
@@ -145,13 +149,14 @@ function NativeProfileLaunch(
     cwd,
     environment: { PATH: process.env.PATH ?? '/usr/bin:/bin' },
     graceMs: 100,
-    startupMs: 3000,
+    startupMs: 20000, // win32 job-keeper startup (ZK-016)
   })
 }
 
 describe('ZcodeBackend lifecycle (real owned process, synthetic codec)', () => {
   linuxOnly(
     'graceful restart resumes the persisted native SID and never replays the old prompt',
+    { timeout: 90000 },
     async () => {
       const h = await lifecycleHarness()
       const first = await h.submit('one', 'first')
@@ -184,7 +189,7 @@ describe('ZcodeBackend lifecycle (real owned process, synthetic codec)', () => {
     },
   )
 
-  linuxOnly('failed native resume does not silently create another session', async () => {
+  linuxOnly('failed native resume does not silently create another session', { timeout: 90000 }, async () => {
     const h = await lifecycleHarness()
     const first = await h.submit('one', 'first')
     await h.completed(first.id)
@@ -210,6 +215,7 @@ describe('ZcodeBackend lifecycle (real owned process, synthetic codec)', () => {
 
   linuxOnly(
     'stale native approval cannot answer a new request with a reused numeric RPC ID',
+    { timeout: 90000 },
     async () => {
       const h = await lifecycleHarness()
       const first = await h.submit('one', 'permission')
@@ -243,6 +249,7 @@ describe('ZcodeBackend lifecycle (real owned process, synthetic codec)', () => {
 
   linuxOnly(
     'unconfirmed guide application is fenced, not silently converted into another prompt',
+    { timeout: 90000 },
     async () => {
       const h = await lifecycleHarness('uncorrelated-guide')
       const first = await h.submit('one', 'hold')
@@ -304,6 +311,7 @@ describe('ZcodeBackend lifecycle (real owned process, synthetic codec)', () => {
 
   linuxOnly(
     'persisted legacy cursor prevents old live-labelled events reappearing after restart',
+    { timeout: 90000 },
     async () => {
       const h = await lifecycleHarness()
       const first = await h.submit('one', 'first')

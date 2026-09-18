@@ -90,7 +90,7 @@ Discord ─▶ Kimaki frontend (discord-bot, preprocessing, interactions, comman
 | ZK-013 | Attachments + diff + usage | ZK-007 | DONE | local | 2026-09-18 |
 | ZK-014 | Scheduling/restart/recovery | ZK-007 | TODO | local | |
 | ZK-015 | Real-host mock-native E2E matrix | ZK-005..010 | TODO | local | |
-| ZK-016 | Native certification N00–N18 (capture-backed) | ZK-015 + real binary | IN_PROGRESS | LIVE GATE | N00 PARTIAL 2026-09-18: static PASS (doctor+profile+matrix); N01+ BLOCKED win32 owned-launch gate; N07+ paid opt-in gate (PAID-ROWS-DECISION.md) |
+| ZK-016 | Native certification N00–N18 (capture-backed) | ZK-015 + real binary | IN_PROGRESS | LIVE GATE | 2026-09-18 PM: Cody chose BOTH platforms; Windows job-object supervision implemented+drilled; N00-N04 PASS captured on win32 AND linux/WSL2; N05 auth-blocked; N07+ paid opt-in gate (PAID-ROWS-DECISION.md) |
 | ZK-017 | Direct vs Kimaki-bridged fidelity validation | ZK-016 (≥N07) | BLOCKED | LIVE GATE | matched-pair protocol written in ticket; no runs (paid gate) |
 | ZK-018 | Doctor/config/docs/release gates | ZK-015 | DONE (local) | local + human | zcode doctor/status CLI + USER-GUIDE + changeset + RELEASE-PATH options; execution decision with Cody |
 | ZS-001..ZS-010 | Subrouter phase (same native core) | Kimaki M5+ | GATED | — | do not start |

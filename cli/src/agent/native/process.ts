@@ -44,7 +44,9 @@ export async function verifyLaunch(profile: LaunchProfile) {
     throw fail('CONFIG_INVALID', 'Invalid native startup or shutdown deadline.')
   }
   if (process.platform === 'win32') {
-    throw fail('PLATFORM_UNCERTIFIED', 'Native Windows process supervision is not implemented.')
+    // ZK-016 2026-09-18: Windows supervision is implemented (supervisor job
+    // object with a kill-on-close keeper). The gate is now the ordinary
+    // fingerprint checks below; capability still comes from certification rows.
   }
   if (![profile.executable, profile.entryPath, profile.cwd].every(path.isAbsolute)) {
     throw fail('CONFIG_INVALID', 'Use absolute executable, entry and workspace paths.')
@@ -80,10 +82,11 @@ export async function verifyLaunch(profile: LaunchProfile) {
       throw fail('ENV_UNSAFE', 'Dynamic loader injection variables are forbidden.')
     }
 }
-/** Independent IPC supervisor survives bot death and terminates its owned POSIX group.
- * Escaped/detached process groups require stronger OS containment; not certified here. */
+/** Independent IPC supervisor survives bot death and terminates its owned process
+ * tree (POSIX session group; Windows job object via keeper — ZK-016). Escaped or
+ * detached groups require stronger OS containment; not certified here. */
 export async function startOwnedRuntime(profile: LaunchProfile): Promise<Result<OwnedRuntime>> {
-  return attempt(async () => {
+  const outcome = await attempt(async () => {
     await verifyLaunch(profile)
     const child = spawn(
       process.execPath,
@@ -176,9 +179,19 @@ export async function startOwnedRuntime(profile: LaunchProfile): Promise<Result<
       stop,
       stderrBytes: () => stderrBytes,
       stderrLines: () => diagnostics.lines(),
-      onExit: (fn) => {
+      onExit: (fn: () => void) => {
         void exited.then(fn)
       },
     }
   }, 'STARTUP_FAILED')
+  // Preflight refusals (verifyLaunch) keep their specific codes — callers
+  // distinguish RUNTIME_UNCERTIFIED from a real startup failure. — ZK-016
+  if (!outcome.ok && outcome.error.code === 'STARTUP_FAILED') {
+    try {
+      await verifyLaunch(profile)
+    } catch (preflight) {
+      return { ok: false, error: preflight as import('./errors.js').AgentError }
+    }
+  }
+  return outcome
 }

@@ -166,7 +166,7 @@ export async function runDoctorInventory(input: {
           id: 'platform-support',
           status: 'BLOCKED',
           detail:
-            'PLATFORM_UNCERTIFIED — Native Windows process supervision is not implemented; owned launch refuses by design (process.ts).',
+            'WINDOWS-SUPERVISED — owned launch runs through the job-object supervisor (ZK-016); capability still requires per-row certification evidence.',
         }
       : {
           id: 'platform-support',

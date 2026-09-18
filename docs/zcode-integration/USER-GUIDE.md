@@ -41,10 +41,11 @@ silent fallback to OpenCode.
 
 ## Windows status
 
-Native process ownership on Windows is not implemented, by design
-(`PLATFORM_UNCERTIFIED` in `cli/src/agent/native/process.ts`). Doctor reports it
-honestly; no capability is enabled from a hash match alone. Linux certification
-would not change the Windows state (mechanical enablement rule).
+Since ZK-016 (2026-09-18) Windows owned launch is supervised: the supervisor
+holds the native tree in a Job Object enforced by a PowerShell keeper (active
+TerminateJobObject containment on supervisor death, exit or kill; drilled in
+`supervision-win32.test.ts`). N01-N04 certification rows are captured on BOTH
+win32 and Linux/WSL2. Paid rows N07+ remain opt-in-gated.
 
 ## Where things live
 

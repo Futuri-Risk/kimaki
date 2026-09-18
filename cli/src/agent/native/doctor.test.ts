@@ -58,12 +58,12 @@ describe('ZK-016 N00 doctor static inventory', () => {
     expect(report.next).toContain('N07')
   })
 
-  test('win32 records the owned-launch environment gate as BLOCKED, not FAIL', async () => {
+  test('win32 records supervised owned launch without certifying it', async () => {
     const f = await fixture()
     const report = await runDoctorInventory({ ...f, platform: 'win32' })
     expect(report.staticInventory).toBe('PASS')
     expect(report.launchProfile.status).toBe('BLOCKED')
-    expect(report.launchProfile.detail).toContain('PLATFORM_UNCERTIFIED')
+    expect(report.launchProfile.detail).toContain('WINDOWS-SUPERVISED')
     expect(report.certified).toBe(false)
   })
 

@@ -26,10 +26,10 @@ before any paid row (N07+)").
 On this machine paid rows are **doubly blocked**, so there was nothing to opt
 into yet:
 
-1. **Windows gate (technical):** every certification row N01+ launches the native
-   server as an *owned, supervised child process*. Windows process supervision is
-   deliberately not implemented (`PLATFORM_UNCERTIFIED` — an invariant, not a
-   bug), so certification cannot proceed on this machine as-is.
+1. ~~**Windows gate (technical):**~~ RESOLVED 2026-09-18 — Cody chose both platforms;
+   Windows owned-process supervision is implemented (job-object keeper, drilled
+   clean-stop and brutal-death containment) and N01-N04 are captured on both
+   win32 and Linux/WSL2. The remaining gates are auth (N05) and the paid opt-in.
 2. **Paid gate (this decision):** even with the platform solved, N07+ will not
    run without your recorded opt-in and cost limits.
 

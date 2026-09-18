@@ -44,6 +44,8 @@ ticket's implementation notes, Windows owned-process rows stay environment-gated
 
 ## Row consequences (recorded in CAPABILITY_MATRIX.md)
 
-- N01–N06 (owned-launch, unpaid): BLOCKED on win32 by the same environment gate.
-- N07–N18: BLOCKED on win32 **and** gated on explicit Cody opt-in + cost limits
-  (paid model turns). No paid row was run. — ZCode 2026-09-18
+- SUPERSEDED SAME DAY (evening): Cody chose both platforms; Windows supervision was
+  implemented (job-object keeper) and N01–N04 were captured on BOTH win32 and
+  Linux/WSL2 — see CAPABILITY_MATRIX.md and evidence/zk16-{win32,linux}/.
+- N07–N18 remain gated on explicit Cody opt-in + cost limits (paid model turns).
+  No paid row was run. — ZCode 2026-09-18
