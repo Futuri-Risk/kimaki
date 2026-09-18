@@ -1,0 +1,1397 @@
+{
+  "startedAt": "2026-09-18T11:12:53.777Z",
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v20.20.2"
+  },
+  "profile": {
+    "executable": "/home/cody/zk-cert/node-v24.15.0-linux-x64/bin/node",
+    "executableSha256": "d1de76d8edf2fededf6f8b30d244e2c0529ac607923a018283b77e9c74bd932c",
+    "entryPath": "/mnt/c/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+    "entrySha256": "da61b0663336a65f7cce3dec223678794ccaa58158e304fc0d97b695434a8f01",
+    "args": [
+      "/mnt/c/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "/home/cody",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "/mnt/c/Users/Cody/AppData/Local/Programs/ZCode/resources/config/provider/zcode-builtin.json"
+    },
+    "cwd": "/home/cody/zk-cert/ws"
+  },
+  "rows": {
+    "N01": {
+      "description": "startup/readiness + session/list (read-only)",
+      "startupEmissions": {
+        "notifications": 0,
+        "reverseRequests": 0
+      },
+      "list": {
+        "at": "2026-09-18T11:12:55.238Z",
+        "method": "session/list",
+        "params": {
+          "workspace": {
+            "workspacePath": "~//zk-cert/ws",
+            "workspaceKey": "~//zk-cert/ws"
+          },
+          "includeArchived": false,
+          "limit": 1
+        },
+        "ms": 706,
+        "result": {
+          "sessions": []
+        }
+      }
+    },
+    "N02": {
+      "description": "session/create + identity readback",
+      "create": {
+        "at": "2026-09-18T11:13:06.128Z",
+        "method": "session/create",
+        "params": {
+          "workspace": {
+            "workspacePath": "~//zk-cert/ws",
+            "workspaceKey": "~//zk-cert/ws"
+          },
+          "mode": "build"
+        },
+        "ms": 10890,
+        "result": {
+          "messages": [],
+          "projection": {
+            "activeToolCalls": [],
+            "backgroundJobs": [],
+            "contextUsed": 0,
+            "contextWindow": 200000,
+            "mode": "build",
+            "pendingPermissions": [],
+            "sessionId": "unknown",
+            "status": "idle",
+            "target": null,
+            "totalTokenCount": 0,
+            "turnCount": 0
+          },
+          "protocol": {
+            "name": "ZCode Protocol",
+            "version": 1
+          },
+          "runtime": {
+            "eventSeq": 0,
+            "pendingRequestIds": [],
+            "goalVerifications": [],
+            "goalVerificationTimeline": [],
+            "stateRevision": 0
+          },
+          "session": {
+            "createdAt": 1789729981736,
+            "mode": "build",
+            "traceId": "7412fc22-6402-4d1e-a257-d42ae2d1f1cf",
+            "sessionId": "sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f",
+            "sessionKind": "interactive",
+            "status": "idle",
+            "target": null,
+            "title": "",
+            "updatedAt": 1789729981736,
+            "workspace": {
+              "workspacePath": "~//zk-cert/ws",
+              "workspaceKey": "~//zk-cert/ws"
+            }
+          },
+          "settings": {
+            "mode": {
+              "current": "build"
+            },
+            "model": {
+              "available": []
+            },
+            "permission": {
+              "mode": "build"
+            },
+            "thoughtLevel": {
+              "available": [],
+              "enabled": false
+            }
+          },
+          "slashCommands": [
+            {
+              "description": "Show or set the current session goal.",
+              "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+              "name": "goal",
+              "source": "builtin"
+            },
+            {
+              "description": "Compact the current conversation with optional instructions.",
+              "inputHint": "/compact [instructions]",
+              "name": "compact",
+              "source": "builtin"
+            },
+            {
+              "description": "Create or update workspace AGENTS.md instructions.",
+              "inputHint": "/init [notes]",
+              "name": "init",
+              "source": "builtin"
+            },
+            {
+              "description": "Switch to Plan mode and optionally send a task.",
+              "inputHint": "/plan [task]",
+              "name": "plan",
+              "source": "builtin"
+            }
+          ],
+          "todos": [],
+          "todoGroups": []
+        }
+      },
+      "mode": "build"
+    },
+    "N03": {
+      "description": "session/read full schema capture",
+      "read": {
+        "at": "2026-09-18T11:13:10.552Z",
+        "method": "session/read",
+        "params": {
+          "sessionId": "sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f"
+        },
+        "ms": 4424,
+        "result": {
+          "messages": [],
+          "projection": {
+            "activeToolCalls": [],
+            "backgroundJobs": [],
+            "contextUsed": 0,
+            "contextWindow": 200000,
+            "mode": "build",
+            "pendingPermissions": [],
+            "sessionId": "unknown",
+            "status": "idle",
+            "target": null,
+            "totalTokenCount": 0,
+            "turnCount": 0
+          },
+          "protocol": {
+            "name": "ZCode Protocol",
+            "version": 1
+          },
+          "runtime": {
+            "eventSeq": 0,
+            "pendingRequestIds": [],
+            "goalVerifications": [],
+            "goalVerificationTimeline": [],
+            "stateRevision": 0
+          },
+          "session": {
+            "createdAt": 1789729981736,
+            "mode": "build",
+            "traceId": "7412fc22-6402-4d1e-a257-d42ae2d1f1cf",
+            "sessionId": "sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f",
+            "sessionKind": "interactive",
+            "status": "idle",
+            "target": null,
+            "title": "",
+            "updatedAt": 1789729981736,
+            "workspace": {
+              "workspacePath": "~//zk-cert/ws",
+              "workspaceKey": "~//zk-cert/ws"
+            }
+          },
+          "settings": {
+            "mode": {
+              "current": "build"
+            },
+            "model": {
+              "available": []
+            },
+            "permission": {
+              "mode": "build"
+            },
+            "thoughtLevel": {
+              "available": [],
+              "enabled": false
+            }
+          },
+          "slashCommands": [
+            {
+              "description": "Show or set the current session goal.",
+              "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+              "name": "goal",
+              "source": "builtin"
+            },
+            {
+              "description": "Compact the current conversation with optional instructions.",
+              "inputHint": "/compact [instructions]",
+              "name": "compact",
+              "source": "builtin"
+            },
+            {
+              "description": "Create or update workspace AGENTS.md instructions.",
+              "inputHint": "/init [notes]",
+              "name": "init",
+              "source": "builtin"
+            },
+            {
+              "description": "Switch to Plan mode and optionally send a task.",
+              "inputHint": "/plan [task]",
+              "name": "plan",
+              "source": "builtin"
+            }
+          ],
+          "todos": [],
+          "todoGroups": []
+        }
+      }
+    },
+    "N04": {
+      "description": "session/subscribe + v4/conversation/subscribe",
+      "legacy": {
+        "at": "2026-09-18T11:13:15.300Z",
+        "method": "session/subscribe",
+        "params": {
+          "sessionId": "sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f",
+          "deliveryKind": "desktop-continuous",
+          "includeSnapshot": true,
+          "afterSeq": 0
+        },
+        "ms": 4747,
+        "result": {
+          "eventSeq": 0,
+          "events": [],
+          "sessionId": "sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f",
+          "snapshot": {
+            "messages": [],
+            "projection": {
+              "activeToolCalls": [],
+              "backgroundJobs": [],
+              "contextUsed": 0,
+              "contextWindow": 200000,
+              "mode": "build",
+              "pendingPermissions": [],
+              "sessionId": "unknown",
+              "status": "idle",
+              "target": null,
+              "totalTokenCount": 0,
+              "turnCount": 0
+            },
+            "protocol": {
+              "name": "ZCode Protocol",
+              "version": 1
+            },
+            "runtime": {
+              "deliveryKind": "desktop-continuous",
+              "eventSeq": 0,
+              "pendingRequestIds": [],
+              "goalVerifications": [],
+              "goalVerificationTimeline": [],
+              "stateRevision": 0
+            },
+            "session": {
+              "createdAt": 1789729981736,
+              "mode": "build",
+              "traceId": "7412fc22-6402-4d1e-a257-d42ae2d1f1cf",
+              "sessionId": "sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f",
+              "sessionKind": "interactive",
+              "status": "idle",
+              "target": null,
+              "title": "",
+              "updatedAt": 1789729981736,
+              "workspace": {
+                "workspacePath": "~//zk-cert/ws",
+                "workspaceKey": "~//zk-cert/ws"
+              }
+            },
+            "settings": {
+              "mode": {
+                "current": "build"
+              },
+              "model": {
+                "available": []
+              },
+              "permission": {
+                "mode": "build"
+              },
+              "thoughtLevel": {
+                "available": [],
+                "enabled": false
+              }
+            },
+            "slashCommands": [
+              {
+                "description": "Show or set the current session goal.",
+                "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+                "name": "goal",
+                "source": "builtin"
+              },
+              {
+                "description": "Compact the current conversation with optional instructions.",
+                "inputHint": "/compact [instructions]",
+                "name": "compact",
+                "source": "builtin"
+              },
+              {
+                "description": "Create or update workspace AGENTS.md instructions.",
+                "inputHint": "/init [notes]",
+                "name": "init",
+                "source": "builtin"
+              },
+              {
+                "description": "Switch to Plan mode and optionally send a task.",
+                "inputHint": "/plan [task]",
+                "name": "plan",
+                "source": "builtin"
+              }
+            ],
+            "todos": [],
+            "todoGroups": []
+          }
+        }
+      },
+      "v4": {
+        "at": "2026-09-18T11:13:15.310Z",
+        "method": "v4/conversation/subscribe",
+        "params": {
+          "topic": "conversation/sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f",
+          "connectionId": "d07b7630-c46b-4fe4-8db8-797800489025",
+          "clientMode": "desktop-continuous"
+        },
+        "ms": 10,
+        "result": {
+          "ack": {
+            "subscriptionId": "sub-mu6v12ju-zqgitedr-1",
+            "mode": "snapshot",
+            "logEpoch": "mu6v12ju-zqgitedr",
+            "openTiming": {
+              "version": 1,
+              "initialFrameEncodeMs": 1,
+              "sessionRuntimeState": "warm",
+              "snapshotRowCount": 0
+            }
+          }
+        }
+      },
+      "framesAfterAck": {
+        "notifications": 29,
+        "reverseRequests": 1
+      }
+    },
+    "N05": {
+      "description": "session/setModel + readback (config only, no inference)",
+      "skipped": "no advertised model in session/read readback",
+      "read": {
+        "messages": [],
+        "projection": {
+          "activeToolCalls": [],
+          "backgroundJobs": [],
+          "contextUsed": 0,
+          "contextWindow": 200000,
+          "mode": "build",
+          "pendingPermissions": [],
+          "sessionId": "unknown",
+          "status": "idle",
+          "target": null,
+          "totalTokenCount": 0,
+          "turnCount": 0
+        },
+        "protocol": {
+          "name": "ZCode Protocol",
+          "version": 1
+        },
+        "runtime": {
+          "deliveryKind": "desktop-continuous",
+          "eventSeq": 0,
+          "pendingRequestIds": [],
+          "goalVerifications": [],
+          "goalVerificationTimeline": [],
+          "stateRevision": 0
+        },
+        "session": {
+          "createdAt": 1789729981736,
+          "mode": "build",
+          "traceId": "7412fc22-6402-4d1e-a257-d42ae2d1f1cf",
+          "sessionId": "sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f",
+          "sessionKind": "interactive",
+          "status": "idle",
+          "target": null,
+          "title": "",
+          "updatedAt": 1789729981736,
+          "workspace": {
+            "workspacePath": "~//zk-cert/ws",
+            "workspaceKey": "~//zk-cert/ws"
+          }
+        },
+        "settings": {
+          "mode": {
+            "current": "build"
+          },
+          "model": {
+            "available": []
+          },
+          "permission": {
+            "mode": "build"
+          },
+          "thoughtLevel": {
+            "available": [],
+            "enabled": false
+          }
+        },
+        "slashCommands": [
+          {
+            "description": "Show or set the current session goal.",
+            "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+            "name": "goal",
+            "source": "builtin"
+          },
+          {
+            "description": "Compact the current conversation with optional instructions.",
+            "inputHint": "/compact [instructions]",
+            "name": "compact",
+            "source": "builtin"
+          },
+          {
+            "description": "Create or update workspace AGENTS.md instructions.",
+            "inputHint": "/init [notes]",
+            "name": "init",
+            "source": "builtin"
+          },
+          {
+            "description": "Switch to Plan mode and optionally send a task.",
+            "inputHint": "/plan [task]",
+            "name": "plan",
+            "source": "builtin"
+          }
+        ],
+        "todos": [],
+        "todoGroups": []
+      }
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/list"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/create"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/read"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/subscribe"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "v4/conversation/subscribe"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/conversation/frame"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [
+    {
+      "at": 1789729975240,
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f",
+        "scope": "runtime-materialization"
+      }
+    }
+  ],
+  "notifications": [
+    {
+      "at": 1789729975173,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 1,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789729975174,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 2,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789729975174,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 3,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 1
+      }
+    },
+    {
+      "at": 1789729975175,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 4,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 1,
+        "completed": 0,
+        "total": 22,
+        "migrationId": "0001_base_session_store"
+      }
+    },
+    {
+      "at": 1789729975175,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 5,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 1,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 2,
+        "completed": 1,
+        "total": 22,
+        "migrationId": "0002_local_setting"
+      }
+    },
+    {
+      "at": 1789729975175,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 6,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 2,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 2,
+        "completed": 2,
+        "total": 22,
+        "migrationId": "0003_backfill_permission_local_setting"
+      }
+    },
+    {
+      "at": 1789729975176,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 7,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 3,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 2,
+        "completed": 3,
+        "total": 22,
+        "migrationId": "0004_session_target"
+      }
+    },
+    {
+      "at": 1789729975176,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 8,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 4,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 3,
+        "completed": 4,
+        "total": 22,
+        "migrationId": "0005_session_target_accounting"
+      }
+    },
+    {
+      "at": 1789729975177,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 9,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 5,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 3,
+        "completed": 5,
+        "total": 22,
+        "migrationId": "0006_input_history_attachments"
+      }
+    },
+    {
+      "at": 1789729975177,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 10,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 6,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 4,
+        "completed": 6,
+        "total": 22,
+        "migrationId": "0007_workflow_script_runtime"
+      }
+    },
+    {
+      "at": 1789729975178,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 11,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 7,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 4,
+        "completed": 7,
+        "total": 22,
+        "migrationId": "0008_workflow_definition_scope"
+      }
+    },
+    {
+      "at": 1789729975178,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 12,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 8,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 5,
+        "completed": 8,
+        "total": 22,
+        "migrationId": "0009_session_title_metadata"
+      }
+    },
+    {
+      "at": 1789729975179,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 13,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 9,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 6,
+        "completed": 9,
+        "total": 22,
+        "migrationId": "0010_usage_observability"
+      }
+    },
+    {
+      "at": 1789729975180,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 14,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 10,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 6,
+        "completed": 10,
+        "total": 22,
+        "migrationId": "0011_session_target_summary_title"
+      }
+    },
+    {
+      "at": 1789729975180,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 15,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 11,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 7,
+        "completed": 11,
+        "total": 22,
+        "migrationId": "0012_session_trace_id"
+      }
+    },
+    {
+      "at": 1789729975180,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 16,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 12,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 7,
+        "completed": 12,
+        "total": 22,
+        "migrationId": "0013_session_target_active_run_accounting"
+      }
+    },
+    {
+      "at": 1789729975181,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 17,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 13,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 8,
+        "completed": 13,
+        "total": 22,
+        "migrationId": "0014_message_part_sequence"
+      }
+    },
+    {
+      "at": 1789729975182,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 18,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 14,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 9,
+        "completed": 14,
+        "total": 22,
+        "migrationId": "0015_message_part_sequence_backfill_and_guard"
+      }
+    },
+    {
+      "at": 1789729975182,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 19,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 15,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 9,
+        "completed": 15,
+        "total": 22,
+        "migrationId": "0016_session_input_ledger"
+      }
+    },
+    {
+      "at": 1789729975183,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 20,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 16,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 9,
+        "completed": 16,
+        "total": 22,
+        "migrationId": "0017_session_input_start_now_delivery"
+      }
+    },
+    {
+      "at": 1789729975183,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 21,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 17,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 10,
+        "completed": 17,
+        "total": 22,
+        "migrationId": "0018_session_input_failed_status"
+      }
+    },
+    {
+      "at": 1789729975184,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 22,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 18,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 11,
+        "completed": 18,
+        "total": 22,
+        "migrationId": "0019_dwf_journal"
+      }
+    },
+    {
+      "at": 1789729975185,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 23,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 19,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 11,
+        "completed": 19,
+        "total": 22,
+        "migrationId": "0020_provider_model_selection"
+      }
+    },
+    {
+      "at": 1789729975187,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 24,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 20,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 14,
+        "completed": 20,
+        "total": 22,
+        "migrationId": "0021_official_glm_selection"
+      }
+    },
+    {
+      "at": 1789729975187,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 25,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "migrating",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 21,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 14,
+        "completed": 21,
+        "total": 22,
+        "migrationId": "0022_backfilled_session_reasoning"
+      }
+    },
+    {
+      "at": 1789729975188,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 26,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 22,
+          "committedCount": 0,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 14
+      }
+    },
+    {
+      "at": 1789729975201,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "d86c6c9b-0bfe-4b61-b7bb-4c465121dc33",
+        "sequence": 27,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "initialize",
+          "executedCount": 22,
+          "committedCount": 22,
+          "lastAppliedMigrationId": null
+        },
+        "elapsedMs": 24
+      }
+    },
+    {
+      "at": 1789729995310,
+      "method": "v4/conversation/frame",
+      "params": {
+        "wireVersion": 3,
+        "kind": "complete",
+        "deliveryKind": "initial",
+        "logicalFrameId": "sub-mu6v12ju-zqgitedr-1-lf-1",
+        "logicalFrameOrdinal": 1,
+        "topic": "conversation/sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f",
+        "subscriptionId": "sub-mu6v12ju-zqgitedr-1",
+        "frame": {
+          "topic": "conversation/sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f",
+          "subscriptionId": "sub-mu6v12ju-zqgitedr-1",
+          "sentAt": 1789729995307,
+          "fromSeq": 0,
+          "toSeq": 0,
+          "payload": {
+            "kind": "snapshot",
+            "snapshot": {
+              "protocolVersion": 1,
+              "sessionId": "sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f",
+              "logEpoch": "mu6v12ju-zqgitedr",
+              "seq": 0,
+              "revision": 0,
+              "control": {
+                "phase": "draft",
+                "sessionEnded": false,
+                "canStop": false,
+                "stopState": "idle",
+                "stopTargetKind": "unknown",
+                "activeWorks": [],
+                "lastError": null,
+                "apiRetry": null
+              },
+              "availability": {
+                "fork": {
+                  "allowed": false,
+                  "reasonCode": "forkTargetNotStable"
+                },
+                "compact": {
+                  "allowed": false,
+                  "reasonCode": "idleCannotCompact"
+                },
+                "switchModelConfig": {
+                  "allowed": true
+                },
+                "setFollowupMode": {
+                  "allowed": true
+                },
+                "queueEdit": {
+                  "allowed": true
+                },
+                "sendQueuedNow": {
+                  "allowed": false,
+                  "reasonCode": "sendQueuedNowRequiresRunning"
+                },
+                "pauseGoal": {
+                  "allowed": false,
+                  "reasonCode": "noGoalToPause"
+                },
+                "resumeGoal": {
+                  "allowed": false,
+                  "reasonCode": "noGoalToResume"
+                }
+              },
+              "inputRouting": {
+                "mode": "startNow"
+              },
+              "meta": {
+                "title": "",
+                "titleSource": "default"
+              },
+              "config": {
+                "provider": "",
+                "model": "",
+                "thought": "",
+                "thoughtLevels": [],
+                "followupMode": "queue",
+                "mode": "build",
+                "planEnabled": false
+              },
+              "modelTransition": null,
+              "usage": {
+                "contextWindow": null,
+                "cumulative": {
+                  "inputTokens": 0,
+                  "outputTokens": 0,
+                  "cacheReadTokens": 0,
+                  "cacheWriteTokens": 0
+                }
+              },
+              "queue": {
+                "items": [],
+                "autoDrain": true
+              },
+              "pendingInteractions": [],
+              "pendingCommands": [],
+              "backgroundWorks": [],
+              "subagents": {
+                "revision": 0,
+                "childSessionIds": [],
+                "running": [],
+                "endedTotal": 0
+              },
+              "goal": null,
+              "plan": null,
+              "workspaceHookAdmission": null,
+              "rows": {
+                "window": [],
+                "totalCount": 0,
+                "firstRowId": null
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1789729996734,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "configuredCount": 1,
+        "connectedCount": 0,
+        "failedCount": 1,
+        "kind": "session_startup",
+        "occurredAt": 1789729996733,
+        "platform": "linux",
+        "processCount": 0,
+        "sessionId": "sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f"
+      }
+    },
+    {
+      "at": 1789730001779,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "kind": "process_start",
+        "mcpId": "builtin:node_repl",
+        "mcpInstanceId": "545abc4a-126d-4efa-90fa-6b222adef3f5",
+        "mcpIsolation": "workspace",
+        "mcpSource": "builtin",
+        "occurredAt": 1789730001779,
+        "platform": "linux"
+      }
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 51112
+  },
+  "client": {
+    "generation": "d07b7630-c46b-4fe4-8db8-797800489025"
+  },
+  "sessionId": "sess_4532ebb8-529d-4cfb-bfb6-74f6e708a05f",
+  "stop": {
+    "ok": true
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}
