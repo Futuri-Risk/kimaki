@@ -165,8 +165,8 @@ export class ZcodeBackend {
   private listener: (sessionId: string, event: NativeEvent) => void = () => {}
   /**
    * ZK-015 test seam: the default launcher is the certified owned-runtime path
-   * (POSIX-only; win32 refuses with PLATFORM_UNCERTIFIED). E2E suites inject a
-   * plain-spawn launcher for coordinator-behavior scenarios — production code
+   * (POSIX process groups; win32 job-object keeper — ZK-016). E2E suites inject
+   * a plain-spawn launcher for coordinator-behavior scenarios — production code
    * never passes one.
    */
   readonly launchRuntime: (profile: LaunchProfile) => Promise<Result<OwnedRuntime>>

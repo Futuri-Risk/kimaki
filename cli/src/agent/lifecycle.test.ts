@@ -1,12 +1,14 @@
 // ZK-007 real-backend lifecycle suite — the ported bundle lifecycle tests against
 // the actual ZcodeBackend + spawned SYNTHETIC fake-app-server (owned process
-// launch). Owned launch is PLATFORM_UNCERTIFIED on Windows by design, so this
-// suite is Linux-gated on this machine (visible skips, mirroring the ZK-002
-// convention). The in-process coordinator contracts run cross-platform in
-// coordinator.test.ts. Not ported: owner-process/journal-owner SIGKILL children —
-// supervisor kill semantics are covered by the ZK-002 native suite (gated) and
-// the durable send-intent recovery by store.test.ts + coordinator.test.ts.
-// — ZCode 2026-09-17
+// launch). Runs on BOTH platforms since ZK-016 (2026-09-18): the win32 "stall"
+// was never vitest or keeper latency — the harness never created the fixture
+// repo directory, so verifyLaunch's realpath(cwd) threw ENOENT before any
+// scenario could start (fixed in test-harness.ts with an explicit mkdir).
+// The in-process coordinator contracts run cross-platform in coordinator.test.ts.
+// Not ported: owner-process/journal-owner SIGKILL children — supervisor kill
+// semantics are covered by the ZK-002 native suite (gated) and the durable
+// send-intent recovery by store.test.ts + coordinator.test.ts.
+// — ZCode 2026-09-17/18
 import { describe, onTestFinished, test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFile, stat } from 'node:fs/promises'
@@ -20,11 +22,7 @@ import { fileHash } from './native/process.js'
 import { createStoreHarness } from './test-harness.js'
 import { fakeCodec } from './fixtures/fake-codec.js'
 
-// ZK-016 2026-09-18: win32 owned launch IS supervised now (job-object keeper,
-// proven by supervision-win32.test.ts), but these full backend-vs-fake-server
-// scenarios still stall on win32 under vitest (pre-existing suite assumptions;
-// never ran on Windows before the gate lifted). Open follow-up in ZK-016.
-const linuxOnly = process.platform === 'win32' ? test.skip : test
+const fullPlatform = test // win32 un-stalled ZK-016 2026-09-18 (see header)
 const entry = fileURLToPath(new URL('./fixtures/fake-app-server.mjs', import.meta.url))
 
 async function until<T>(
@@ -154,7 +152,7 @@ function NativeProfileLaunch(
 }
 
 describe('ZcodeBackend lifecycle (real owned process, synthetic codec)', () => {
-  linuxOnly(
+  fullPlatform(
     'graceful restart resumes the persisted native SID and never replays the old prompt',
     { timeout: 90000 },
     async () => {
@@ -189,7 +187,7 @@ describe('ZcodeBackend lifecycle (real owned process, synthetic codec)', () => {
     },
   )
 
-  linuxOnly('failed native resume does not silently create another session', { timeout: 90000 }, async () => {
+  fullPlatform('failed native resume does not silently create another session', { timeout: 90000 }, async () => {
     const h = await lifecycleHarness()
     const first = await h.submit('one', 'first')
     await h.completed(first.id)
@@ -213,7 +211,7 @@ describe('ZcodeBackend lifecycle (real owned process, synthetic codec)', () => {
     await h.closeAll()
   })
 
-  linuxOnly(
+  fullPlatform(
     'stale native approval cannot answer a new request with a reused numeric RPC ID',
     { timeout: 90000 },
     async () => {
@@ -247,7 +245,7 @@ describe('ZcodeBackend lifecycle (real owned process, synthetic codec)', () => {
     },
   )
 
-  linuxOnly(
+  fullPlatform(
     'unconfirmed guide application is fenced, not silently converted into another prompt',
     { timeout: 90000 },
     async () => {
@@ -265,7 +263,7 @@ describe('ZcodeBackend lifecycle (real owned process, synthetic codec)', () => {
     },
   )
 
-  linuxOnly(
+  fullPlatform(
     'unresponsive native stop escalates only the owned group and confirms cessation of writes',
     async () => {
       const h = await lifecycleHarness('ignore-stop')
@@ -289,7 +287,7 @@ describe('ZcodeBackend lifecycle (real owned process, synthetic codec)', () => {
     },
   )
 
-  linuxOnly(
+  fullPlatform(
     'changed fingerprint refuses before any native process or task submission',
     async () => {
       const h = await lifecycleHarness()
@@ -309,7 +307,7 @@ describe('ZcodeBackend lifecycle (real owned process, synthetic codec)', () => {
     },
   )
 
-  linuxOnly(
+  fullPlatform(
     'persisted legacy cursor prevents old live-labelled events reappearing after restart',
     { timeout: 90000 },
     async () => {

@@ -1,4 +1,4 @@
-/** ZK-016 certification row-runner — FREE ROWS ONLY (N01–N05; N06 needs a
+/** ZK-016 certification row-runner — FREE ROWS ONLY (N01–N05, N18; N06 needs a
  * third-party profile; N07+ are PAID and hard-refused here until recorded
  * Cody opt-in + cost limits exist). Launches the real native app-server via
  * the owned runtime, drives the checklist's read-only/create/subscribe/setModel
@@ -6,7 +6,8 @@
  * recorded, never guessed around. Requires a built CLI (pnpm --filter kimaki
  * build). — ZCode 2026-09-18 */
 import path from 'node:path'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile, readFile } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
 
 const ALLOWED_ROWS = {
   N01: 'startup/readiness + session/list (read-only)',
@@ -14,6 +15,8 @@ const ALLOWED_ROWS = {
   N03: 'session/read full schema capture',
   N04: 'session/subscribe + v4/conversation/subscribe',
   N05: 'session/setModel + readback (config only, no inference)',
+  // N18 protocol half is FREE (no inference): unsubscribe + owned-process stop.
+  N18: 'v4/conversation/unsubscribe + graceful/abrupt owned-process shutdown (no inference)',
 }
 const ALLOWED_METHODS = new Set([
   'session/list',
@@ -22,6 +25,7 @@ const ALLOWED_METHODS = new Set([
   'session/subscribe',
   'session/setModel',
   'v4/conversation/subscribe',
+  'v4/conversation/unsubscribe',
 ])
 
 function arg(name) {
@@ -51,7 +55,7 @@ for (let i = 0; i < process.argv.length - 1; i++) {
 
 if (!executable || !entryPath || !workspace || !outDir || !rows.length) {
   console.error(
-    'Usage: node tools/certify.mjs --executable <node> --entry <zcode.cjs> --workspace <dir> --out <evidence-dir> [--rows N01,N02,N03,N04,N05] [--mode build] [--timeout 20000] [--env KEY=VALUE ...]',
+    'Usage: node tools/certify.mjs --executable <node> --entry <zcode.cjs> --workspace <dir> --out <evidence-dir> [--rows N01,N02,N03,N04,N05,N18] [--mode build] [--timeout 20000] [--env KEY=VALUE ...]',
   )
   process.exit(2)
 }
@@ -175,6 +179,97 @@ function record(row, evidence) {
   console.log(`${row}: ${JSON.stringify(evidence).slice(0, 220)}`)
 }
 
+/** Liveness with ESRCH discrimination (Node semantics on win32: signals coerce
+ * to forceful kill; no /proc anywhere). */
+function alive(pid) {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (e) {
+    return e?.code !== 'ESRCH'
+  }
+}
+async function until(fn, ms, step = 50) {
+  const end = Date.now() + ms
+  while (Date.now() < end) {
+    if (await fn()) return true
+    await sleep(step)
+  }
+  return false
+}
+/** Supervisor pid of the owned native child: its direct parent. win32 via CIM,
+ * linux via /proc/<pid>/status PPid. */
+function supervisorPidOf(nativePid) {
+  if (process.platform === 'win32') {
+    return new Promise((resolve) => {
+      execFile(
+        'powershell.exe',
+        ['-NoProfile', '-Command', `(Get-CimInstance Win32_Process -Filter "ProcessId=${nativePid}").ParentProcessId`],
+        { windowsHide: true },
+        (error, stdout) => {
+          const pid = Number.parseInt(String(stdout).trim(), 10)
+          resolve(!error && Number.isSafeInteger(pid) && pid > 0 ? pid : null)
+        },
+      )
+    })
+  }
+  if (process.platform === 'linux') {
+    return readFile(`/proc/${nativePid}/status`, 'utf8').then((text) => {
+      const m = /^PPid:\s+(\d+)\s*$/m.exec(text)
+      return m ? Number.parseInt(m[1], 10) : null
+    }, () => null)
+  }
+  return Promise.resolve(null)
+}
+/** N18 abrupt leg on a self-contained second runtime: supervisor dies without a
+ * stop message; keeper containment must end the whole native tree. */
+async function abruptContainmentProbe() {
+  const probe = { approach: 'kill supervisor (no stop message); keeper stdin EOF -> TerminateJobObject / group kill' }
+  try {
+    const second = await startOwnedRuntime({
+      executable,
+      entryPath,
+      args: [entryPath, 'app-server'],
+      cwd: workspace,
+      executableSha256: log.profile.executableSha256,
+      entrySha256: log.profile.entrySha256,
+      environment,
+      startupMs: 30000,
+      graceMs: 5000,
+    })
+    if (!second.ok) {
+      return { ...probe, skipped: `second launch failed: ${second.error.code}` }
+    }
+    const nativePid = second.value.pid
+    const supervisorPid = await supervisorPidOf(nativePid)
+    Object.assign(probe, { nativePid, supervisorPid })
+    if (!supervisorPid || !alive(supervisorPid)) {
+      second.value.stop().catch(() => undefined)
+      return { ...probe, skipped: 'supervisor pid not resolvable on this platform' }
+    }
+    process.kill(supervisorPid, 'SIGKILL') // brutal: no stop message, no graceful anything
+    const treeDown = await until(() => !alive(nativePid), 10000)
+    Object.assign(probe, {
+      treeDown,
+      treeDownWithinMs: 10000,
+      exitObserved: await new Promise((resolve) => {
+        const t = setTimeout(() => resolve(false), 2000)
+        second.value.onExit(() => {
+          clearTimeout(t)
+          resolve(true)
+        })
+      }),
+    })
+    // Reap the probe runtime bookkeeping; the supervisor is already dead so this
+    // settles immediately (CANCEL_UNCONFIRMED is expected and recorded as such).
+    const reap = await second.value.stop()
+    probe.reap = reap.ok ? { ok: true } : { code: reap.error.code }
+    return probe
+  } catch (error) {
+    return { ...probe, error: String(error?.message ?? error) }
+  }
+}
+
 try {
   await sleep(700) // capture startup emissions before first request
   const W = { workspacePath: workspace, workspaceKey: workspace }
@@ -260,10 +355,56 @@ try {
       record('N05', { description: ALLOWED_ROWS.N05, skipped: 'no advertised model in session/read readback', read: redact(before.ok ? before.value : before.error.toJSON()) })
     }
   }
+
+  if (sessionId && rows.includes('N18')) {
+    // Protocol unsubscribe (free — no inference): subscribe afresh, unsubscribe
+    // the returned subscription, prove no stale deliveries, then stop the owned
+    // process gracefully and abruptly (supervisor kill -> keeper containment).
+    const framesBefore = log.notifications.filter((n) => n.method === 'v4/conversation/frame').length
+    const sub = await call('N18', 'v4/conversation/subscribe', {
+      topic: `conversation/${sessionId}`,
+      connectionId: client.generation,
+      clientMode: 'desktop-continuous',
+    })
+    await sleep(400)
+    const ack =
+      sub && sub.result && typeof sub.result === 'object' && sub.result.ack
+        ? sub.result.ack
+        : null
+    const subscriptionId = ack && typeof ack.subscriptionId === 'string' ? ack.subscriptionId : null
+    const unsubscribe = subscriptionId
+      ? await call('N18', 'v4/conversation/unsubscribe', {
+          topic: `conversation/${sessionId}`,
+          connectionId: client.generation,
+          subscriptionId,
+        })
+      : { skipped: 'no subscriptionId in subscribe ack' }
+    await sleep(1200) // stale-delivery observation window
+    const framesAfterUnsubscribe = log.notifications
+      .filter((n) => n.method === 'v4/conversation/frame')
+      .slice(framesBefore)
+    const n18 = {
+      description: ALLOWED_ROWS.N18,
+      subscribe: sub,
+      unsubscribe,
+      staleDeliveries: { framesAfterUnsubscribe: framesAfterUnsubscribe.length, frames: redact(framesAfterUnsubscribe) },
+    }
+    // Abrupt leg: a fresh owned runtime, then kill the SUPERVISOR process (no
+    // stop message) — keeper stdin EOF must TerminateJobObject the whole native
+    // tree (the containment contract proven by supervision-win32.test.ts).
+    const abrupt = await abruptContainmentProbe()
+    record('N18', { ...n18, abrupt })
+  }
 } finally {
   const stopResult = await runtime.stop()
   await sleep(300)
-  log.stop = stopResult.ok ? { ok: true } : { ok: false, error: stopResult.error.toJSON() }
+  // N18 graceful-leg evidence: confirmed stop AND the native pid actually gone.
+  log.stop = {
+    ok: stopResult.ok,
+    ...(stopResult.ok ? {} : { error: stopResult.error.toJSON() }),
+    nativePid: runtime.pid,
+    nativePidLivenessAfterStop: alive(runtime.pid) ? 'ALIVE (containment failure)' : 'dead',
+  }
   log.disconnected = disconnected
   log.stderrTail = redact((runtime.stderrLines?.() ?? []).slice(-40))
   await mkdir(outDir, { recursive: true })

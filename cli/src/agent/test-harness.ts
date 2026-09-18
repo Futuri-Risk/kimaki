@@ -4,7 +4,7 @@
 // Replaces the standalone node:sqlite adapter; H47/H48 adapter-defect classes do not
 // apply to the real client.
 
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -170,6 +170,10 @@ export async function createStoreHarness(
   const store = new AgentStore(db, 'test-machine', options.secretValues ?? [])
   const repo = path.join(root, 'repo')
   const home = path.join(root, 'native')
+  // The owned-launch preflight realpaths the canonical workspace directory, so
+  // the fixture repo must exist on disk exactly like a production project dir.
+  // (win32 un-stall ZK-016: realpath(repo) threw ENOENT before any scenario.)
+  await mkdir(repo, { recursive: true })
   const session: StoreHarness['session'] = {
     id: 'zc:session-1',
     backend: 'zcode',
