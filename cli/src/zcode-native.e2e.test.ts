@@ -31,12 +31,7 @@ vi.mock('./opencode.js', async (importOriginal) => {
 
 import { setDataDir } from './config.js'
 import { store } from './store.js'
-import {
-  setBotToken,
-  initDatabase,
-  closeDatabase,
-  setChannelDirectory,
-} from './database.js'
+import { setBotToken, initDatabase, closeDatabase, setChannelDirectory } from './database.js'
 import { startDiscordBot } from './discord-bot.js'
 import { startHranaServer, stopHranaServer } from './hrana-server.js'
 import { initTestGitRepo } from './test-utils.js'
@@ -72,7 +67,10 @@ const ctx = {
 }
 
 beforeAll(async () => {
-  const root = path.resolve(process.cwd(), 'tmp', 'zcode-native-e2e')
+  // Unique run root per boot: the fake app-server persists its state file,
+  // and stale state (or a live child from an aborted run holding handles)
+  // would bleed into create/send counts or block cleanup on Windows.
+  const root = path.resolve(process.cwd(), 'tmp', `zcode-native-e2e-${Date.now()}`)
   fs.mkdirSync(root, { recursive: true })
   const dataDir = fs.mkdtempSync(path.join(root, 'data-'))
   const projectDirectory = path.join(root, 'project')
@@ -166,6 +164,13 @@ afterAll(async () => {
   await ctx.discord?.stop().catch(() => undefined)
   delete process.env['KIMAKI_LOCK_PORT']
   delete process.env['KIMAKI_DB_URL']
+  // Best-effort: a just-killed fixture child can briefly hold handles on
+  // Windows; timestamped roots make leftovers harmless.
+  try {
+    fs.rmSync(ctx.root, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 })
+  } catch {
+    // left for the OS temp cleaner
+  }
   if (ctx.previousVerbosity) {
     store.setState({ defaultVerbosity: ctx.previousVerbosity as never })
   }
@@ -231,7 +236,7 @@ test(
       discord: ctx.discord,
       threadId,
       userId: TEST_USER_ID,
-      text: 'Done ✓ native-second',
+      text: 'Done ✓ Reply with exactly: native-second',
       timeout: 12_000,
     })
 

@@ -71,7 +71,11 @@ import {
 } from './agent/ingress-gate.js'
 import { isZcodeSessionId } from './agent/registry.js'
 import { writerFenceRefusal } from './agent/workspace-fence.js'
-import { ensureNativeThreadSession, ingestNativeThreadMessage, setNativeDiscordClient } from './agent/message-ingest.js'
+import {
+  ensureNativeThreadSession,
+  ingestNativeThreadMessage,
+  setNativeDiscordClient,
+} from './agent/message-ingest.js'
 import {
   createDiscordInteractionPorts,
   setInteractionBridgePorts,

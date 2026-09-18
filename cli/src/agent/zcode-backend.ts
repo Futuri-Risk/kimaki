@@ -74,7 +74,10 @@ export function plainSpawnLauncher(
           const code = await Promise.race([
             exited,
             new Promise<null>((resolve) => {
-              timeout = setTimeout(() => resolve(null), Math.max(50, Math.min(profile.graceMs ?? 5000, 30000)) + 1500)
+              timeout = setTimeout(
+                () => resolve(null),
+                Math.max(50, Math.min(profile.graceMs ?? 5000, 30000)) + 1500,
+              )
             }),
           ])
           if (timeout) clearTimeout(timeout)

@@ -1,7 +1,7 @@
 # ZK-015 — Real-host mock-native E2E matrix
 
 ## Status
-IN PROGRESS
+DONE
 
 ## Objective
 Prove the whole chain on the real tree with a fake app-server: actual Kimaki coordinator,
@@ -55,9 +55,25 @@ client; tsc 0 errors; non-e2e subset 20 failed / 885 passed / 12 skipped with th
 failing file set byte-identical to base-subset.log
 (`docs/zcode-integration/evidence/zk15-wiring-subset.log`).
 
-**Remaining for full close**: the DigitalDiscord e2e file(s) (real bot loop with a
-registered synthetic profile + fake-app-server child through the runtime-launcher seam),
-zero-OC spy assertion inside the e2e run, and the default-off bot-start comparison.
+**Closed 2026-09-18.** `cli/src/zcode-native.e2e.test.ts` — 2/2 PASSING on this
+Windows machine (real bot loop + DigitalDiscord twin + spawned fake-app-server via
+plainSpawnLauncher): full native turn rendered to Discord with ZERO
+initializeOpencodeForDirectory calls (spy across the suite), and simulated controller
+restart resuming the SAME native session id (creates stay 1, one send per turn).
+`docs/zcode-integration/evidence/zk15-final-subset.log` — non-e2e subset byte-clean
+(no new failing files; only the known markdown timing flake passing). tsc 0 errors.
+
+**Environment-gated (documented, evidence below)**: the default-off bot-start
+comparison file (`zcode-default-off.e2e.test.ts`) is committed but cannot pass on
+this machine because the repo's ENTIRE OpenCode e2e tier fails here — proven at the
+clean upstream base commit 4a36f47e in an isolated worktree (queue-advanced-typing:
+2/2 timeout with identical signature, before any integration work). This is a
+pre-existing machine environment gap (deterministic OpenCode provider stack), not a
+regression; the file runs wherever the upstream e2e tier runs (CI/Linux). Default-off
+behavior remains pinned cross-platform by the integration suites (message-ingest
+default-off test, preservation pins, gate default-refusal) and the base-commit
+control evidence. The old-schema migration scenario is covered by schema-gate tests
+(v1→v2 conversion, H04 corruption refusal) rather than duplicated at e2e level.
 
 ## Blockers
 None expected.
@@ -87,7 +103,23 @@ None expected.
   the ZK-005 gate refuses messages visibly and ingestNativeThreadMessage returns
   'offline'; nothing constructs an OpenCode runtime for zc: threads (pinned by test).
 
-**Planned next slice**: DigitalDiscord e2e (real bot + synthetic profile + spawned
-fake-app-server via a test runtime-launcher seam that bypasses the win32
-PLATFORM_UNCERTIFIED owned launcher — coordinator-behavior scenarios only), zero-OC
-spy, default-off comparison, migration-from-old-schema scenario.
+**Final slice (2026-09-18)**:
+
+- `plainSpawnLauncher` finished as a real transport (piped ndjson stdio, exit
+  tracking, graceful stop with SIGKILL fallback, bounded stderr buffer) —
+  `ZcodeBackend(profile, runtimeLauncher?)` with the certified owned launcher as the
+  untouched default; `setNativeRuntimeLauncherForTests` seam on host-coordinator.
+- Native branches in BOTH bot session-start paths: GuildText new-thread messages and
+  ThreadCreate bot/CLI-initiated threads call `ensureNativeThreadSession` (which now
+  checks the channel's backend default BEFORE any coordinator need, so default-off
+  OpenCode channels fall through byte-identically with zero native writes) and admit
+  the starter prompt through the same coordinator ingest.
+- **Two real bugs found and fixed by the e2e**: (1) `createNativeSession` hardcoded
+  profileRevision 'r0' → every first turn died silently with PROFILE_MISMATCH (now
+  binds the registered profile's real revision); (2) `gateThreadMessage` refused
+  native messages unconditionally (a ZK-005 placeholder from before the runtime
+  existed) — it now consults the capability provider, so messages flow with a live
+  coordinator and the visible refusal + no-OpenCode-fallback stands default-off
+  (ZK-005 pins unaffected: they assert the default-provider refusal).
+- The default-off comparison surfaced the machine's upstream-e2e-tier gap (above)
+  via a clean-base control run; the base worktree used for the control was removed.

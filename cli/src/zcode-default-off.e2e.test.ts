@@ -6,10 +6,7 @@
 // comparison. — ZCode 2026-09-18
 
 import { describe, test, expect } from 'vitest'
-import {
-  setupQueueAdvancedSuite,
-  TEST_USER_ID,
-} from './queue-advanced-e2e-setup.js'
+import { setupQueueAdvancedSuite, TEST_USER_ID } from './queue-advanced-e2e-setup.js'
 import { waitForBotMessageContaining, waitForFooterMessage } from './test-utils.js'
 import { getNativeCoordinator } from './agent/host-coordinator.js'
 
