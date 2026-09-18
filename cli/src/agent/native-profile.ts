@@ -39,6 +39,11 @@ export function registeredNativeProfiles(): readonly NativeProfile[] {
  * here, under an explicit test launch closure — the production path has no
  * synthetic codec, so ZcodeBackend.prepare refuses with RUNTIME_UNCERTIFIED.
  */
+/** Profile preference that enables the conversation-only fork capability.
+ * Certified profiles set it only with a captured rowsRange schema (ZK-016 N14);
+ * until then every /btw on a native session refuses visibly. — ZK-011 */
+export const NATIVE_FORK_CAPABILITY = 'forkAssistantEnabled'
+
 export function syntheticProfile(input: {
   id: string
   revision: string

@@ -160,6 +160,37 @@ export class AgentStore {
       q('UPDATE agent_sessions SET state=?,updated_at=? WHERE id=?', state, Date.now(), id),
     )
   }
+  async latestChildSession(parentId: string) {
+    const r = (
+      await this.db.execute(
+        q(
+          'SELECT * FROM agent_sessions WHERE parent_agent_session_id=? ORDER BY created_at DESC, id DESC LIMIT 1',
+          parentId,
+        ),
+      )
+    ).rows[0]
+    return r ? parseSession(r) : null
+  }
+  async bindController(sessionId: string, threadId: string) {
+    // Orphan-bound fork children activate ONLY through an explicit controller
+    // binding (the native fork RPC's returned child id is the readback); they
+    // are never auto-promoted and never rebind once activated. (ZK-011, AC19/AC20)
+    const r = await this.db.execute(
+      q(
+        "UPDATE agent_sessions SET controller_thread_id=?,state='idle',updated_at=? WHERE id=? AND state='orphan-bound'",
+        threadId,
+        Date.now(),
+        sessionId,
+      ),
+    )
+    if (r.rowsAffected !== 1) {
+      throw fail(
+        'SESSION_NOT_ORPHAN',
+        'Only an orphan-bound native child can be activated.',
+        'control',
+      )
+    }
+  }
   async bindNative(id: string, nativeId: string, fingerprint: string) {
     const r = await this.db.execute(
       q(

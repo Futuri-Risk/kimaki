@@ -85,7 +85,7 @@ Discord ─▶ Kimaki frontend (discord-bot, preprocessing, interactions, comman
 | ZK-008 | Renderer + projector integration | ZK-007 | DONE | local | 2026-09-18 |
 | ZK-009 | Native interactions: questions/permissions/components | ZK-007, ZK-008 | DONE | local | 2026-09-18 |
 | ZK-010 | Controls: queue/guide/cancel/compact/model readback | ZK-007 | DONE | local | 2026-09-18 |
-| ZK-011 | /btw conversation-only fork UX | ZK-010 | TODO | local (capability-gated) | |
+| ZK-011 | /btw conversation-only fork UX | ZK-010 | DONE | local (capability-gated) | 2026-09-18 |
 | ZK-012 | Writer/worktree/process ownership fencing | ZK-007 | TODO | local | |
 | ZK-013 | Attachments + diff + usage | ZK-007 | TODO | local | |
 | ZK-014 | Scheduling/restart/recovery | ZK-007 | TODO | local | |
