@@ -101,6 +101,7 @@ import {
   resolveThreadBackendByChannelId,
   runtimeCommandForComponent,
 } from './agent/ingress-gate.js'
+import { handleNativeInteractionComponent } from './agent/interaction-bridge.js'
 
 const interactionLogger = createLogger(LogPrefix.INTERACTION)
 
@@ -495,6 +496,13 @@ export function registerInteractionHandler({
 
           const customId = interaction.customId
 
+          // ZK-009: native interaction components (opaque one-use ids) route to
+          // the interaction bridge, never to OpenCode permission handlers.
+          if (customId.startsWith('zci:')) {
+            await handleNativeInteractionComponent(interaction)
+            return
+          }
+
           if (customId.startsWith('transcription_apikey:')) {
             if (!hasKimakiAdminPermission(interaction.member, interaction.guild)) {
               await interaction.reply({
@@ -580,6 +588,12 @@ export function registerInteractionHandler({
           }
 
           const customId = interaction.customId
+
+          // ZK-009: native question select menus route to the interaction bridge.
+          if (customId.startsWith('zci:')) {
+            await handleNativeInteractionComponent(interaction)
+            return
+          }
 
           if (customId.startsWith('fork_select:')) {
             await handleForkSelectMenu(interaction)

@@ -18,6 +18,7 @@ import { getRawDbClient } from '../db.js'
 import { getOwnerMachineId } from './host-identity.js'
 import { resolveNativeProfile } from './native-profile.js'
 import { setNativeCapabilityProvider } from './ingress-gate.js'
+import { getInteractionBridge } from './interaction-bridge.js'
 
 /**
  * Host authorization: the acting Discord user must target the session's
@@ -39,6 +40,11 @@ async function buildCoordinator(): Promise<AgentCoordinator | null> {
   const store = new AgentStore(serializeWrites(libsqlSqlClient(client)), machineId)
   const backend = new ZcodeBackend(profile)
   const built = new AgentCoordinator(store, backend, hostAuthorizer)
+  // ZK-009: the interaction bridge observes native events on its own read-only
+  // tap (prompt rendering); answers come back through coordinator ingests.
+  backend.onHostEvent((sessionId, event) => {
+    void getInteractionBridge().handleNativeEvent(sessionId, event)
+  })
   // Capabilities unlock only with a live coordinator behind them.
   setNativeCapabilityProvider(() => true)
   return built

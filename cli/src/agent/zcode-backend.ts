@@ -94,6 +94,12 @@ export class ZcodeBackend {
   onEvent(listener: (sessionId: string, event: NativeEvent) => void) {
     this.listener = listener
   }
+  // ZK-009: independent host observer (interaction UI bridge) — the coordinator
+  // owns the single onEvent slot, so the host gets its own read-only tap.
+  private hostListener: (sessionId: string, event: NativeEvent) => void = () => {}
+  onHostEvent(listener: (sessionId: string, event: NativeEvent) => void) {
+    this.hostListener = listener
+  }
   get ownedSessionId() {
     return this.connection?.session.id ?? this.preparing?.sessionId ?? null
   }
@@ -111,6 +117,12 @@ export class ZcodeBackend {
   }
   private emit(c: Connection, event: NativeEvent) {
     if (!c.retired) {
+      // Host-side rendering must never break the coordinator's event lane.
+      try {
+        this.hostListener(c.session.id, event)
+      } catch {
+        // Host observer failures are the host's business; the lane continues.
+      }
       this.listener(c.session.id, event)
     }
   }
