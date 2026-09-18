@@ -32,42 +32,70 @@ import type {
   RpcId,
 } from './types.js'
 /**
- * Plain-spawn launcher for e2e fixtures (ZK-015): starts the entry without the
- * owned-runtime supervisor so coordinator-behavior scenarios run on win32.
- * TEST FIXTURES ONLY — production keeps the certified owned launcher.
+ * Plain-spawn launcher for e2e fixtures (ZK-015): starts the entry directly
+ * over piped stdio, without the owned-runtime supervisor, so coordinator-
+ * behavior scenarios run on win32 too. Single-child stop semantics only —
+ * TEST FIXTURES ONLY; production keeps the certified owned launcher.
  */
 export function plainSpawnLauncher(
-  handlers: {
-    onChild?: (child: import('node:child_process').ChildProcess) => void
-  } = {},
+  handlers: { onChild?: (child: import('node:child_process').ChildProcess) => void } = {},
 ): (profile: LaunchProfile) => Promise<Result<OwnedRuntime>> {
-  return async (profile) => {
-    try {
-      const child = childSpawn(
-        profile.executable,
-        [...profile.args, ...((profile as { extraArgs?: string[] }).extraArgs ?? [])],
-        {
-          cwd: profile.cwd,
-          stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
-        },
-      )
-      handlers.onChild?.(child)
-      return ok({
-        pid: child.pid!,
-        stop: async () => {
-          child.kill()
-          return ok(undefined)
-        },
-        write: () => undefined,
-        stderrLines: () => [] as readonly string[],
-      } as unknown as OwnedRuntime)
-    } catch (error) {
-      return {
-        ok: false,
-        error: fail('LAUNCH_FAILED', `Fixture launcher failed: ${String(error)}`, 'control'),
+  return (profile) =>
+    attempt(async () => {
+      const child = childSpawn(profile.executable, [...profile.args], {
+        cwd: profile.cwd,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, ...profile.environment },
+      })
+      if (!child.stdin || !child.stdout || !child.stderr) {
+        throw fail('STARTUP_FAILED', 'Fixture launcher pipes are unavailable.')
       }
-    }
-  }
+      handlers.onChild?.(child)
+      let stderrBytes = 0
+      const stderrLines: string[] = []
+      child.stderr.on('data', (chunk: Buffer) => {
+        stderrBytes += chunk.length
+        for (const line of chunk.toString('utf8').split(String.fromCharCode(10))) {
+          if (line.trim()) {
+            stderrLines.push(line.slice(0, 400))
+            if (stderrLines.length > 256) stderrLines.shift()
+          }
+        }
+      })
+      const exited = new Promise<number | null>((resolve) => {
+        child.once('exit', resolve)
+        child.once('error', () => resolve(null))
+      })
+      let stopping: Promise<Result<void>> | undefined
+      const stop = () =>
+        (stopping ??= (async () => {
+          child.kill()
+          let timeout: NodeJS.Timeout | undefined
+          const code = await Promise.race([
+            exited,
+            new Promise<null>((resolve) => {
+              timeout = setTimeout(() => resolve(null), Math.max(50, Math.min(profile.graceMs ?? 5000, 30000)) + 1500)
+            }),
+          ])
+          if (timeout) clearTimeout(timeout)
+          if (code === null) {
+            child.kill('SIGKILL')
+            await exited.catch(() => undefined)
+          }
+          return ok(undefined)
+        })())
+      return {
+        input: child.stdin,
+        output: child.stdout,
+        pid: child.pid ?? -1,
+        stop,
+        stderrBytes: () => stderrBytes,
+        stderrLines: () => [...stderrLines],
+        onExit: (fn: () => void) => {
+          void exited.then(fn)
+        },
+      }
+    }, 'STARTUP_FAILED')
 }
 
 export type NativeProfile = {

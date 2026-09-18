@@ -167,6 +167,7 @@ export class AgentStore {
     projectDirectory: string
     ownerMachineId: string
     profileId: string | null
+    profileRevision: string
     model: import('./types.js').ModelSelection
   }) {
     // ZK-015: host-side native session creation for a frozen zcode thread
@@ -187,7 +188,7 @@ export class AgentStore {
         nativeHomeIdentity: `${args.ownerMachineId}:default`,
       },
       profileId: args.profileId ?? 'zcode-primary',
-      profileRevision: 'r0',
+      profileRevision: args.profileRevision,
       controllerThreadId: args.threadId,
       state: 'unbound',
       model: args.model,

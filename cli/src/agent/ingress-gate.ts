@@ -132,7 +132,13 @@ export async function resolveIngressBackend(
 /** Ordinary messages (and sleep wakes / CLI-injected sends) on an existing session. */
 export function gateThreadMessage(backend: BackendId | null): IngressDecision {
   if (backend === 'zcode') {
-    return { kind: 'refuse', backend, reason: NATIVE_RUNTIME_UNAVAILABLE }
+    // ZK-015: with a live native coordinator the message flows through the
+    // coordinator admission; without one the visible refusal stands and
+    // OpenCode fallback remains prohibited.
+    if (!nativeCapability('message')) {
+      return { kind: 'refuse', backend, reason: NATIVE_RUNTIME_UNAVAILABLE }
+    }
+    return { kind: 'allow', backend }
   }
   return { kind: 'allow', backend }
 }

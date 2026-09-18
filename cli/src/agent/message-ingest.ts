@@ -270,6 +270,32 @@ export async function ingestScheduledMessage(
   return result
 }
 
+/**
+ * Read-only channel backend default (agent_backend_defaults) — consulted
+ * BEFORE any coordinator need so default-off (OpenCode) channels fall through
+ * with zero native side effects or writes.
+ */
+export async function agentChannelBackendDefault(
+  channelId: string,
+): Promise<{ backend: 'opencode' | 'zcode'; profileId: string | null } | null> {
+  const { getRawDbClient } = await import('../db.js')
+  const { libsqlSqlClient } = await import('./sql.js')
+  const client = libsqlSqlClient(await getRawDbClient())
+  const row = (
+    await client.execute({
+      sql: "SELECT backend_type, profile_id FROM agent_backend_defaults WHERE (scope_type='channel' AND scope_id=?) OR (scope_type='global' AND scope_id='global') ORDER BY CASE scope_type WHEN 'channel' THEN 0 ELSE 1 END LIMIT 1",
+      args: [channelId],
+    })
+  ).rows[0]
+  if (!row) {
+    return null
+  }
+  return {
+    backend: String(row.backend_type) === 'zcode' ? 'zcode' : 'opencode',
+    profileId: typeof row.profile_id === 'string' ? row.profile_id : null,
+  }
+}
+
 export type NativeThreadSession =
   | { kind: 'created'; sessionId: string }
   | { kind: 'existing'; sessionId: string }
@@ -291,8 +317,15 @@ export async function ensureNativeThreadSession(args: {
     const backend = await resolveBackend(lookupBackendSidecar, existing)
     return backend === 'zcode' ? { kind: 'existing', sessionId: existing } : { kind: 'not-native' }
   }
+  // Default-off first: an OpenCode channel falls through with no native
+  // writes and no coordinator construction (byte-identical baseline behavior).
+  const channelDefault = await agentChannelBackendDefault(args.channelId)
+  if (!channelDefault || channelDefault.backend !== 'zcode') {
+    return { kind: 'not-native' }
+  }
   const coordinator = await getNativeCoordinator()
   if (!coordinator) {
+    // The channel is native-configured but the runtime is off: visible.
     return { kind: 'offline' }
   }
   const intent = await coordinator.store.freezeIntent(args.threadId, args.channelId, 'global')
@@ -312,6 +345,7 @@ export async function ensureNativeThreadSession(args: {
     projectDirectory: args.projectDirectory,
     ownerMachineId: machineId,
     profileId,
+    profileRevision: profile.revision,
     model: profile.defaultModel,
   })
   await upsertThreadSession({ threadId: args.threadId, sessionId: session.id, source: 'kimaki' })

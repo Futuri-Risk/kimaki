@@ -18,6 +18,8 @@ import { getRawDbClient } from '../db.js'
 import { getOwnerMachineId } from './host-identity.js'
 import { resolveNativeProfile } from './native-profile.js'
 import { setNativeCapabilityProvider } from './ingress-gate.js'
+import type { LaunchProfile, OwnedRuntime } from './native/process.js'
+import type { Result } from './errors.js'
 import { getInteractionBridge } from './interaction-bridge.js'
 
 /**
@@ -29,6 +31,18 @@ import { getInteractionBridge } from './interaction-bridge.js'
 export const hostAuthorizer: Authorizer = (actorId, threadId, session) =>
   Promise.resolve(actorId.length > 0 && session.controllerThreadId === threadId)
 
+// ZK-015 test seam: e2e suites inject the plain-spawn fixture launcher so the
+// real backend can drive a spawned fake app-server on win32. Production never
+// sets it — the certified owned launcher stays the default.
+let runtimeLauncherOverride: ((profile: LaunchProfile) => Promise<Result<OwnedRuntime>>) | undefined
+
+export function setNativeRuntimeLauncherForTests(
+  launcher: ((profile: LaunchProfile) => Promise<Result<OwnedRuntime>>) | null,
+): void {
+  runtimeLauncherOverride = launcher ?? undefined
+  resetNativeCoordinator()
+}
+
 let coordinatorPromise: Promise<AgentCoordinator | null> | undefined
 
 async function buildCoordinator(): Promise<AgentCoordinator | null> {
@@ -38,7 +52,7 @@ async function buildCoordinator(): Promise<AgentCoordinator | null> {
   }
   const [client, machineId] = await Promise.all([getRawDbClient(), getOwnerMachineId()])
   const store = new AgentStore(serializeWrites(libsqlSqlClient(client)), machineId)
-  const backend = new ZcodeBackend(profile)
+  const backend = new ZcodeBackend(profile, runtimeLauncherOverride)
   const built = new AgentCoordinator(store, backend, hostAuthorizer)
   // ZK-009: the interaction bridge observes native events on its own read-only
   // tap (prompt rendering); answers come back through coordinator ingests.

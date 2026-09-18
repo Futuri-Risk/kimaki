@@ -71,7 +71,7 @@ import {
 } from './agent/ingress-gate.js'
 import { isZcodeSessionId } from './agent/registry.js'
 import { writerFenceRefusal } from './agent/workspace-fence.js'
-import { ingestNativeThreadMessage, setNativeDiscordClient } from './agent/message-ingest.js'
+import { ensureNativeThreadSession, ingestNativeThreadMessage, setNativeDiscordClient } from './agent/message-ingest.js'
 import {
   createDiscordInteractionPorts,
   setInteractionBridgePorts,
@@ -1165,6 +1165,48 @@ export async function startDiscordBot({
           if (worktreeResult instanceof Error) return
           const sessionDirectory = worktreeResult
 
+          // ZK-015: native channel — bind the new thread to a zc: session and
+          // admit the starter prompt through the coordinator (no OpenCode
+          // runtime). 'not-native' falls through to the OpenCode start below.
+          const nativeChannelStart = await ensureNativeThreadSession({
+            threadId: thread.id,
+            channelId: channel.id,
+            projectDirectory: sessionDirectory,
+          })
+          if (nativeChannelStart.kind === 'created' || nativeChannelStart.kind === 'existing') {
+            const nativeChannelIngest = await ingestNativeThreadMessage({
+              threadId: thread.id,
+              actorId: message.author.id,
+              text: (message.content ?? '').trim(),
+              source: 'discord',
+              sourceKey: message.id,
+              attachments: [...message.attachments.values()].map((attachment) => ({
+                filename: attachment.name,
+                mimeType: attachment.contentType || 'application/octet-stream',
+                url: attachment.url,
+              })),
+            })
+            if (nativeChannelIngest.kind === 'rejected') {
+              await thread.send({
+                content: `✗ Native session refused the prompt (${nativeChannelIngest.code}).`,
+                flags: NOTIFY_MESSAGE_FLAGS,
+              })
+            } else if (nativeChannelIngest.kind === 'offline') {
+              await thread.send({
+                content: '✗ The native runtime is not available right now.',
+                flags: NOTIFY_MESSAGE_FLAGS,
+              })
+            }
+            return
+          }
+          if (nativeChannelStart.kind === 'offline') {
+            await thread.send({
+              content: '✗ The native runtime is not available right now.',
+              flags: NOTIFY_MESSAGE_FLAGS,
+            })
+            return
+          }
+
           const channelRuntime = getOrCreateRuntime({
             threadId: thread.id,
             thread,
@@ -1489,6 +1531,52 @@ export async function startDiscordBot({
       const worktreeResult = worktreePromise ? await worktreePromise : undefined
       if (worktreeResult instanceof Error) return
       const sessionDirectory = cwdDirectory ?? worktreeResult ?? projectDirectory
+
+      // ZK-015: native thread start — freeze the backend intent and create the
+      // zc: session through the durable store, then admit the starter prompt
+      // through the same coordinator every message uses. No OpenCode runtime is
+      // constructed; 'not-native' falls through to the OpenCode start below.
+      const nativeStart = await ensureNativeThreadSession({
+        threadId: thread.id,
+        channelId: parent.id,
+        projectDirectory: sessionDirectory,
+      })
+      if (nativeStart.kind === 'created' || nativeStart.kind === 'existing') {
+        const attachments = [...starterMessage.attachments.values()].map((attachment) => ({
+          filename: attachment.name,
+          mimeType: attachment.contentType || 'application/octet-stream',
+          url: attachment.url,
+        }))
+        const nativeIngest = await ingestNativeThreadMessage({
+          threadId: thread.id,
+          actorId: marker.userId || starterMessage.author?.id || 'kimaki',
+          text: prompt,
+          source: marker.scheduledTaskRunId ? 'schedule' : 'cli',
+          sourceKey: marker.scheduledTaskRunId
+            ? `schedule-run:${marker.scheduledTaskRunId}`
+            : starterMessage.id,
+          attachments,
+        })
+        if (nativeIngest.kind === 'rejected') {
+          await thread.send({
+            content: `✗ Native session refused the prompt (${nativeIngest.code}).`,
+            flags: NOTIFY_MESSAGE_FLAGS,
+          })
+        } else if (nativeIngest.kind === 'offline') {
+          await thread.send({
+            content: '✗ The native runtime is not available right now.',
+            flags: NOTIFY_MESSAGE_FLAGS,
+          })
+        }
+        return
+      }
+      if (nativeStart.kind === 'offline') {
+        await thread.send({
+          content: '✗ The native runtime is not available right now.',
+          flags: NOTIFY_MESSAGE_FLAGS,
+        })
+        return
+      }
 
       const runtime = getOrCreateRuntime({
         threadId: thread.id,
