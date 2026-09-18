@@ -1,0 +1,65 @@
+{
+  "scope": "static-only",
+  "nativeExecutionPerformed": false,
+  "certified": false,
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "executable": "C:\\Program Files\\nodejs\\node.exe",
+  "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+  "entryPath": "~\\AppData\\Local\\Programs\\ZCode\\resources\\glm\\zcode.cjs",
+  "entrySha256": "da61b0663336a65f7cce3dec223678794ccaa58158e304fc0d97b695434a8f01",
+  "entryBytes": 11416833,
+  "packageEvidence": null,
+  "workspace": "C:\\Dev\\zk-n00-disposable",
+  "args": [
+    "~\\AppData\\Local\\Programs\\ZCode\\resources\\glm\\zcode.cjs",
+    "app-server"
+  ],
+  "launchProfile": {
+    "id": "platform-support",
+    "status": "BLOCKED",
+    "detail": "PLATFORM_UNCERTIFIED — Native Windows process supervision is not implemented; owned launch refuses by design (process.ts)."
+  },
+  "checks": [
+    {
+      "id": "paths-absolute",
+      "status": "PASS",
+      "detail": "Executable, entry and workspace paths are absolute."
+    },
+    {
+      "id": "paths-canonical",
+      "status": "PASS",
+      "detail": "Resolved paths are canonical; workspace realpath-equal."
+    },
+    {
+      "id": "workspace-separation",
+      "status": "PASS",
+      "detail": "Executable and entry live outside the task workspace."
+    },
+    {
+      "id": "fingerprints",
+      "status": "PASS",
+      "detail": "SHA-256 fingerprints recorded for executable and entry."
+    },
+    {
+      "id": "args-shape",
+      "status": "PASS",
+      "detail": "Supported launch form: <node> <entry> app-server."
+    },
+    {
+      "id": "environment-safe",
+      "status": "PASS",
+      "detail": "No dynamic-loader injection variables in profile environment."
+    },
+    {
+      "id": "platform-support",
+      "status": "BLOCKED",
+      "detail": "PLATFORM_UNCERTIFIED — Native Windows process supervision is not implemented; owned launch refuses by design (process.ts)."
+    }
+  ],
+  "staticInventory": "PASS",
+  "next": "Static inventory only. Certification requires the NATIVE_CERTIFICATION_CHECKLIST rows (captured sanitized traces + codec fixtures); paid rows N07+ additionally need recorded opt-in and cost limits. This report does not enable ZCode."
+}

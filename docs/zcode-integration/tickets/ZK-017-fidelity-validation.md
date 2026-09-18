@@ -1,7 +1,7 @@
 # ZK-017 — Direct vs Kimaki-bridged fidelity validation
 
 ## Status
-TODO
+BLOCKED — requires ZK-016 >=N07 (paid rows). Protocol below is ready to execute when the gates open; no runs performed. — ZCode 2026-09-18
 
 ## Objective
 Compare direct ZCode runs with Kimaki-bridged runs on matched binary/task/workspace/
@@ -34,10 +34,24 @@ Docs/evidence only (+ fixes if divergences found).
 N/A (evidence artifact).
 
 ## Evidence
-(to fill)
+None yet (blocked). Matched-pair protocol (agreed shape, executes only after ZK-016 >=N07):
+
+1. **One identical basis per pair:** same binary+entry hashes, same disposable repo
+   (fresh clone per side), same workspace path shape, same credentials/profile,
+   same model+effort (exact readback, no fallback), same preferences/mode.
+2. **Direct side:** run the task via the native CLI directly (zcode --prompt or
+   desktop), capturing terminal outcome + filesystem sentinel + usage readback.
+3. **Bridged side:** the same task through Kimaki (Discord message -> native turn),
+   same evidence captured from the bridge's durable records.
+4. **Task set:** 3-5 small sentinel tasks covering the certified rows only
+   (text turn, one tool action, one interaction if certified, one stop).
+5. **Comparison record:** per task, side-by-side outcome/files-changed/usage +
+   divergence list; every divergence is either fixed in the bridge or documented
+   as native semantics — never "fixed" by weakening the direct run.
+6. Evidence lands in `evidence/zk17-*.md` with capture dates and profile hashes.
 
 ## Blockers
 ZK-016 ≥N07; explicit opt-in.
 
 ## Completion notes
-(to fill)
+2026-09-18 (ZCode): protocol written, execution BLOCKED (see Status). This ticket cannot close until paid rows are certified — see PAID-ROWS-DECISION.md and CAPABILITY_MATRIX.md.

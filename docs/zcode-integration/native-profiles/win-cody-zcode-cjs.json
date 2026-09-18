@@ -1,0 +1,25 @@
+{
+  "profileId": "win-cody-zcode-cjs",
+  "status": "discovered-static-only",
+  "certified": false,
+  "allowSynthetic": false,
+  "capturedAt": "2026-09-18T19:40+10:00",
+  "discoveryMethod": "ZK-016 N00 static inventory (tools/doctor.mjs + manual --version probe); no native call by the doctor",
+  "host": { "platform": "win32", "arch": "x64", "node": "v24.15.0" },
+  "launch": {
+    "executable": "C:\\Program Files\\nodejs\\node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "~\\AppData\\Local\\Programs\\ZCode\\resources\\glm\\zcode.cjs",
+    "entrySha256": "da61b0663336a65f7cce3dec223678794ccaa58158e304fc0d97b695434a8f01",
+    "entryBytes": 11416833,
+    "args": ["<entryPath>", "app-server"],
+    "environment": {}
+  },
+  "versionEvidence": {
+    "entryVersion": "zcode 0.16.5",
+    "source": "manual node <entry> --version probe 2026-09-18 (doctor performs no launch)",
+    "bundleMeta": { "runtime": "electron-node", "platform": "win32-x64", "source": "apps/zcode-cli/packages/cli/dist/zcode.cjs" }
+  },
+  "nativeConfigHome": { "path": "~\\.zcode", "markers": ["cli", "v2", "workspace", "skills", "plugins"], "secretsRead": false },
+  "notes": "Private home paths redacted to ~ per evidence-manifest policy; hashes complete. Launch certification BLOCKED on win32 (PLATFORM_UNCERTIFIED — owned-process supervision unimplemented). Changing either hash invalidates this record."
+}

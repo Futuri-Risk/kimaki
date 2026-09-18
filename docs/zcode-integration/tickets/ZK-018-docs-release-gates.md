@@ -1,7 +1,7 @@
 # ZK-018 — Doctor/config/docs/release gates
 
 ## Status
-TODO
+DONE (local deliverables) 2026-09-18 — release-path EXECUTION decision remains with Cody (documented, not executed). — ZCode 2026-09-18
 
 ## Objective
 Ship the integration safely: doctor command (static, no paid probes), config/docs for
@@ -41,10 +41,15 @@ ZK-015 (and whatever capability state ZK-016 reached).
 Doctor command test (static fixtures).
 
 ## Evidence
-(to fill)
+- Doctor CLI: `kimaki zcode doctor` + `kimaki zcode status` registered (cli-commands/zcode.ts, cli.ts); smoke-tested against the built binary — status prints the default-off state, doctor reports certified=false with the win32 BLOCKED gate. Static tests: `cli/src/agent/native/doctor.test.ts` 7/7.
+- Docs: `USER-GUIDE.md` (opt-in/certified/Windows truth), `CAPABILITY_MATRIX.md`, `PAID-ROWS-DECISION.md`, `RELEASE-PATH.md`.
+- Changeset: `.changeset/zcode-native-default-off.md` (minor, default-off feature).
+- Capability visibility: with no profile registered, `zc:` routing, native interactions and `/btw` on native sessions refuse visibly (pinned by ZK-005/009/011 tests: ingress-gate, interaction-bridge, schema-gate suites); `zcode status` surfaces the OFF state on demand. No menu surface advertises native features while uncertified.
 
 ## Blockers
 Release-path execution needs Cody's decision (documented, not executed).
 
 ## Completion notes
-(to fill)
+2026-09-18 (ZCode): all local gates shipped. Open item for Cody: pick release
+path A/B/C in RELEASE-PATH.md (npm release vs dist-patch contract vs pinned
+custom release entry) — documented only, per ticket scope.
