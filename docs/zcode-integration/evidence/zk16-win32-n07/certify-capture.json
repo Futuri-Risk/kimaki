@@ -1,0 +1,431 @@
+{
+  "startedAt": "2026-09-19T01:55:51.553Z",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "C:/Program Files/nodejs/node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+    "entrySha256": "da61b0663336a65f7cce3dec223678794ccaa58158e304fc0d97b695434a8f01",
+    "args": [
+      "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "C:\\Users\\Cody",
+      "ZCODE_DATA_BASE_DIR": "C:\\Filen\\Reference\\Tech\\AI\\Claude\\ZCode Data",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "C:\\Users\\Cody\\AppData\\Local\\Programs\\ZCode\\resources\\config\\provider\\zcode-builtin.json"
+    },
+    "cwd": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-n07-1252"
+  },
+  "rows": {
+    "N07": {
+      "description": "first paid text/tool turn on a disposable sentinel task",
+      "task": {
+        "text": "zk16-n07 sentinel 1789782953543: create a file named SENTINEL-N07.txt containing exactly the word ok. Do nothing else.",
+        "unique": true,
+        "workspaceUnderTmp": true
+      },
+      "advertisedModel": {
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "options": {
+          "reasoningLevel": "max"
+        }
+      },
+      "send": {
+        "at": "2026-09-19T01:55:53.641Z",
+        "method": "session/send",
+        "params": {
+          "sessionId": "sess_67f43955-a463-4814-83ac-41402a1d02da",
+          "content": "zk16-n07 sentinel 1789782953543: create a file named SENTINEL-N07.txt containing exactly the word ok. Do nothing else."
+        },
+        "ms": 4,
+        "result": {
+          "accepted": true,
+          "sessionId": "sess_67f43955-a463-4814-83ac-41402a1d02da",
+          "stateRevision": 1
+        }
+      },
+      "turnCounted": true,
+      "settle": {
+        "sawTerminal": true,
+        "withinMs": 242
+      },
+      "readback": {
+        "at": "2026-09-19T01:55:53.885Z",
+        "method": "session/read",
+        "params": {
+          "sessionId": "sess_67f43955-a463-4814-83ac-41402a1d02da"
+        },
+        "ms": 104,
+        "result": {
+          "messages": [],
+          "projection": {
+            "activeToolCalls": [],
+            "backgroundJobs": [],
+            "contextUsed": 0,
+            "contextWindow": 200000,
+            "mode": "build",
+            "pendingPermissions": [],
+            "sessionId": "unknown",
+            "status": "idle",
+            "target": null,
+            "totalTokenCount": 0,
+            "turnCount": 0
+          },
+          "protocol": {
+            "name": "ZCode Protocol",
+            "version": 1
+          },
+          "runtime": {
+            "eventSeq": 0,
+            "pendingRequestIds": [],
+            "goalVerifications": [],
+            "goalVerificationTimeline": [],
+            "stateRevision": 1
+          },
+          "session": {
+            "createdAt": 1789782953406,
+            "mode": "build",
+            "model": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            },
+            "traceId": "9470e0d0-1ad3-477a-89a7-2691dd8bd2e7",
+            "sessionId": "sess_67f43955-a463-4814-83ac-41402a1d02da",
+            "sessionKind": "interactive",
+            "status": "idle",
+            "target": null,
+            "title": "",
+            "updatedAt": 1789782953640,
+            "workspace": {
+              "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-n07-1252",
+              "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-n07-1252"
+            }
+          },
+          "settings": {
+            "mode": {
+              "current": "build"
+            },
+            "model": {
+              "available": [
+                {
+                  "ref": {
+                    "providerId": "zai-api",
+                    "modelId": "GLM-5.3"
+                  },
+                  "label": "GLM-5.3",
+                  "providerLabel": "zai-api",
+                  "contextWindow": 200000,
+                  "maxOutputTokens": 128000,
+                  "reasoning": {
+                    "levels": [
+                      {
+                        "value": "low",
+                        "label": "low"
+                      },
+                      {
+                        "value": "high",
+                        "label": "high"
+                      },
+                      {
+                        "value": "max",
+                        "label": "max"
+                      }
+                    ],
+                    "defaultLevel": "max"
+                  },
+                  "properties": {
+                    "inputFormat": {
+                      "supportsText": true,
+                      "supportsImage": true,
+                      "supportsVideo": true,
+                      "supportsAudio": false,
+                      "supportsPdf": false
+                    },
+                    "outputFormat": {
+                      "supportsText": true
+                    }
+                  }
+                }
+              ],
+              "current": {
+                "providerId": "zai-api",
+                "modelId": "GLM-5.3",
+                "options": {
+                  "reasoningLevel": "max"
+                }
+              },
+              "lastUsed": {
+                "providerId": "zai-api",
+                "modelId": "GLM-5.3"
+              }
+            },
+            "permission": {
+              "mode": "build"
+            },
+            "thoughtLevel": {
+              "available": [
+                {
+                  "label": "low",
+                  "value": "low"
+                },
+                {
+                  "label": "high",
+                  "value": "high"
+                },
+                {
+                  "label": "max",
+                  "value": "max"
+                }
+              ],
+              "current": "max",
+              "enabled": true
+            }
+          },
+          "slashCommands": [
+            {
+              "description": "Show or set the current session goal.",
+              "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+              "name": "goal",
+              "source": "builtin"
+            },
+            {
+              "description": "Compact the current conversation with optional instructions.",
+              "inputHint": "/compact [instructions]",
+              "name": "compact",
+              "source": "builtin"
+            },
+            {
+              "description": "Create or update workspace AGENTS.md instructions.",
+              "inputHint": "/init [notes]",
+              "name": "init",
+              "source": "builtin"
+            },
+            {
+              "description": "Switch to Plan mode and optionally send a task.",
+              "inputHint": "/plan [task]",
+              "name": "plan",
+              "source": "builtin"
+            }
+          ],
+          "todos": [],
+          "todoGroups": []
+        }
+      },
+      "sentinel": {
+        "file": "SENTINEL-N07.txt",
+        "exists": false,
+        "workspaceFiles": []
+      }
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/create"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/send"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-2",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "state.updated"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/read"
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [
+    {
+      "at": 1789782953226,
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_67f43955-a463-4814-83ac-41402a1d02da",
+        "scope": "runtime-materialization"
+      }
+    },
+    {
+      "at": 1789782953640,
+      "id": "server-2",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_67f43955-a463-4814-83ac-41402a1d02da",
+        "scope": "user-execution"
+      }
+    }
+  ],
+  "notifications": [
+    {
+      "at": 1789782953138,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "ad7176fc-c2c7-4094-bf1b-ec1c11750246",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789782953142,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "ad7176fc-c2c7-4094-bf1b-ec1c11750246",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789782953148,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "ad7176fc-c2c7-4094-bf1b-ec1c11750246",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 8
+      }
+    },
+    {
+      "at": 1789782953149,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "ad7176fc-c2c7-4094-bf1b-ec1c11750246",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 10
+      }
+    },
+    {
+      "at": 1789782953149,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "ad7176fc-c2c7-4094-bf1b-ec1c11750246",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 10
+      }
+    },
+    {
+      "at": 1789782953641,
+      "method": "state.updated",
+      "params": {
+        "patch": {
+          "status": "running"
+        },
+        "reason": "prompt_started",
+        "revision": 1,
+        "scope": "session",
+        "sessionId": "sess_67f43955-a463-4814-83ac-41402a1d02da",
+        "type": "state.updated",
+        "workspace": {
+          "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-n07-1252",
+          "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-n07-1252"
+        }
+      }
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 44616
+  },
+  "client": {
+    "generation": "c177b5db-7f2f-4f18-a4c9-445c082ac9ba"
+  },
+  "sessionIdSource": "session/create (row-owned sentinel session)",
+  "stop": {
+    "ok": true,
+    "nativePid": 44616,
+    "nativePidLivenessAfterStop": "dead"
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}

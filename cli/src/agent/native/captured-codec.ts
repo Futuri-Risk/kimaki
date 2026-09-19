@@ -101,15 +101,24 @@ export function parseCapturedSnapshot(result: unknown, expectedSessionId: string
   }
 }
 
-/** Parse the advertised current model from settings.model. Grows with the N05
- * authenticated capture; refuses anything else instead of guessing the field. */
+/** Parse the advertised current model from settings.model. Captured 2026-09-19
+ * (authenticated catalog, fixtures/native-captured-zk16.json
+ * authenticatedModelSettings): current = {providerId, modelId,
+ * options?:{reasoningLevel}}. `revision` is a HOST-side change-detection value
+ * derived deterministically from the wire identity (not a wire field). */
 function parseCurrentModel(modelSettings: Record<string, unknown>): NativeSnapshot['model'] {
   const current = record(modelSettings.current)
+  const providerId = text(current.providerId, 'current model providerId')
+  const modelId = text(current.modelId, 'current model modelId')
+  const options = current.options === undefined ? undefined : record(current.options)
+  const reasoning = options?.reasoningLevel
   return {
-    providerId: text(current.providerId, 'current model providerId'),
-    modelId: text(current.modelId, 'current model modelId'),
-    ...(current.reasoning === undefined ? {} : { reasoning: text(current.reasoning) }),
-    revision: text(current.revision ?? modelSettings.revision ?? '', 'model revision'),
+    providerId,
+    modelId,
+    ...(reasoning === undefined
+      ? {}
+      : { reasoning: text(reasoning, 'current model reasoningLevel') }),
+    revision: `${providerId}/${modelId}${reasoning === undefined ? '' : `@${String(reasoning)}`}`,
   }
 }
 

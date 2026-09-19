@@ -12,7 +12,8 @@
     "notes": [
       "session/create result body is field-identical to the session/read result body on this profile (asserted at fixture generation time).",
       "projection.sessionId is the cosmetic value 'unknown' in every captured frame; true identity lives at result.session.sessionId (captured divergence #2).",
-      "the real server sends one reverse request session/requestRuntimePreferences after create (captured divergence #1)."
+      "the real server sends one reverse request session/requestRuntimePreferences after create (captured divergence #1).",
+      "2026-09-19: authenticated catalog captured after zcode login (effective config home ZCode Data/.zcode via setting.json dataBaseDir override; runner passes ZCODE_DATA_BASE_DIR). Advertised: zai-api GLM-5.3 (supportsImage true, reasoning levels low/high/max, default max)."
     ]
   },
   "sessionReadResult": {
@@ -213,5 +214,59 @@
     }
   },
   "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
-  "workspace": "C:\\Dev\\zk-n00-disposable"
+  "workspace": "C:\\Dev\\zk-n00-disposable",
+  "authenticatedModelSettings": {
+    "available": [
+      {
+        "ref": {
+          "providerId": "zai-api",
+          "modelId": "GLM-5.3"
+        },
+        "label": "GLM-5.3",
+        "providerLabel": "zai-api",
+        "contextWindow": 200000,
+        "maxOutputTokens": 128000,
+        "reasoning": {
+          "levels": [
+            {
+              "value": "low",
+              "label": "low"
+            },
+            {
+              "value": "high",
+              "label": "high"
+            },
+            {
+              "value": "max",
+              "label": "max"
+            }
+          ],
+          "defaultLevel": "max"
+        },
+        "properties": {
+          "inputFormat": {
+            "supportsText": true,
+            "supportsImage": true,
+            "supportsVideo": true,
+            "supportsAudio": false,
+            "supportsPdf": false
+          },
+          "outputFormat": {
+            "supportsText": true
+          }
+        }
+      }
+    ],
+    "current": {
+      "providerId": "zai-api",
+      "modelId": "GLM-5.3",
+      "options": {
+        "reasoningLevel": "max"
+      }
+    },
+    "lastUsed": {
+      "providerId": "zai-api",
+      "modelId": "GLM-5.3"
+    }
+  }
 }

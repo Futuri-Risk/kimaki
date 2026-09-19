@@ -89,6 +89,30 @@ for (let i = 0; i < process.argv.length - 1; i++) {
     environment[process.argv[i + 1].slice(0, eq)] = process.argv[i + 1].slice(eq + 1)
   }
 }
+// The owned runtime receives EXACTLY the environment it is handed (supervisor
+// replacement semantics — least privilege by design). N07 evidence proved a
+// bare 3-var env starves the agent CLI grandchild (it cannot resolve its home
+// or auth; protocol rows N01–N04 still pass), so the runner composes the
+// launch env as: curated safe host allowlist + explicit profile overrides.
+// Secrets never pass (denylist under any case variant), loader-injection vars
+// are excluded (verifyLaunch would refuse them anyway), and evidence records
+// only the explicit override deltas, never the base env.
+const HOST_ENV_ALLOWLIST = [
+  'ALLUSERSPROFILE', 'APPDATA', 'COMMONPROGRAMFILES', 'COMMONPROGRAMFILES(X86)', 'COMPUTERNAME',
+  'COMSPEC', 'DRIVERDATA', 'HOMEDRIVE', 'HOMEPATH', 'LOCALAPPDATA', 'NUMBER_OF_PROCESSORS',
+  'OS', 'PATH', 'PATHEXT', 'PROCESSOR_ARCHITECTURE', 'PROGRAMDATA', 'PROGRAMFILES',
+  'PROGRAMFILES(X86)', 'PROGRAMW6432', 'SESSIONNAME', 'SYSTEMDRIVE', 'SYSTEMROOT',
+  'TEMP', 'TMP', 'USERNAME', 'USERPROFILE', 'WINDIR',
+]
+const baseEnv = {}
+for (const [k, v] of Object.entries(process.env)) {
+  if (v === undefined) continue
+  const upper = k.toUpperCase()
+  if (!HOST_ENV_ALLOWLIST.includes(upper)) continue
+  if (/^(NODE_OPTIONS|NODE_PATH|LD_PRELOAD|LD_LIBRARY_PATH|DYLD_.*)$/i.test(k)) continue
+  baseEnv[k] = v
+}
+const launchEnvironment = { ...baseEnv, ...environment }
 
 if (!executable || !entryPath || !workspace || !outDir || !rows.length) {
   console.error(
@@ -237,7 +261,7 @@ const runtimeResult = await startOwnedRuntime({
   cwd: workspace,
   executableSha256: log.profile.executableSha256,
   entrySha256: log.profile.entrySha256,
-  environment,
+  environment: launchEnvironment,
   startupMs: 30000,
   graceMs: 5000,
 })
@@ -263,6 +287,22 @@ const client = new NativeClient({
   onRequest: async (id, method, params) => {
     push(log.reverseRequests, { at: Date.now(), id, method, params })
     log.envelopeLog.push({ dir: 'in', kind: 'request', id, method })
+    // Captured divergence fix (zk16): the runtime answers this reverse request
+    // at create AND at each execution materialization; refusing it stalls the
+    // turn (proven by the first N07 run — accepted but zero execution). Answer
+    // with the profile preferences exactly like the backend bridge does.
+    // Genuine interactions (permission/question/plan) are still refused and
+    // only captured until their rows add validated answering.
+    if (method === 'session/requestRuntimePreferences') {
+      return {
+        ok: true,
+        value: {
+          nativeSearchEnhancementsEnabled: false,
+          memoryEnabled: false,
+          askUserQuestionAutoResolutionEnabled: false,
+        },
+      }
+    }
     // Certification runner never auto-allows host requests — explicit refusal.
     return { ok: false, error: fail('HOST_REFUSED', `Certification runner refuses host request ${method}.`, 'control', 'none') }
   },
@@ -344,7 +384,7 @@ async function abruptContainmentProbe() {
       cwd: workspace,
       executableSha256: log.profile.executableSha256,
       entrySha256: log.profile.entrySha256,
-      environment,
+      environment: launchEnvironment,
       startupMs: 30000,
       graceMs: 5000,
     })
@@ -485,9 +525,9 @@ try {
         before.ok && before.value && typeof before.value === 'object' && before.value.settings
           ? before.value.settings.model
           : null
+      const hasCurrent = model && model.current && model.current.providerId
       const hasAvailable = model && Array.isArray(model.available) && model.available.length > 0
-      const hasCurrent = model && model.current && typeof model.current === 'object'
-      advertised = hasAvailable || hasCurrent ? model : null
+      advertised = hasCurrent || hasAvailable ? model : null
       pollTimeline.push({
         atMs: Date.now() - pollStarted,
         available: model && Array.isArray(model.available) ? model.available.length : 'missing',
@@ -496,23 +536,44 @@ try {
       if (advertised) break
       await sleep(1000)
     }
-    const beforeModel = before?.ok && before?.value?.model ? before.value.model : null
-    const selection = advertised ?? (beforeModel && beforeModel.providerId ? beforeModel : null)
-    if (selection) {
-      const providerId = selection.providerId ?? selection.current?.providerId
-      const modelId = selection.modelId ?? selection.current?.modelId
+    if (advertised) {
+      // Captured schema (bundle zod OKe/mo): {sessionId, model:{providerId,
+      // modelId, options?:{reasoningLevel}}, expectedRevision?,
+      // persistAsWorkspaceLastUsed} .strict() — runtimeModel is NOT part of
+      // the native protocol (checklist carried it over from the ACP layer).
+      const entry = advertised.current?.providerId
+        ? advertised.current
+        : advertised.available[0]
+      const ref = entry.ref ?? entry
+      const meta = advertised.available.find(
+        (a) => a.ref && a.ref.providerId === ref.providerId && a.ref.modelId === ref.modelId,
+      )
+      const reasoningLevel = meta?.reasoning?.defaultLevel ?? entry.options?.reasoningLevel
       const set = await call('N05', 'session/setModel', {
         sessionId,
-        model: { providerId, modelId },
-        runtimeModel: 'FULL_IF_REQUIRED',
+        model: {
+          providerId: ref.providerId,
+          modelId: ref.modelId,
+          ...(reasoningLevel ? { options: { reasoningLevel } } : {}),
+        },
         persistAsWorkspaceLastUsed: false,
       })
       const after = await call('N05', 'session/read', { sessionId })
+      const readbackModel =
+        after.result && after.result.settings ? after.result.settings.model : null
+      const exact =
+        readbackModel?.current?.providerId === ref.providerId &&
+        readbackModel?.current?.modelId === ref.modelId &&
+        (reasoningLevel
+          ? readbackModel?.current?.options?.reasoningLevel === reasoningLevel
+          : true)
       record('N05', {
         description: ALLOWED_ROWS.N05,
-        advertisedModel: redact(selection),
+        advertisedModel: redact(advertised),
+        requested: redact({ ...ref, ...(reasoningLevel ? { reasoningLevel } : {}) }),
         set,
         readback: after,
+        exactReadback: exact,
         pollTimeline,
       })
     } else {
@@ -577,32 +638,31 @@ try {
       read.ok && read.value && typeof read.value === 'object' && read.value.settings
         ? read.value.settings.model
         : null
-    const current = model && model.current && typeof model.current === 'object' ? model.current : null
-    return current && current.providerId && current.modelId
-      ? current
-      : model && Array.isArray(model.available) && model.available.length
-        ? model.available[0]
-        : null
+    const current = model && model.current && model.current.providerId ? model.current : null
+    if (current) return current
+    if (model && Array.isArray(model.available) && model.available.length) {
+      return model.available[0].ref ?? model.available[0]
+    }
+    return null
   }
 
   if (sessionId && rows.includes('N07')) {
-    const task = taskText ?? `zk16-n07 sentinel ${new Date().toISOString()}: create a file named SENTINEL-${Date.now()}.txt containing the single word ok. Do nothing else.`
+    const task = taskText ?? `zk16-n07 sentinel ${Date.now()}: create a file named SENTINEL-N07.txt containing exactly the word ok. Do nothing else.`
     const model = await advertisedModel()
     if (!model) {
       record('N07', {
         description: PAID_ROWS.N07,
         notRun: 'MODEL_UNAVAILABLE',
-        detail: 'no current/advertised model for this session — provider access must be materialized for the headless profile first (see evidence/zk16-auth-probe.md). No turn spent.',
+        detail: 'no current/advertised model for this session. No turn spent.',
       })
     } else {
-      const send = await call('N07', 'session/send', {
-        sessionId,
-        content: task,
-        runtimeModel: 'FULL_IF_REQUIRED',
-      })
+      // Captured schema (bundle zod TKe): {sessionId, content, ...}.strict() —
+      // no runtimeModel key exists on the native protocol (divergence vs the
+      // checklist/ACP vocabulary, recorded in the matrix).
+      const send = await call('N07', 'session/send', { sessionId, content: task })
       const accepted = send && send.result && send.result.accepted === true
       if (accepted) await countModelTurn('N07')
-      // Bounded capture window: stream events + settle, then read back.
+      // Bounded capture window: wait for the turn to settle, then read back.
       const settleStart = Date.now()
       const sawTerminal = await until(async () => {
         const r = await client.request('session/read', { sessionId })
@@ -616,8 +676,17 @@ try {
           Array.isArray(r.value.runtime.pendingRequestIds) &&
           r.value.runtime.pendingRequestIds.length === 0
         )
-      }, 60000, 1000)
+      }, 120000, 1000)
       const readback = await call('N07', 'session/read', { sessionId })
+      const fs = await import('node:fs')
+      const sentinel = path.join(workspace, 'SENTINEL-N07.txt')
+      const sentinelAfter = await fs.promises
+        .readFile(sentinel, 'utf8')
+        .then((t) => ({ exists: true, content: t.trim() }))
+        .catch(() => ({ exists: false }))
+      const listing = await fs.promises
+        .readdir(workspace)
+        .then((files) => files.filter((f) => !f.startsWith('.')))
       record('N07', {
         description: PAID_ROWS.N07,
         task: { text: task, unique: true, workspaceUnderTmp: true },
@@ -626,9 +695,100 @@ try {
         turnCounted: Boolean(accepted),
         settle: { sawTerminal, withinMs: Date.now() - settleStart },
         readback,
-        sentinelCheck: { note: 'filesystem diff of the sentinel workspace is captured separately below', workspace: workspace },
+        sentinel: { file: 'SENTINEL-N07.txt', ...sentinelAfter, workspaceFiles: listing },
       })
     }
+  }
+
+  if (sessionId && rows.includes('N16')) {
+    // Same SID after clean restart - config-only (no model turn): capture the
+    // session state from the current connection, stop the owned process
+    // gracefully, launch a fresh runtime + NEW client generation, resume the
+    // SAME sessionId, and verify identity/model/workspace + resubscribe using
+    // the saved cursor.
+    const before = await client.request('session/read', { sessionId })
+    const modelBefore =
+      before.ok && before.value && before.value.settings ? before.value.settings.model : null
+    const sub = await client.request('session/subscribe', {
+      sessionId,
+      deliveryKind: 'desktop-continuous',
+      includeSnapshot: true,
+      afterSeq: 0,
+    })
+    const cursor = sub.ok && sub.value ? sub.value.eventSeq : null
+    log.rows.N16 = { stage: 'pre-restart', sessionId, cursor, model: redact(modelBefore) }
+    const stopA = await runtime.stop()
+    await sleep(500)
+    const second = await startOwnedRuntime({
+      executable,
+      entryPath,
+      args: [entryPath, 'app-server'],
+      cwd: workspace,
+      executableSha256: log.profile.executableSha256,
+      entrySha256: log.profile.entrySha256,
+      environment: launchEnvironment,
+      startupMs: 30000,
+      graceMs: 5000,
+    })
+    if (!second.ok) {
+      log.rows.N16.stage2 = { launchFailed: second.error.code }
+    } else {
+      const client2 = new NativeClient({
+        input: second.value.input,
+        output: second.value.output,
+        timeoutMs,
+        onNotification: (method, params) => {
+          push(log.notifications, { at: Date.now(), method, params, gen: 2 })
+          log.envelopeLog.push({ dir: 'in', kind: 'notification', method, gen: 2 })
+        },
+        onRequest: async (id, method, params) => {
+          push(log.reverseRequests, { at: Date.now(), id, method, params, gen: 2 })
+          if (method === 'session/requestRuntimePreferences') {
+            return {
+              ok: true,
+              value: {
+                nativeSearchEnhancementsEnabled: false,
+                memoryEnabled: false,
+                askUserQuestionAutoResolutionEnabled: false,
+              },
+            }
+          }
+          return { ok: false, error: fail('HOST_REFUSED', `Certification runner refuses host request ${method}.`, 'control', 'none') }
+        },
+        onDisconnect: () => {},
+      })
+      const W = { workspacePath: workspace, workspaceKey: workspace }
+      const resume = await client2.request('session/resume', { sessionId, workspace: W })
+      const resumedOk = resume.ok && resume.value ? resume.value : null
+      const resumedId = resumedOk
+        ? (resumedOk.session && resumedOk.session.sessionId) || resumedOk.sessionId || null
+        : null
+      const read2 = await client2.request('session/read', { sessionId })
+      const model2 =
+        read2.ok && read2.value && read2.value.settings ? read2.value.settings.model : null
+      const sub2 = await client2.request('session/subscribe', {
+        sessionId,
+        deliveryKind: 'desktop-continuous',
+        includeSnapshot: false,
+        afterSeq: cursor ?? 0,
+      })
+      const list2 = await client2.request('session/list', { workspace: W, includeArchived: false, limit: 10 })
+      log.rows.N16.stage2 = {
+        stop: stopA.ok ? { ok: true } : { error: stopA.error.toJSON() },
+        resume: redact(resume.ok ? { keys: Object.keys(resumedOk || {}) } : resume.error.toJSON()),
+        sameSidResumed: resumedId === sessionId,
+        readbackModelMatches: JSON.stringify(redact(model2)) === JSON.stringify(redact(modelBefore)),
+        resubscribeWithSavedCursor: redact(sub2.ok ? { eventSeq: (sub2.value && sub2.value.eventSeq) || null } : sub2.error.toJSON()),
+        listContainsSession: redact(list2.ok ? list2.value : list2.error.toJSON()),
+        newGeneration: client2.generation,
+        oldGeneration: client.generation,
+      }
+      client2.dispose()
+      const reap = await second.value.stop()
+      log.rows.N16.stage2.stop2 = reap.ok ? { ok: true } : { error: reap.error.toJSON() }
+      log.rows.N16.stage2.newPidLivenessAfterStop = alive(second.value.pid) ? 'ALIVE' : 'dead'
+    }
+    record('N16', log.rows.N16)
   }
 
   for (const [row, reason] of [
@@ -640,7 +800,6 @@ try {
     ['N13', 'requires session/compact response capture (paid turn needed first to have context to compact)'],
     ['N14', 'requires a captured v4/conversation/rowsRange page schema (forkPoint codec fails closed today)'],
     ['N15', 'requires an advertised image-capable model and the captured attachment schema'],
-    ['N16', 'requires resume capture; depends on a completed paid session from N07-class runs'],
     ['N17', 'requires controlled ACK-drop capture; depends on N16 state'],
   ]) {
     if (rows.includes(row) && !log.rows[row]) {

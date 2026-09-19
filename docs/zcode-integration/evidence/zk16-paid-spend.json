@@ -1,0 +1,8 @@
+{
+  "totalTurns": 3,
+  "perRow": {
+    "N07": 3
+  },
+  "updatedAt": "2026-09-19T01:55:53.644Z",
+  "note": "Certification spend ledger (model turns per paid row). N07 entries are ACCEPTED session/send attempts; all three executed ZERO inference (turnCount 0, contextUsed 0, no model-io rollout, no Turn started log) - count kept conservatively per accepted-send. Cap is binding: N07 hard-refused until the operator amends the ledger."
+}

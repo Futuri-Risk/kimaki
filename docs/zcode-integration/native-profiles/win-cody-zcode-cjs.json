@@ -1,25 +1,54 @@
 {
   "profileId": "win-cody-zcode-cjs",
-  "status": "free-rows-captured-N01-N04-N18-win32; N05 AUTH_REQUIRED (headless login, evidence/zk16-auth-probe.md); paid gate mechanical (RECORDED + --paid-optin-recorded + caps)",
+  "status": "free-rows-captured-N01-N05-N18-win32; N07 BLOCKED-CAP (3 accepted sends, zero inference - launch-profile delta vs desktop under diagnosis); paid gate mechanical",
   "certified": false,
   "allowSynthetic": false,
   "capturedAt": "2026-09-18T19:40+10:00",
   "discoveryMethod": "ZK-016 N00 static inventory (tools/doctor.mjs + manual --version probe); no native call by the doctor",
-  "host": { "platform": "win32", "arch": "x64", "node": "v24.15.0" },
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
   "launch": {
     "executable": "C:\\Program Files\\nodejs\\node.exe",
     "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
     "entryPath": "~\\AppData\\Local\\Programs\\ZCode\\resources\\glm\\zcode.cjs",
     "entrySha256": "da61b0663336a65f7cce3dec223678794ccaa58158e304fc0d97b695434a8f01",
     "entryBytes": 11416833,
-    "args": ["<entryPath>", "app-server"],
-    "environment": { "HOME": "<home>", "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "<desktop>/resources/config/provider/zcode-builtin.json" }
+    "args": [
+      "<entryPath>",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "<home>",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "<desktop>/resources/config/provider/zcode-builtin.json"
+    }
   },
   "versionEvidence": {
     "entryVersion": "zcode 0.16.5",
     "source": "manual node <entry> --version probe 2026-09-18 (doctor performs no launch)",
-    "bundleMeta": { "runtime": "electron-node", "platform": "win32-x64", "source": "apps/zcode-cli/packages/cli/dist/zcode.cjs" }
+    "bundleMeta": {
+      "runtime": "electron-node",
+      "platform": "win32-x64",
+      "source": "apps/zcode-cli/packages/cli/dist/zcode.cjs"
+    }
   },
-  "nativeConfigHome": { "path": "~\\.zcode", "markers": ["cli", "v2", "workspace", "skills", "plugins"], "secretsRead": false },
-  "notes": "Private home paths redacted to ~ per evidence-manifest policy; hashes complete. Windows owned launch is SUPERVISED since ZK-016 2026-09-18 (job-object keeper); N01-N04 captured on both win32 and WSL2 Linux (WSL pins its own node v24.15.0 tarball runtime). Environment discovery: the app-server exits without ZCODE_BUILTIN_PROVIDER_CONFIG_FILE and needs HOME. Changing either hash invalidates this record."
+  "nativeConfigHome": {
+    "path": "~\\.zcode",
+    "markers": [
+      "cli",
+      "v2",
+      "workspace",
+      "skills",
+      "plugins"
+    ],
+    "secretsRead": false
+  },
+  "notes": "Private home paths redacted to ~ per evidence-manifest policy; hashes complete. Windows owned launch is SUPERVISED since ZK-016 2026-09-18 (job-object keeper); N01-N04 captured on both win32 and WSL2 Linux (WSL pins its own node v24.15.0 tarball runtime). Environment discovery: the app-server exits without ZCODE_BUILTIN_PROVIDER_CONFIG_FILE and needs HOME. Changing either hash invalidates this record.",
+  "environmentOverrides2026_09_19": {
+    "ZCODE_DATA_BASE_DIR": "<Filen>/Reference/Tech/AI/Claude/ZCode Data",
+    "why": "auth/provider store (v2) resolves via ZCODE_DATA_BASE_DIR; setting.json dataBaseDir holds the same value (bundle appends .zcode). The CLI session store is NOT redirected (~/.zcode/cli/db/db.sqlite).",
+    "runnerEnvPolicy": "certify.mjs composes launch env = curated safe host allowlist + explicit overrides; secrets excluded"
+  }
 }

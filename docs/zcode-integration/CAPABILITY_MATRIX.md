@@ -8,47 +8,46 @@ a profile flips to certified only when its row passes with captured evidence.
 Statuses: PASS (captured evidence + regression fixture) · PARTIAL (implemented,
 gated) · BLOCKED (gate named) · NOT RUN.
 
-Machine context (2026-09-18, evening): win32-x64 primary host + Linux (WSL2
-Ubuntu). Owned-process supervision exists on BOTH platforms: POSIX session
-groups, and Windows job-object containment via a PowerShell keeper
-(`cli/src/agent/native/supervisor.ts`, drills in `supervision-win32.test.ts`).
+Machine context (2026-09-19): win32-x64 primary host + Linux (WSL2 Ubuntu).
 Launch profile: `native-profiles/win-cody-zcode-cjs.json` (node v24.15.0 +
-desktop bundle zcode.cjs 0.16.5, `app-server`). The profile environment must
-carry `ZCODE_BUILTIN_PROVIDER_CONFIG_FILE` (and `HOME`) — discovered in N01.
-Paid-row gate is now MECHANICAL: `tools/certify.mjs` refuses paid rows unless
-the RECORDED 2026-09-18 section exists in PAID-ROWS-DECISION.md AND the run
-passes `--paid-optin-recorded`; caps (≤3 turns/row, ≤30 total) are enforced
-against the persistent ledger `evidence/zk16-paid-spend.json`. **Paid turns
-spent so far: 0.**
+desktop bundle zcode.cjs 0.16.5, `app-server`). Effective config home is SPLIT:
+auth/provider store resolves via `ZCODE_DATA_BASE_DIR` → `ZCode Data\.zcode\v2`
+(fresh credential 2026-09-19 11:30, Cody login; the `~\.zcode\v2\setting.json`
+`dataBaseDir` value is the base — the bundle appends `.zcode`), while the CLI
+session store stays at `~\.zcode\cli\db\db.sqlite` (NOT redirected). Paid-row
+gate is mechanical: RECORDED section + `--paid-optin-recorded` + caps
+(≤3/row, ≤30 total) against `evidence/zk16-paid-spend.json`.
 
 | Row | Capability | win32 | linux (WSL2) | Evidence / gate |
 |---|---|---|---|---|
-| N00 | Static inventory / doctor | **PASS** (static checks; launch now supervised) | **PASS** (WSL node24 pinned runtime) | `evidence/zk16-n00-*`; `evidence/zk16-{linux,win32}/certify-capture.json` |
-| N01 | Startup/readiness (read-only) | **PASS** | **PASS** | `evidence/zk16-win32-free2/`, `evidence/zk16-linux-free2/` — real session/list over owned private stdio |
-| N02 | Create + durable bind | **PASS** | **PASS** | Real `session/create` → `sess_*` id, full snapshot schema (messages/projection/protocol/runtime/session/settings/slashCommands/todos/todoGroups) |
-| N03 | Read state | **PASS** | **PASS** | Real `session/read` schema captured both OSes |
-| N04 | Subscribe before first task | **PASS** | **PASS** | Legacy cursor `{eventSeq:0}` + V4 ack `{ack:{subscriptionId, logEpoch, mode:snapshot}}` + `v4/conversation/frame` (wireVersion 3) observed |
-| N05 | Model/reasoning readback | BLOCKED (AUTH_REQUIRED — headless login) | BLOCKED (no WSL credential) | Probed, not assumed: existing Sep-3 home credential AND fresh desktop credential both yield `settings.model.available: []` in headless app-server (12s poll, both surfaces); no provider-materialization RPC exists in bundle 0.16.5. Full record + exact manual step: `evidence/zk16-auth-probe.md` |
-| N06 | Third-party registry | NOT RUN (out of scope per RECORDED opt-in) | NOT RUN | Also: `workspace/updateProviderRegistry` does not exist in bundle 0.16.5 — needs its own certification flow on a later bundle |
-| N07 | First paid text/tool turn | BLOCKED (N05 auth) — gate+driver READY | BLOCKED (N05 auth) | `tools/certify.mjs --rows N07 --paid-optin-recorded` verified end to end on a temp sentinel workspace: refuses without flag/sentinel-repo/RECORDED; with gates open records `MODEL_UNAVAILABLE` and spends NO turn (`evidence/zk16-paid-gate-dryrun/`) |
-| N08–N14, N16–N17 | Interactions/controls/fork/restart | BLOCKED (behind N07 + captured interaction/fork schemas) | BLOCKED | Runner records `CAPTURE_SCHEMA_PENDING` per row; codec fails closed (captured-codec.ts) until each shape is captured |
-| N15 | Image byte + resume retention | NOT RUN | NOT RUN | Only if an image-capable model is advertised after N05 (`imageCapability: false` until certified) |
-| N18 | Unsubscribe + shutdown | **PASS** | PARTIAL | win32 (`evidence/zk16-win32-free2/`): `v4/conversation/unsubscribe` → `{}`; graceful stop confirmed native-pid-dead; abrupt supervisor kill → keeper containment treeDown=true. linux (`evidence/zk16-linux-free2/`): unsubscribe `{}` + graceful PASS; abrupt leg exposed a real POSIX gap — brutal supervisor death ORPHANS the native tree (no PDEATHSIG/keeper); probe recorded `orphanedNativeTree` + cleaned up in-evidence. Follow-up: Linux launch-profile hardening (PDEATHSIG/setpriv wrapper) before Linux production claims. Both captures note 1 in-flight `deliveryKind:"initial"` frame post-unsubscribe (recorded as-is) |
+| N00 | Static inventory / doctor | **PASS** | **PASS** | `evidence/zk16-n00-*`; certify captures |
+| N01 | Startup/readiness | **PASS** | **PASS** | `evidence/zk16-win32-free2/`, `zk16-linux-free2/` |
+| N02 | Create + durable bind | **PASS** | **PASS** | Real `session/create` → `sess_*`, full snapshot schema |
+| N03 | Read state | **PASS** | **PASS** | Real `session/read` schema both OSes |
+| N04 | Subscribe before first task | **PASS** | **PASS** | Legacy cursor + V4 ack `{ack:{subscriptionId, logEpoch, mode}}` + frames (wireVersion 3) |
+| N05 | Model/reasoning readback | **PASS** | NOT RUN (no WSL credential) | `evidence/zk16-win32-n05/`: catalog resolves (zai-api GLM-5.3, reasoning low/high/max default max, **supportsImage true**); setModel `{sessionId, model:{providerId, modelId, options:{reasoningLevel}}, persistAsWorkspaceLastUsed}` → exact readback. Divergence: checklist's `runtimeModel` param does NOT exist in bundle 0.16.5 (`.strict()` → -32602); captured 2026-09-19 |
+| N06 | Third-party registry | NOT RUN (out of scope; method absent in bundle) | NOT RUN | matrix |
+| N07 | First paid text/tool turn | **BLOCKED (CAP_EXCEEDED)** — 3/3 accepted sends, ZERO inference each | BLOCKED (behind win32) | `evidence/zk16-win32-n07/` + ledger. Three distinct hypotheses tried (refused requestRuntimePreferences → answered it; bare env → merged safe host env allowlist); identical signature every time: `accepted:true`, turn dies <300ms, turnCount 0, no model-io rollout. Desktop-vs-headless launch deltas: `--stdio --surface desktop` args, Electron runtime, env details. Needs operator decision before any further send |
+| N08–N12, N14, N15, N17 | Interactions/controls/fork/image/failure-restart | NOT RUN (behind N07; drivers fail closed until their shapes are captured) | NOT RUN | `evidence/zk16-win32-paid-gates/` — every row records CAPTURE_SCHEMA_PENDING with its named prerequisite. N15 note: image IS advertised (`supportsImage: true`) so the row is runnable once turns execute |
+| N13 | Idle native compact | NOT RUN (needs prior turn context) | NOT RUN | behind N07 |
+| N16 | Same SID after clean restart | NOT RUN (needs a sent session) | NOT RUN | `evidence/zk16-win32-n16/`: captured DEFERRED-PERSISTENCE discovery — a config-only session is never persisted (resume → -32004, list omits it); N16 requires a session with an executed turn (post-N07). Turn-free row otherwise |
+| N18 | Unsubscribe + shutdown | **PASS** | PARTIAL | win32: unsubscribe `{}` + graceful dead + abrupt keeper containment treeDown=true. linux: unsubscribe+graceful PASS; abrupt supervisor kill ORPHANS the native tree (no PDEATHSIG/keeper) — recorded with in-evidence cleanup; Linux hardening is a named follow-up |
 
-Captured divergences (codec fixtures landed this evening): identity is read
-from `result.session.sessionId` only — `projection.sessionId` is the cosmetic
-value `"unknown"` in every captured frame; the reverse
-`session/requestRuntimePreferences {sessionId, scope:"runtime-materialization"}`
-(string server id) after create is answered by the bridge from profile
-preferences. Pinned by `fixtures/native-captured-zk16.json` +
-`captured-codec.ts` + 8/8 tests in `captured-codec.test.ts`.
+Captured divergences (all pinned in `fixtures/native-captured-zk16.json` +
+`captured-codec.ts`, 10/10 tests):
+1. identity from `result.session.sessionId` only (`projection.sessionId` is the
+   cosmetic `"unknown"` in every frame);
+2. reverse `session/requestRuntimePreferences` at create AND at every execution
+   materialization — the bridge must answer it from profile preferences
+   (refusal = accepted turns execute nothing, proven by N07 run 1);
+3. `session/setModel`/`session/send` carry NO `runtimeModel` key on the native
+   protocol (checklist vocabulary came from the ACP layer; `.strict()` rejects
+   it).
 
-Known open items: N05 headless login (the single manual step, see
-`evidence/zk16-auth-probe.md`); paid rows N07+ after that, in checklist order,
-under the mechanical caps; Linux abrupt-stop containment hardening; upstream
-0.29.0 rebase deliberately deferred until after certification.
+Paid-turn ledger: **3 accepted sends, 0 executed inference** (N07 3/3 — at cap,
+hard stop verified: the runner exits 2 CAP_EXCEEDED). 30-turn budget: 3
+accepted / 27 unspent.
 
-Resolved this evening: the lifecycle.test.ts win32 "stall" was the harness
-never creating the fixture repo directory (`verifyLaunch` realpath ENOENT
-before any scenario) — fixed in `test-harness.ts`; suite is 7/7 on win32.
-— ZCode session zk016-paid-cert-1, 2026-09-18
+Next: operator decision on the N07 execution blocker (desktop-vs-headless
+launch delta) before any further paid send; then N07 → N18 in checklist order.
+— ZCode session zk016-paid-cert-1, 2026-09-19

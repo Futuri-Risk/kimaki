@@ -27,8 +27,36 @@ type Fixture = {
   sessionReadResult: Record<string, unknown>
   reverseRequestFrame: { id: string; method: string; params: Record<string, unknown> }
   v4SubscribeResult: { ack: Record<string, unknown> }
+  authenticatedModelSettings: Record<string, unknown>
 }
 const fixture: Fixture = await readFile(fixtureUrl, 'utf8').then(JSON.parse)
+
+describe('authenticated catalog (captured 2026-09-19 after zcode login)', () => {
+  const authed = {
+    ...fixture.sessionReadResult,
+    settings: {
+      ...(fixture.sessionReadResult as { settings: Record<string, unknown> }).settings,
+      model: fixture.authenticatedModelSettings,
+    },
+  }
+
+  test('snapshot parses the authenticated current model with derived revision', () => {
+    const snap = capturedCodec.snapshot(authed, fixture.sessionId)
+    assert.equal(snap.model.providerId, 'zai-api')
+    assert.equal(snap.model.modelId, 'GLM-5.3')
+    assert.equal(snap.model.reasoning, 'max')
+    assert.equal(snap.model.revision, 'zai-api/GLM-5.3@max')
+    assert.equal(snap.sessionId, fixture.sessionId)
+    assert.equal(snap.foreground, null)
+  })
+
+  test('unauthenticated shape still refuses with MODEL_UNADVERTISED (both captures pinned)', () => {
+    assert.throws(
+      () => capturedCodec.snapshot(fixture.sessionReadResult, fixture.sessionId),
+      (e: { code: string }) => e.code === 'MODEL_UNADVERTISED',
+    )
+  })
+})
 
 describe('captured divergence #2 — projection.sessionId is never identity', () => {
   test('createdSessionId reads result.session.sessionId from the captured create body', () => {
