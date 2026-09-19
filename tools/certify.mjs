@@ -276,6 +276,23 @@ const runtime = runtimeResult.value
 log.launch = { ok: true, pid: runtime.pid }
 runtime.onExit(() => client.disconnect())
 let disconnected = null
+// N08 machinery: what the runner does when the runtime asks permission.
+// 'refuse' (default, captured-not-answered) | 'deny' | 'allow' (allow-once).
+let permissionPolicy = 'refuse'
+// Captured answer schema (bundle 0.16.5 zod jL): {decision:
+// 'allow'|'deny'|'escalate'|'modify', reason?, modifiedInput?, permissionUpdates?}
+// .strict() — extra keys are refused by the runtime. Omitted permissionUpdates
+// is what makes an 'allow' answer allow-ONCE (no persistent grant recorded).
+const PERMISSION_DECISIONS = new Set(['allow', 'deny', 'escalate', 'modify'])
+function validatePermissionAnswer(answer) {
+  if (!answer || typeof answer !== 'object' || Array.isArray(answer)) return 'answer must be an object'
+  for (const k of Object.keys(answer)) {
+    if (!['decision', 'reason', 'modifiedInput', 'permissionUpdates'].includes(k)) return `unknown key '${k}' (schema is strict)`
+  }
+  if (!PERMISSION_DECISIONS.has(answer.decision)) return "decision must be 'allow'|'deny'|'escalate'|'modify'"
+  if (answer.reason !== undefined && typeof answer.reason !== 'string') return 'reason must be a string when present'
+  return null
+}
 const client = new NativeClient({
   input: runtime.input,
   output: runtime.output,
@@ -302,6 +319,27 @@ const client = new NativeClient({
           askUserQuestionAutoResolutionEnabled: false,
         },
       }
+    }
+    if (method === 'interaction/requestPermission') {
+      // Captured request shape (bundle zod): {input, reason, requestId,
+      // riskLevel, sessionId, origin?, options[{optionId,label,kind}],
+      // toolCallId, toolName, turnId}. Answered only when a driver sets the
+      // policy; answered ONCE per request (allow = allow-ONCE, no
+      // permissionUpdates → no persistent grant ever recorded).
+      log.permissionRequests = log.permissionRequests || []
+      push(log.permissionRequests, { at: Date.now(), params })
+      if (permissionPolicy === 'allow' || permissionPolicy === 'deny') {
+        const answer = {
+          decision: permissionPolicy,
+          reason: `ZK-016 N08 ${permissionPolicy === 'allow' ? 'allow-once' : 'denial'} leg — disposable sentinel workspace, RECORDED 2026-09-18 opt-in`,
+        }
+        const invalid = validatePermissionAnswer(answer)
+        if (invalid) {
+          return { ok: false, error: fail('ANSWER_INVALID', `Refusing to send invalid permission answer: ${invalid}`, 'control', 'none') }
+        }
+        return { ok: true, value: answer }
+      }
+      return { ok: false, error: fail('HOST_REFUSED', 'Certification runner refuses permission request (policy=refuse; captured only).', 'control', 'none') }
     }
     // Certification runner never auto-allows host requests — explicit refusal.
     return { ok: false, error: fail('HOST_REFUSED', `Certification runner refuses host request ${method}.`, 'control', 'none') }
@@ -633,11 +671,22 @@ try {
   // capExceeded; the runner then records CAP_EXCEEDED and exits hard (finally
   // block still stops the owned process cleanly).
   const advertisedModel = async () => {
-    const read = await client.request('session/read', { sessionId })
-    const model =
-      read.ok && read.value && typeof read.value === 'object' && read.value.settings
-        ? read.value.settings.model
-        : null
+    // Catalog populates asynchronously after create (observed 2-10s on
+    // bundle 0.16.9); a single read races it and reports MODEL_UNAVAILABLE.
+    // Poll bounded — config-only reads, no inference.
+    let model = null
+    for (let i = 0; i < 20 && !model; i++) {
+      const read = await client.request('session/read', { sessionId })
+      model =
+        read.ok && read.value && typeof read.value === 'object' && read.value.settings
+          ? read.value.settings.model
+          : null
+      const hasCurrent = model && model.current && model.current.providerId
+      const hasAvailable = model && Array.isArray(model.available) && model.available.length
+      if (hasCurrent || hasAvailable) break
+      model = null
+      await sleep(1000)
+    }
     const current = model && model.current && model.current.providerId ? model.current : null
     if (current) return current
     if (model && Array.isArray(model.available) && model.available.length) {
@@ -659,24 +708,48 @@ try {
       // Captured schema (bundle zod TKe): {sessionId, content, ...}.strict() —
       // no runtimeModel key exists on the native protocol (divergence vs the
       // checklist/ACP vocabulary, recorded in the matrix).
+      // N07 runs with allow-once answering so the sentinel write can complete;
+      // the deny leg is N08's row (checklist order: N07 turn, N08 deny/allow).
+      const permAtStart = (log.permissionRequests || []).length
+      permissionPolicy = 'allow'
       const send = await call('N07', 'session/send', { sessionId, content: task })
       const accepted = send && send.result && send.result.accepted === true
       if (accepted) await countModelTurn('N07')
       // Bounded capture window: wait for the turn to settle, then read back.
+      // IMPORTANT (2026-09-19 dead-on-arrival cluster fix): the projection
+      // LAGS the accepted send by ~1-3s (status stays 'idle', turnCount 0
+      // while context_initialization runs). Reading it immediately yields a
+      // FALSE terminal — the runner then fires the next send into a live turn
+      // ('active prompt exists') and stops the runtime mid-turn, killing it
+      // in infancy (zero inference, no model-io). Stage 1: wait for liveness
+      // (status 'running' or turnCount >= 1). Stage 2: only then wait terminal.
       const settleStart = Date.now()
-      const sawTerminal = await until(async () => {
+      const sawRunning = await until(async () => {
         const r = await client.request('session/read', { sessionId })
         return (
           r.ok &&
           r.value &&
           typeof r.value === 'object' &&
           r.value.projection &&
-          r.value.projection.status !== 'running' &&
-          r.value.runtime &&
-          Array.isArray(r.value.runtime.pendingRequestIds) &&
-          r.value.runtime.pendingRequestIds.length === 0
+          (r.value.projection.status === 'running' || r.value.projection.turnCount >= 1)
         )
-      }, 120000, 1000)
+      }, 20000, 250)
+      const runningAtMs = sawRunning ? Date.now() - settleStart : null
+      const sawTerminal = sawRunning
+        ? await until(async () => {
+            const r = await client.request('session/read', { sessionId })
+            return (
+              r.ok &&
+              r.value &&
+              typeof r.value === 'object' &&
+              r.value.projection &&
+              r.value.projection.status !== 'running' &&
+              r.value.runtime &&
+              Array.isArray(r.value.runtime.pendingRequestIds) &&
+              r.value.runtime.pendingRequestIds.length === 0
+            )
+          }, 180000, 1000)
+        : false
       const readback = await call('N07', 'session/read', { sessionId })
       const fs = await import('node:fs')
       const sentinel = path.join(workspace, 'SENTINEL-N07.txt')
@@ -693,9 +766,94 @@ try {
         advertisedModel: redact(model),
         send,
         turnCounted: Boolean(accepted),
-        settle: { sawTerminal, withinMs: Date.now() - settleStart },
+        settle: { sawRunning, runningAtMs, sawTerminal, withinMs: Date.now() - settleStart },
         readback,
+        permissions: {
+          policy: 'allow-once (N08 machinery)',
+          requestsAnswered: (log.permissionRequests || []).length - permAtStart,
+        },
         sentinel: { file: 'SENTINEL-N07.txt', ...sentinelAfter, workspaceFiles: listing },
+      })
+      permissionPolicy = 'refuse'
+    }
+  }
+
+  if (sessionId && rows.includes('N08')) {
+    // Permission denial + explicit allow-once, per checklist N08: answer the
+    // ORIGINAL native RPC id with a codec-validated deny, then an explicit
+    // allow-once on a NEW request. Two row-owned turns (2 of this row's
+    // 3-turn cap). Pass = deny leg leaves NO file + allow leg writes the file.
+    const modelN08 = await advertisedModel()
+    if (!modelN08) {
+      record('N08', { description: PAID_ROWS.N08, notRun: 'MODEL_UNAVAILABLE', detail: 'no current/advertised model. No turn spent.' })
+    } else {
+      const readFileOrNull = (p) =>
+        readFile(p, 'utf8').then((t) => t.trim()).catch(() => null)
+      const settleTurn = async () => {
+        const start = Date.now()
+        const sawRunning = await until(async () => {
+          const r = await client.request('session/read', { sessionId })
+          return (
+            r.ok &&
+            r.value &&
+            typeof r.value === 'object' &&
+            r.value.projection &&
+            (r.value.projection.status === 'running' || r.value.projection.turnCount >= 1)
+          )
+        }, 20000, 250)
+        const runningAtMs = sawRunning ? Date.now() - start : null
+        const saw = sawRunning
+          ? await until(async () => {
+              const r = await client.request('session/read', { sessionId })
+              return (
+                r.ok &&
+                r.value &&
+                typeof r.value === 'object' &&
+                r.value.projection &&
+                r.value.projection.status !== 'running' &&
+                r.value.runtime &&
+                Array.isArray(r.value.runtime.pendingRequestIds) &&
+                r.value.runtime.pendingRequestIds.length === 0
+              )
+            }, 180000, 1000)
+          : false
+        return { sawRunning, runningAtMs, sawTerminal: saw, withinMs: Date.now() - start }
+      }
+      // Leg A — denial: answer the real request with decision 'deny'.
+      const permBeforeDeny = (log.permissionRequests || []).length
+      permissionPolicy = 'deny'
+      const taskDeny = `zk16-n08 deny ${Date.now()}: create a file named SENTINEL-N08-DENY.txt containing exactly the word ok. Do nothing else.`
+      const sendDeny = await call('N08', 'session/send', { sessionId, content: taskDeny })
+      if (sendDeny && sendDeny.result && sendDeny.result.accepted === true) await countModelTurn('N08')
+      const settleDeny = await settleTurn()
+      const denyFile = await readFileOrNull(path.join(workspace, 'SENTINEL-N08-DENY.txt'))
+      // Leg B — explicit allow-once on a fresh request.
+      const permBeforeAllow = (log.permissionRequests || []).length
+      permissionPolicy = 'allow'
+      const taskAllow = `zk16-n08 allow ${Date.now()}: create a file named SENTINEL-N08-ALLOW.txt containing exactly the word ok. Do nothing else.`
+      const sendAllow = await call('N08', 'session/send', { sessionId, content: taskAllow })
+      if (sendAllow && sendAllow.result && sendAllow.result.accepted === true) await countModelTurn('N08')
+      const settleAllow = await settleTurn()
+      const allowFile = await readFileOrNull(path.join(workspace, 'SENTINEL-N08-ALLOW.txt'))
+      permissionPolicy = 'refuse'
+      record('N08', {
+        description: PAID_ROWS.N08,
+        denyLeg: {
+          send: sendDeny,
+          settle: settleDeny,
+          fileWritten: denyFile !== null,
+          fileContent: denyFile,
+          permissionRequestsCaptured: (log.permissionRequests || []).length - permBeforeDeny,
+        },
+        allowLeg: {
+          send: sendAllow,
+          settle: settleAllow,
+          fileWritten: allowFile !== null,
+          fileContent: allowFile,
+          permissionRequestsCaptured: (log.permissionRequests || []).length - permBeforeAllow,
+        },
+        permissionRequestSample: redact((log.permissionRequests || []).slice(-1)[0] ?? null),
+        pass: denyFile === null && allowFile !== null && settleDeny.sawTerminal && settleAllow.sawTerminal,
       })
     }
   }

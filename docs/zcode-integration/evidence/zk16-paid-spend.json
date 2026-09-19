@@ -1,8 +1,16 @@
 {
-  "totalTurns": 3,
+  "totalTurns": 2,
   "perRow": {
-    "N07": 3
+    "N07": 2
   },
-  "updatedAt": "2026-09-19T01:55:53.644Z",
-  "note": "Certification spend ledger (model turns per paid row). N07 entries are ACCEPTED session/send attempts; all three executed ZERO inference (turnCount 0, contextUsed 0, no model-io rollout, no Turn started log) - count kept conservatively per accepted-send. Cap is binding: N07 hard-refused until the operator amends the ledger."
+  "updatedAt": "2026-09-19T13:43:47.919Z",
+  "note": "Certification spend ledger (model turns per paid row). N07 entries are ACCEPTED session/send attempts; all three executed ZERO inference (turnCount 0, contextUsed 0, no model-io rollout, no Turn started log) - count kept conservatively per accepted-send. Cap is binding: N07 hard-refused until the operator amends the ledger.",
+  "resets": [
+    {
+      "at": "2026-09-19",
+      "row": "N07",
+      "count": 3,
+      "reason": "Cody-approved reset: 3 attempts provably spent zero inference (dead-on-arrival turns, no model IO in capture zk16-win32-n07); recounted as debug probes, not certification turns. Recorded by orchestration session."
+    }
+  ]
 }
