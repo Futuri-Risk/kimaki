@@ -21,6 +21,9 @@ import { setNativeCapabilityProvider } from './ingress-gate.js'
 import type { LaunchProfile, OwnedRuntime } from './native/process.js'
 import type { Result } from './errors.js'
 import { getInteractionBridge } from './interaction-bridge.js'
+import { createLogger, formatErrorWithStack, LogPrefix } from '../logger.js'
+
+const logger = createLogger(LogPrefix.AGENT)
 
 /**
  * Host authorization: the acting Discord user must target the session's
@@ -64,9 +67,23 @@ async function buildCoordinator(): Promise<AgentCoordinator | null> {
   return built
 }
 
-/** Lazily constructed singleton; null while native stays default-off. */
+/**
+ * Lazily constructed singleton; null while native stays default-off.
+ * A build failure is fail-closed for the CURRENT call only: it is logged and
+ * the cache slot is cleared, so the next call retries the build instead of
+ * leaving the native backend silently disabled until process restart.
+ * Consumers are human-paced (one build attempt per native command), so a
+ * per-call retry cannot hot-loop. — SWARM #21
+ */
 export function getNativeCoordinator(): Promise<AgentCoordinator | null> {
-  coordinatorPromise ??= buildCoordinator().catch(() => null)
+  coordinatorPromise ??= buildCoordinator().catch((error: unknown) => {
+    logger.error(
+      'native coordinator build failed; will retry on next call',
+      formatErrorWithStack(error),
+    )
+    coordinatorPromise = undefined
+    return null
+  })
   return coordinatorPromise
 }
 
