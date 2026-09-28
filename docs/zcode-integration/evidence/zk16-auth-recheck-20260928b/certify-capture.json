@@ -1,0 +1,1076 @@
+{
+  "startedAt": "2026-09-28T13:17:28.149Z",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "C:\\Program Files\\nodejs\\node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "C:\\Users\\Cody\\AppData\\Local\\Programs\\ZCode\\resources\\glm\\zcode.cjs",
+    "entrySha256": "b1df2ef3e5bd76c4af3ecb296bc003a10d3f13191a26610bd0ba940feadad529",
+    "args": [
+      "C:\\Users\\Cody\\AppData\\Local\\Programs\\ZCode\\resources\\glm\\zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "C:\\Users\\Cody",
+      "ZCODE_DATA_BASE_DIR": "D:\\Filen\\Reference\\Tech\\AI\\Claude\\ZCode Data",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "C:\\Users\\Cody\\AppData\\Local\\Programs\\ZCode\\resources\\config\\provider\\zcode-builtin.json"
+    },
+    "cwd": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928"
+  },
+  "rows": {
+    "N02": {
+      "description": "session/create + identity readback",
+      "create": {
+        "at": "2026-09-28T13:17:29.747Z",
+        "method": "session/create",
+        "params": {
+          "workspace": {
+            "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928",
+            "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928"
+          },
+          "mode": "build"
+        },
+        "ms": 351,
+        "result": {
+          "messages": [],
+          "projection": {
+            "activeToolCalls": [],
+            "backgroundJobs": [],
+            "contextUsed": 0,
+            "contextWindow": 200000,
+            "mode": "build",
+            "pendingPermissions": [],
+            "sessionId": "unknown",
+            "status": "idle",
+            "target": null,
+            "totalTokenCount": 0,
+            "turnCount": 0
+          },
+          "protocol": {
+            "name": "ZCode Protocol",
+            "version": 1
+          },
+          "runtime": {
+            "eventSeq": 0,
+            "pendingRequestIds": [],
+            "goalVerifications": [],
+            "goalVerificationTimeline": [],
+            "stateRevision": 0
+          },
+          "session": {
+            "createdAt": 1790601449646,
+            "mode": "build",
+            "model": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            },
+            "traceId": "7148f405-d9fb-4ede-8306-b0297046e0e9",
+            "sessionId": "sess_771e34ba-f91e-4b65-ba09-68636fe7ac0a",
+            "sessionKind": "interactive",
+            "status": "idle",
+            "target": null,
+            "title": "",
+            "updatedAt": 1790601449646,
+            "workspace": {
+              "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928",
+              "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928"
+            }
+          },
+          "settings": {
+            "mode": {
+              "current": "build"
+            },
+            "model": {
+              "available": [
+                {
+                  "ref": {
+                    "providerId": "zai-api",
+                    "modelId": "GLM-5.3"
+                  },
+                  "label": "GLM-5.3",
+                  "providerLabel": "zai-api",
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "reasoning": {
+                    "levels": [
+                      {
+                        "value": "low",
+                        "label": "low"
+                      },
+                      {
+                        "value": "high",
+                        "label": "high"
+                      },
+                      {
+                        "value": "max",
+                        "label": "max"
+                      }
+                    ],
+                    "defaultLevel": "max"
+                  },
+                  "properties": {
+                    "inputFormat": {
+                      "supportsText": true,
+                      "supportsImage": true,
+                      "supportsVideo": true,
+                      "supportsAudio": false,
+                      "supportsPdf": false
+                    },
+                    "outputFormat": {
+                      "supportsText": true
+                    }
+                  }
+                },
+                {
+                  "ref": {
+                    "providerId": "zai-api",
+                    "modelId": "GLM-5.3-Flash"
+                  },
+                  "label": "GLM-5.3-Flash",
+                  "providerLabel": "zai-api",
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "reasoning": {
+                    "levels": [
+                      {
+                        "value": "low",
+                        "label": "low"
+                      },
+                      {
+                        "value": "high",
+                        "label": "high"
+                      },
+                      {
+                        "value": "max",
+                        "label": "max"
+                      }
+                    ],
+                    "defaultLevel": "max"
+                  },
+                  "properties": {
+                    "inputFormat": {
+                      "supportsText": true,
+                      "supportsImage": true,
+                      "supportsVideo": true,
+                      "supportsAudio": false,
+                      "supportsPdf": true
+                    },
+                    "outputFormat": {
+                      "supportsText": true
+                    }
+                  }
+                }
+              ],
+              "current": {
+                "providerId": "zai-api",
+                "modelId": "GLM-5.3",
+                "options": {
+                  "reasoningLevel": "max"
+                }
+              },
+              "lastUsed": {
+                "providerId": "zai-api",
+                "modelId": "GLM-5.3"
+              }
+            },
+            "permission": {
+              "mode": "build"
+            },
+            "thoughtLevel": {
+              "available": [
+                {
+                  "label": "low",
+                  "value": "low"
+                },
+                {
+                  "label": "high",
+                  "value": "high"
+                },
+                {
+                  "label": "max",
+                  "value": "max"
+                }
+              ],
+              "current": "max",
+              "enabled": true
+            }
+          },
+          "slashCommands": [
+            {
+              "description": "Show or set the current session goal.",
+              "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+              "name": "goal",
+              "source": "builtin"
+            },
+            {
+              "description": "Compact the current conversation with optional instructions.",
+              "inputHint": "/compact [instructions]",
+              "name": "compact",
+              "source": "builtin"
+            },
+            {
+              "description": "Create or update workspace AGENTS.md instructions.",
+              "inputHint": "/init [notes]",
+              "name": "init",
+              "source": "builtin"
+            },
+            {
+              "description": "Switch to Plan mode and optionally send a task.",
+              "inputHint": "/plan [task]",
+              "name": "plan",
+              "source": "builtin"
+            }
+          ],
+          "todos": [],
+          "todoGroups": []
+        }
+      },
+      "mode": "build"
+    },
+    "N03": {
+      "description": "session/read full schema capture",
+      "read": {
+        "at": "2026-09-28T13:17:29.880Z",
+        "method": "session/read",
+        "params": {
+          "sessionId": "sess_771e34ba-f91e-4b65-ba09-68636fe7ac0a"
+        },
+        "ms": 132,
+        "result": {
+          "messages": [],
+          "projection": {
+            "activeToolCalls": [],
+            "backgroundJobs": [],
+            "contextUsed": 0,
+            "contextWindow": 200000,
+            "mode": "build",
+            "pendingPermissions": [],
+            "sessionId": "unknown",
+            "status": "idle",
+            "target": null,
+            "totalTokenCount": 0,
+            "turnCount": 0
+          },
+          "protocol": {
+            "name": "ZCode Protocol",
+            "version": 1
+          },
+          "runtime": {
+            "eventSeq": 0,
+            "pendingRequestIds": [],
+            "goalVerifications": [],
+            "goalVerificationTimeline": [],
+            "stateRevision": 0
+          },
+          "session": {
+            "createdAt": 1790601449646,
+            "mode": "build",
+            "model": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            },
+            "traceId": "7148f405-d9fb-4ede-8306-b0297046e0e9",
+            "sessionId": "sess_771e34ba-f91e-4b65-ba09-68636fe7ac0a",
+            "sessionKind": "interactive",
+            "status": "idle",
+            "target": null,
+            "title": "",
+            "updatedAt": 1790601449646,
+            "workspace": {
+              "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928",
+              "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928"
+            }
+          },
+          "settings": {
+            "mode": {
+              "current": "build"
+            },
+            "model": {
+              "available": [
+                {
+                  "ref": {
+                    "providerId": "zai-api",
+                    "modelId": "GLM-5.3"
+                  },
+                  "label": "GLM-5.3",
+                  "providerLabel": "zai-api",
+                  "contextWindow": 200000,
+                  "maxOutputTokens": 128000,
+                  "reasoning": {
+                    "levels": [
+                      {
+                        "value": "low",
+                        "label": "low"
+                      },
+                      {
+                        "value": "high",
+                        "label": "high"
+                      },
+                      {
+                        "value": "max",
+                        "label": "max"
+                      }
+                    ],
+                    "defaultLevel": "max"
+                  },
+                  "properties": {
+                    "inputFormat": {
+                      "supportsText": true,
+                      "supportsImage": true,
+                      "supportsVideo": true,
+                      "supportsAudio": false,
+                      "supportsPdf": false
+                    },
+                    "outputFormat": {
+                      "supportsText": true
+                    }
+                  }
+                }
+              ],
+              "current": {
+                "providerId": "zai-api",
+                "modelId": "GLM-5.3",
+                "options": {
+                  "reasoningLevel": "max"
+                }
+              },
+              "lastUsed": {
+                "providerId": "zai-api",
+                "modelId": "GLM-5.3"
+              }
+            },
+            "permission": {
+              "mode": "build"
+            },
+            "thoughtLevel": {
+              "available": [
+                {
+                  "label": "low",
+                  "value": "low"
+                },
+                {
+                  "label": "high",
+                  "value": "high"
+                },
+                {
+                  "label": "max",
+                  "value": "max"
+                }
+              ],
+              "current": "max",
+              "enabled": true
+            }
+          },
+          "slashCommands": [
+            {
+              "description": "Show or set the current session goal.",
+              "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+              "name": "goal",
+              "source": "builtin"
+            },
+            {
+              "description": "Compact the current conversation with optional instructions.",
+              "inputHint": "/compact [instructions]",
+              "name": "compact",
+              "source": "builtin"
+            },
+            {
+              "description": "Create or update workspace AGENTS.md instructions.",
+              "inputHint": "/init [notes]",
+              "name": "init",
+              "source": "builtin"
+            },
+            {
+              "description": "Switch to Plan mode and optionally send a task.",
+              "inputHint": "/plan [task]",
+              "name": "plan",
+              "source": "builtin"
+            }
+          ],
+          "todos": [],
+          "todoGroups": []
+        }
+      }
+    },
+    "N05": {
+      "description": "session/setModel + readback (config only, no inference)",
+      "advertisedModel": {
+        "available": [
+          {
+            "ref": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            },
+            "label": "GLM-5.3",
+            "providerLabel": "zai-api",
+            "contextWindow": 200000,
+            "maxOutputTokens": 128000,
+            "reasoning": {
+              "levels": [
+                {
+                  "value": "low",
+                  "label": "low"
+                },
+                {
+                  "value": "high",
+                  "label": "high"
+                },
+                {
+                  "value": "max",
+                  "label": "max"
+                }
+              ],
+              "defaultLevel": "max"
+            },
+            "properties": {
+              "inputFormat": {
+                "supportsText": true,
+                "supportsImage": true,
+                "supportsVideo": true,
+                "supportsAudio": false,
+                "supportsPdf": false
+              },
+              "outputFormat": {
+                "supportsText": true
+              }
+            }
+          }
+        ],
+        "current": {
+          "providerId": "zai-api",
+          "modelId": "GLM-5.3",
+          "options": {
+            "reasoningLevel": "max"
+          }
+        },
+        "lastUsed": {
+          "providerId": "zai-api",
+          "modelId": "GLM-5.3"
+        }
+      },
+      "requested": {
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "options": {
+          "reasoningLevel": "max"
+        },
+        "reasoningLevel": "max"
+      },
+      "set": {
+        "at": "2026-09-28T13:17:30.066Z",
+        "method": "session/setModel",
+        "params": {
+          "sessionId": "sess_771e34ba-f91e-4b65-ba09-68636fe7ac0a",
+          "model": {
+            "providerId": "zai-api",
+            "modelId": "GLM-5.3",
+            "options": {
+              "reasoningLevel": "max"
+            }
+          },
+          "persistAsWorkspaceLastUsed": false
+        },
+        "ms": 98,
+        "result": {
+          "messages": [],
+          "projection": {
+            "activeToolCalls": [],
+            "backgroundJobs": [],
+            "contextUsed": 0,
+            "contextWindow": 200000,
+            "mode": "build",
+            "pendingPermissions": [],
+            "sessionId": "unknown",
+            "status": "idle",
+            "target": null,
+            "totalTokenCount": 0,
+            "turnCount": 0
+          },
+          "protocol": {
+            "name": "ZCode Protocol",
+            "version": 1
+          },
+          "runtime": {
+            "eventSeq": 0,
+            "pendingRequestIds": [],
+            "goalVerifications": [],
+            "goalVerificationTimeline": [],
+            "stateRevision": 1
+          },
+          "session": {
+            "createdAt": 1790601449646,
+            "mode": "build",
+            "model": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            },
+            "traceId": "7148f405-d9fb-4ede-8306-b0297046e0e9",
+            "sessionId": "sess_771e34ba-f91e-4b65-ba09-68636fe7ac0a",
+            "sessionKind": "interactive",
+            "status": "idle",
+            "target": null,
+            "title": "",
+            "updatedAt": 1790601449646,
+            "workspace": {
+              "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928",
+              "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928"
+            }
+          },
+          "settings": {
+            "mode": {
+              "current": "build"
+            },
+            "model": {
+              "available": [
+                {
+                  "ref": {
+                    "providerId": "zai-api",
+                    "modelId": "GLM-5.3"
+                  },
+                  "label": "GLM-5.3",
+                  "providerLabel": "zai-api",
+                  "contextWindow": 200000,
+                  "maxOutputTokens": 128000,
+                  "reasoning": {
+                    "levels": [
+                      {
+                        "value": "low",
+                        "label": "low"
+                      },
+                      {
+                        "value": "high",
+                        "label": "high"
+                      },
+                      {
+                        "value": "max",
+                        "label": "max"
+                      }
+                    ],
+                    "defaultLevel": "max"
+                  },
+                  "properties": {
+                    "inputFormat": {
+                      "supportsText": true,
+                      "supportsImage": true,
+                      "supportsVideo": true,
+                      "supportsAudio": false,
+                      "supportsPdf": false
+                    },
+                    "outputFormat": {
+                      "supportsText": true
+                    }
+                  }
+                }
+              ],
+              "current": {
+                "providerId": "zai-api",
+                "modelId": "GLM-5.3",
+                "options": {
+                  "reasoningLevel": "max"
+                }
+              },
+              "lastUsed": {
+                "providerId": "zai-api",
+                "modelId": "GLM-5.3"
+              }
+            },
+            "permission": {
+              "mode": "build"
+            },
+            "thoughtLevel": {
+              "available": [
+                {
+                  "label": "low",
+                  "value": "low"
+                },
+                {
+                  "label": "high",
+                  "value": "high"
+                },
+                {
+                  "label": "max",
+                  "value": "max"
+                }
+              ],
+              "current": "max",
+              "enabled": true
+            }
+          },
+          "slashCommands": [
+            {
+              "description": "Show or set the current session goal.",
+              "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+              "name": "goal",
+              "source": "builtin"
+            },
+            {
+              "description": "Compact the current conversation with optional instructions.",
+              "inputHint": "/compact [instructions]",
+              "name": "compact",
+              "source": "builtin"
+            },
+            {
+              "description": "Create or update workspace AGENTS.md instructions.",
+              "inputHint": "/init [notes]",
+              "name": "init",
+              "source": "builtin"
+            },
+            {
+              "description": "Switch to Plan mode and optionally send a task.",
+              "inputHint": "/plan [task]",
+              "name": "plan",
+              "source": "builtin"
+            }
+          ],
+          "todos": [],
+          "todoGroups": []
+        }
+      },
+      "readback": {
+        "at": "2026-09-28T13:17:30.146Z",
+        "method": "session/read",
+        "params": {
+          "sessionId": "sess_771e34ba-f91e-4b65-ba09-68636fe7ac0a"
+        },
+        "ms": 80,
+        "result": {
+          "messages": [],
+          "projection": {
+            "activeToolCalls": [],
+            "backgroundJobs": [],
+            "contextUsed": 0,
+            "contextWindow": 200000,
+            "mode": "build",
+            "pendingPermissions": [],
+            "sessionId": "unknown",
+            "status": "idle",
+            "target": null,
+            "totalTokenCount": 0,
+            "turnCount": 0
+          },
+          "protocol": {
+            "name": "ZCode Protocol",
+            "version": 1
+          },
+          "runtime": {
+            "eventSeq": 0,
+            "pendingRequestIds": [],
+            "goalVerifications": [],
+            "goalVerificationTimeline": [],
+            "stateRevision": 1
+          },
+          "session": {
+            "createdAt": 1790601449646,
+            "mode": "build",
+            "model": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            },
+            "traceId": "7148f405-d9fb-4ede-8306-b0297046e0e9",
+            "sessionId": "sess_771e34ba-f91e-4b65-ba09-68636fe7ac0a",
+            "sessionKind": "interactive",
+            "status": "idle",
+            "target": null,
+            "title": "",
+            "updatedAt": 1790601449646,
+            "workspace": {
+              "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928",
+              "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928"
+            }
+          },
+          "settings": {
+            "mode": {
+              "current": "build"
+            },
+            "model": {
+              "available": [
+                {
+                  "ref": {
+                    "providerId": "zai-api",
+                    "modelId": "GLM-5.3"
+                  },
+                  "label": "GLM-5.3",
+                  "providerLabel": "zai-api",
+                  "contextWindow": 200000,
+                  "maxOutputTokens": 128000,
+                  "reasoning": {
+                    "levels": [
+                      {
+                        "value": "low",
+                        "label": "low"
+                      },
+                      {
+                        "value": "high",
+                        "label": "high"
+                      },
+                      {
+                        "value": "max",
+                        "label": "max"
+                      }
+                    ],
+                    "defaultLevel": "max"
+                  },
+                  "properties": {
+                    "inputFormat": {
+                      "supportsText": true,
+                      "supportsImage": true,
+                      "supportsVideo": true,
+                      "supportsAudio": false,
+                      "supportsPdf": false
+                    },
+                    "outputFormat": {
+                      "supportsText": true
+                    }
+                  }
+                }
+              ],
+              "current": {
+                "providerId": "zai-api",
+                "modelId": "GLM-5.3",
+                "options": {
+                  "reasoningLevel": "max"
+                }
+              },
+              "lastUsed": {
+                "providerId": "zai-api",
+                "modelId": "GLM-5.3"
+              }
+            },
+            "permission": {
+              "mode": "build"
+            },
+            "thoughtLevel": {
+              "available": [
+                {
+                  "label": "low",
+                  "value": "low"
+                },
+                {
+                  "label": "high",
+                  "value": "high"
+                },
+                {
+                  "label": "max",
+                  "value": "max"
+                }
+              ],
+              "current": "max",
+              "enabled": true
+            }
+          },
+          "slashCommands": [
+            {
+              "description": "Show or set the current session goal.",
+              "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+              "name": "goal",
+              "source": "builtin"
+            },
+            {
+              "description": "Compact the current conversation with optional instructions.",
+              "inputHint": "/compact [instructions]",
+              "name": "compact",
+              "source": "builtin"
+            },
+            {
+              "description": "Create or update workspace AGENTS.md instructions.",
+              "inputHint": "/init [notes]",
+              "name": "init",
+              "source": "builtin"
+            },
+            {
+              "description": "Switch to Plan mode and optionally send a task.",
+              "inputHint": "/plan [task]",
+              "name": "plan",
+              "source": "builtin"
+            }
+          ],
+          "todos": [],
+          "todoGroups": []
+        }
+      },
+      "exactReadback": true,
+      "pollTimeline": [
+        {
+          "atMs": 88,
+          "available": 1,
+          "hasCurrent": true
+        }
+      ]
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/create"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/read"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/setModel"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "state.updated"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/read"
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [
+    {
+      "at": 1790601449528,
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_771e34ba-f91e-4b65-ba09-68636fe7ac0a",
+        "scope": "runtime-materialization"
+      }
+    }
+  ],
+  "notifications": [
+    {
+      "at": 1790601449474,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "7cb753ef-fb8f-413e-977d-7f8eacc9a4f8",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1790601449475,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "7cb753ef-fb8f-413e-977d-7f8eacc9a4f8",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1790601449478,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "7cb753ef-fb8f-413e-977d-7f8eacc9a4f8",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 2
+      }
+    },
+    {
+      "at": 1790601449479,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "7cb753ef-fb8f-413e-977d-7f8eacc9a4f8",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 4
+      }
+    },
+    {
+      "at": 1790601449479,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "7cb753ef-fb8f-413e-977d-7f8eacc9a4f8",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 4
+      }
+    },
+    {
+      "at": 1790601450066,
+      "method": "state.updated",
+      "params": {
+        "patch": {
+          "mode": {
+            "current": "build"
+          },
+          "model": {
+            "available": [
+              {
+                "ref": {
+                  "providerId": "zai-api",
+                  "modelId": "GLM-5.3"
+                },
+                "label": "GLM-5.3",
+                "providerLabel": "zai-api",
+                "contextWindow": 200000,
+                "maxOutputTokens": 128000,
+                "reasoning": {
+                  "levels": [
+                    {
+                      "value": "low",
+                      "label": "low"
+                    },
+                    {
+                      "value": "high",
+                      "label": "high"
+                    },
+                    {
+                      "value": "max",
+                      "label": "max"
+                    }
+                  ],
+                  "defaultLevel": "max"
+                },
+                "properties": {
+                  "inputFormat": {
+                    "supportsText": true,
+                    "supportsImage": true,
+                    "supportsVideo": true,
+                    "supportsAudio": false,
+                    "supportsPdf": false
+                  },
+                  "outputFormat": {
+                    "supportsText": true
+                  }
+                }
+              }
+            ],
+            "current": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3",
+              "options": {
+                "reasoningLevel": "max"
+              }
+            },
+            "lastUsed": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            }
+          },
+          "permission": {
+            "mode": "build"
+          },
+          "thoughtLevel": {
+            "available": [
+              {
+                "label": "low",
+                "value": "low"
+              },
+              {
+                "label": "high",
+                "value": "high"
+              },
+              {
+                "label": "max",
+                "value": "max"
+              }
+            ],
+            "current": "max",
+            "enabled": true
+          }
+        },
+        "reason": "model_changed",
+        "revision": 1,
+        "scope": "session",
+        "sessionId": "sess_771e34ba-f91e-4b65-ba09-68636fe7ac0a",
+        "type": "state.updated",
+        "workspace": {
+          "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928",
+          "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928"
+        }
+      }
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 31168
+  },
+  "client": {
+    "generation": "7eb2695e-0918-4baf-8c6e-c4fd0eece04b"
+  },
+  "sessionId": "sess_771e34ba-f91e-4b65-ba09-68636fe7ac0a",
+  "stop": {
+    "ok": true,
+    "nativePid": 31168,
+    "nativePidLivenessAfterStop": "dead"
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}

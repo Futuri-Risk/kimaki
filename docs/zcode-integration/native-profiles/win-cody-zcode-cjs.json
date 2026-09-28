@@ -1,9 +1,10 @@
 {
   "profileId": "win-cody-zcode-cjs",
-  "status": "free-rows-captured-N01-N05-N18-win32; N07 BLOCKED-CAP (3 accepted sends, zero inference - launch-profile delta vs desktop under diagnosis); paid gate mechanical",
+  "status": "RE-BASELINED 2026-09-28 (bundle auto-updated 0.16.5 -> 0.16.9, hash b1df2ef3); free rows N01-N05+N18 captured win32; headless catalog re-verified resolving (zai-api GLM-5.3, evidence zk16-auth-recheck-20260928b); N07/N08 r5 in flight; paid gate mechanical",
   "certified": false,
   "allowSynthetic": false,
   "capturedAt": "2026-09-18T19:40+10:00",
+  "rebaselinedAt": "2026-09-28T23:40+10:00",
   "discoveryMethod": "ZK-016 N00 static inventory (tools/doctor.mjs + manual --version probe); no native call by the doctor",
   "host": {
     "platform": "win32",
@@ -14,8 +15,8 @@
     "executable": "C:\\Program Files\\nodejs\\node.exe",
     "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
     "entryPath": "~\\AppData\\Local\\Programs\\ZCode\\resources\\glm\\zcode.cjs",
-    "entrySha256": "da61b0663336a65f7cce3dec223678794ccaa58158e304fc0d97b695434a8f01",
-    "entryBytes": 11416833,
+    "entrySha256": "b1df2ef3e5bd76c4af3ecb296bc003a10d3f13191a26610bd0ba940feadad529",
+    "entryBytes": 14820819,
     "args": [
       "<entryPath>",
       "app-server"
@@ -26,8 +27,8 @@
     }
   },
   "versionEvidence": {
-    "entryVersion": "zcode 0.16.5",
-    "source": "manual node <entry> --version probe 2026-09-18 (doctor performs no launch)",
+    "entryVersion": "zcode 0.16.9",
+    "source": "re-baseline 2026-09-28: manual node <entry> --version probe (printed '0.16.9') + tools/doctor.mjs staticInventory PASS (evidence zk16-n00-r5-doctor-output.json; doctor performs no launch). Prior 2026-09-18 baseline pinned 0.16.5/da61b066 (11416833b); intermediate auto-updates 09-19 observed at 0.16.9/8f5cfccf per zk16-n07-debug/DEBUG-NOTES.md",
     "bundleMeta": {
       "runtime": "electron-node",
       "platform": "win32-x64",

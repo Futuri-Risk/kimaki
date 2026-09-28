@@ -1,0 +1,163 @@
+{
+  "startedAt": "2026-09-28T13:16:27.150Z",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "C:\\Program Files\\nodejs\\node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "C:\\Users\\Cody\\AppData\\Local\\Programs\\ZCode\\resources\\glm\\zcode.cjs",
+    "entrySha256": "b1df2ef3e5bd76c4af3ecb296bc003a10d3f13191a26610bd0ba940feadad529",
+    "args": [
+      "C:\\Users\\Cody\\AppData\\Local\\Programs\\ZCode\\resources\\glm\\zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "C:\\Users\\Cody",
+      "ZCODE_DATA_BASE_DIR": "D:\\Filen\\Reference\\Tech\\AI\\Claude\\ZCode Data",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "C:\\Users\\Cody\\AppData\\Local\\Programs\\ZCode\\resources\\config\\provider\\zcode-builtin.json"
+    },
+    "cwd": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-auth-recheck-20260928"
+  },
+  "rows": {
+    "session-setup": {
+      "skipped": "no native session id available (list empty; create not permitted for free-only rows besides N02/N18)"
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [],
+  "notifications": [
+    {
+      "at": 1790601389385,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "ffdc7e10-c1ce-4d8c-b894-9643f5df5058",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1790601389385,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "ffdc7e10-c1ce-4d8c-b894-9643f5df5058",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1790601389388,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "ffdc7e10-c1ce-4d8c-b894-9643f5df5058",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 3
+      }
+    },
+    {
+      "at": 1790601389389,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "ffdc7e10-c1ce-4d8c-b894-9643f5df5058",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 4
+      }
+    },
+    {
+      "at": 1790601389389,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "ffdc7e10-c1ce-4d8c-b894-9643f5df5058",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 4
+      }
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 34984
+  },
+  "client": {
+    "generation": "e2b6c240-d9ba-4e06-bcb9-aa2f02f2b854"
+  },
+  "stop": {
+    "ok": true,
+    "nativePid": 34984,
+    "nativePidLivenessAfterStop": "dead"
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}

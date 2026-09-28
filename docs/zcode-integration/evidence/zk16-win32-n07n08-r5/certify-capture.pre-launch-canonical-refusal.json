@@ -1,0 +1,41 @@
+{
+  "startedAt": "2026-09-28T13:43:34.784Z",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "C:/Program Files/nodejs/node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+    "entrySha256": "b1df2ef3e5bd76c4af3ecb296bc003a10d3f13191a26610bd0ba940feadad529",
+    "args": [
+      "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "C:/Users/Cody",
+      "ZCODE_DATA_BASE_DIR": "D:/Filen/Reference/Tech/AI/Claude/ZCode Data",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/config/provider/zcode-builtin.json"
+    },
+    "cwd": "C:/Users/Cody/AppData/Local/Temp/zk16-r5-sentinel"
+  },
+  "rows": {},
+  "envelopeLog": [],
+  "stderrTail": [],
+  "reverseRequests": [],
+  "notifications": [],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": false,
+    "error": {
+      "code": "WORKSPACE_MISMATCH",
+      "safeMessage": "Workspace must be canonical.",
+      "phase": "preflight",
+      "effects": "none",
+      "automaticTaskReplayAllowed": false
+    }
+  }
+}
