@@ -19,7 +19,17 @@ import type {
   ForkPoint,
 } from './types.js'
 import type { Attachment } from './attachments.js'
-export type CoordinatorLimits = { maxPendingEvents?: number; maxPendingEventBytes?: number }
+export type CoordinatorLimits = {
+  maxPendingEvents?: number
+  maxPendingEventBytes?: number
+  /**
+   * #24 kick() retry policy for drain cycles that end with a queued prompt
+   * still unclaimed (pre-transition failure, e.g. WORKSPACE_BUSY while another
+   * session owns the native home). Exponential backoff keeps a persistent
+   * failure a bounded retry instead of a zero-delay hot loop.
+   */
+  kickBackoff?: { baseMs?: number; maxMs?: number; maxRetries?: number }
+}
 export type Authorizer = (
   actorId: string,
   threadId: string,
@@ -53,6 +63,11 @@ export class AgentCoordinator {
   }
   private active = new Map<string, string>()
   private jobs = new Set<Promise<unknown>>()
+  /** #24: consecutive kick cycles per session that left a queued prompt unclaimed. */
+  private kickDeferrals = new Map<string, number>()
+  private readonly kickBaseMs: number
+  private readonly kickMaxMs: number
+  private readonly kickMaxRetries: number
   private eventTail: Promise<void> = Promise.resolve()
   private closed = false
   private errors: string[] = []
@@ -67,8 +82,21 @@ export class AgentCoordinator {
   ) {
     const maxCount = limits.maxPendingEvents ?? 1024
     const maxBytes = limits.maxPendingEventBytes ?? 8 * 1024 * 1024
+    this.kickBaseMs = limits.kickBackoff?.baseMs ?? 500
+    this.kickMaxMs = limits.kickBackoff?.maxMs ?? 30_000
+    this.kickMaxRetries = limits.kickBackoff?.maxRetries ?? 64
     if (![maxCount, maxBytes].every((n) => Number.isSafeInteger(n) && n > 0))
       throw fail('CONFIG_INVALID', 'Event limits must be positive safe integers.')
+    if (
+      !Number.isSafeInteger(this.kickBaseMs) ||
+      this.kickBaseMs <= 0 ||
+      !Number.isSafeInteger(this.kickMaxMs) ||
+      this.kickMaxMs < this.kickBaseMs ||
+      !Number.isSafeInteger(this.kickMaxRetries) ||
+      this.kickMaxRetries < 0
+    ) {
+      throw fail('CONFIG_INVALID', 'Kick backoff limits are invalid.')
+    }
     backend.onEvent((sessionId, event) => {
       if (this.closed) return
       let bytes: number
@@ -178,6 +206,9 @@ export class AgentCoordinator {
         return admitted.operation
       }
       if (input.kind === 'prompt') {
+        // #24: a fresh admission restarts the kick retry cycle (also revives a
+        // queue whose retries were exhausted while the blocker persisted).
+        this.kickDeferrals.delete(session.id)
         this.kick(session.id)
       } else {
         this.launch(() => this.control(session, admitted.operation))
@@ -189,8 +220,9 @@ export class AgentCoordinator {
     if (!this.closed && !this.draining.has(sessionId)) {
       this.draining.add(sessionId)
       this.launch(async () => {
+        let progressed = false
         try {
-          await this.drain(sessionId)
+          progressed = await this.drain(sessionId)
         } finally {
           this.draining.delete(sessionId)
           const current = await this.store.session(sessionId)
@@ -204,7 +236,29 @@ export class AgentCoordinator {
             ) &&
             queue.some((o) => o.kind === 'prompt' && o.state === 'queued')
           ) {
-            this.kick(sessionId)
+            if (progressed) {
+              // FIFO chain: the previous cycle submitted work; keep draining
+              // immediately (historical behavior, never backed off).
+              this.kickDeferrals.delete(sessionId)
+              this.kick(sessionId)
+              return
+            }
+            // #24: a queued prompt survived the cycle unclaimed — a recurring
+            // pre-transition failure. Back off exponentially and bound the
+            // retry count instead of re-kicking at zero delay forever.
+            const failures = (this.kickDeferrals.get(sessionId) ?? 0) + 1
+            if (failures > this.kickMaxRetries) {
+              this.note('KICK_RETRY_EXHAUSTED')
+              return
+            }
+            this.kickDeferrals.set(sessionId, failures)
+            const waitMs = Math.min(this.kickBaseMs * 2 ** (failures - 1), this.kickMaxMs)
+            const timer = setTimeout(() => {
+              this.kick(sessionId)
+            }, waitMs)
+            timer.unref?.()
+          } else {
+            this.kickDeferrals.delete(sessionId)
           }
         }
       })
@@ -234,7 +288,8 @@ export class AgentCoordinator {
     }
     return session
   }
-  private async drain(sessionId: string) {
+  /** One drain cycle. Returns true when native work was submitted this cycle. */
+  private async drain(sessionId: string): Promise<boolean> {
     let op: Operation | null = null
     const epoch = this.cancellationEpoch.get(sessionId) ?? 0
     try {
@@ -244,7 +299,7 @@ export class AgentCoordinator {
         !['unbound', 'idle'].includes(session.state) ||
         this.controls.has(sessionId)
       ) {
-        return
+        return false
       }
       const operations = await this.store.operations(sessionId)
       if (
@@ -253,15 +308,15 @@ export class AgentCoordinator {
             uncertain.includes(o.state as (typeof uncertain)[number]) || o.state === 'preparing',
         )
       ) {
-        return
+        return false
       }
       op = operations.find((o) => o.kind === 'prompt' && o.state === 'queued') ?? null
       if (!op) {
-        return
+        return false
       }
       await this.store.acquire(session, this.ownerNonce)
       if (!(await this.store.transition(op.id, ['queued'], 'preparing'))) {
-        return
+        return false
       }
       this.active.set(sessionId, op.id)
       assertModel(session.model, op.model)
@@ -285,7 +340,7 @@ export class AgentCoordinator {
       }
       const generation = text(this.backend.generation)
       if (!(await this.store.transition(op.id, ['preparing'], 'send-intent', { generation }))) {
-        return
+        return false
       }
       await this.store.sessionState(sessionId, 'running')
       let attachments: Attachment[] = []
@@ -302,10 +357,11 @@ export class AgentCoordinator {
       await this.backend.submit(session, op.text, attachments)
       // Events may already have committed terminal state before the ACK arrives.
       await this.store.transition(op.id, ['send-intent'], 'running', { generation })
+      return true
     } catch (error) {
       // Cancellation owns settlement of the invalidated send, including a lost
       // ACK aborted by the backend fence. Do not overwrite its paused state.
-      if ((this.cancellationEpoch.get(sessionId) ?? 0) !== epoch) return
+      if ((this.cancellationEpoch.get(sessionId) ?? 0) !== epoch) return false
       const row = op ? await this.store.operation(op.id) : null
       if (row && row.state === 'preparing') {
         await this.store.transition(row.id, ['preparing'], 'rejected')
@@ -324,6 +380,7 @@ export class AgentCoordinator {
         await this.backend.disposeSession(sessionId)
       }
       this.note(error instanceof Error && 'code' in error ? String(error.code) : 'PREPARE_FAILED')
+      return false
     }
   }
   private async control(session: AgentSession, op: Operation) {
@@ -482,6 +539,8 @@ export class AgentCoordinator {
       // Concurrent guidance/answers must never release another operation's fence.
       if (this.controls.get(session.id) === op.id) this.controls.delete(session.id)
       if (!concurrent) {
+        // A settled control unfenced the session; restart the cycle cleanly.
+        this.kickDeferrals.delete(session.id)
         this.kick(session.id)
       }
     }
@@ -614,7 +673,11 @@ export class AgentCoordinator {
     if (!committed) return // cancellation/recovery may have won while readback awaited
     this.active.delete(sessionId)
     if (committed.reusable) await this.releaseSettled(sessionId)
-    if (committed.completed && !this.controls.has(sessionId)) this.kick(sessionId)
+    if (committed.completed && !this.controls.has(sessionId)) {
+      // A verified settled turn is progress: restart the kick cycle cleanly.
+      this.kickDeferrals.delete(sessionId)
+      this.kick(sessionId)
+    }
   }
   /** Explicitly restart unsent FIFO after cancellation; never replays accepted/unknown work. */
   async resumeQueue(sessionId: string, threadId: string, actorId: string): Promise<Result<void>> {
@@ -650,6 +713,8 @@ export class AgentCoordinator {
       this.assertFence(sessionId, epoch)
       await this.store.sessionState(sessionId, 'idle')
       this.assertFence(sessionId, epoch)
+      // Explicit resumption is user-confirmed progress; retry from a clean slate.
+      this.kickDeferrals.delete(sessionId)
       this.kick(sessionId)
     })
   }

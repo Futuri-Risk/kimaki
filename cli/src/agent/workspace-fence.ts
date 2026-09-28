@@ -8,12 +8,9 @@ import path from 'node:path'
 import { getRawDbClient } from '../db.js'
 import { getThreadSession } from '../database.js'
 import { libsqlSqlClient } from './sql.js'
+import { canonicalWorkspaceKey } from './store.js'
 import { isZcodeSessionId } from './registry.js'
 import { countActiveNativeOperations } from './host-sidecar.js'
-
-function canonical(directory: string): string {
-  return path.resolve(directory).replace(/\\/g, '/').toLowerCase()
-}
 
 export type NativeWriterHold = { held: false } | { held: true; sessionId: string; resource: string }
 
@@ -24,19 +21,25 @@ export type NativeWriterHold = { held: false } | { held: true; sessionId: string
  */
 export async function nativeWorkspaceWriter(directory: string): Promise<NativeWriterHold> {
   const client = libsqlSqlClient(await getRawDbClient())
+  // #24: point lookup on the resource PK instead of the LIKE 'workspace:%'
+  // scan + JS canonical filter. Two probes cover both spellings: the canonical
+  // key (what acquire writes since #24) and the legacy raw-resolved form
+  // (rows written before it). Case/separator variants canonicalize into the
+  // first probe, so fence matching semantics are unchanged.
   const rows = (
-    await client.execute(
-      "SELECT resource, agent_session_id FROM agent_workspace_leases WHERE resource LIKE 'workspace:%'",
-    )
+    await client.execute({
+      sql: 'SELECT resource, agent_session_id FROM agent_workspace_leases WHERE resource IN (?,?)',
+      args: [
+        `workspace:${canonicalWorkspaceKey(directory)}`,
+        `workspace:${path.resolve(directory)}`,
+      ],
+    })
   ).rows
-  const target = canonical(directory)
-  for (const row of rows) {
-    const resource = String(row.resource)
-    if (canonical(resource.slice('workspace:'.length)) === target) {
-      return { held: true, sessionId: String(row.agent_session_id), resource }
-    }
+  const row = rows[0]
+  if (!row) {
+    return { held: false }
   }
-  return { held: false }
+  return { held: true, sessionId: String(row.agent_session_id), resource: String(row.resource) }
 }
 
 /**

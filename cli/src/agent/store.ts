@@ -19,6 +19,17 @@ import type {
 } from './types.js'
 const hash = (s: string) => createHash('sha256').update(s).digest('hex')
 const q = (sql: string, ...args: (string | number | null)[]) => ({ sql, args })
+/**
+ * Canonical lease-key form of a workspace directory (#24). One writer per
+ * directory must also mean one KEY per directory: on win32 two spellings that
+ * differ only in separators or case are the same working tree, so the lease
+ * resource is stored and probed in this normalized form. Case folding matches
+ * the fence's historical JS canonicalization (conservative on case-sensitive
+ * filesystems: over-merging keys only, never under-merging).
+ */
+export function canonicalWorkspaceKey(directory: string): string {
+  return path.resolve(directory).replace(/\\/g, '/').toLowerCase()
+}
 function parseModel(value: unknown): ModelSelection {
   const model = record(value)
   return {
@@ -532,13 +543,38 @@ export class AgentStore {
   async acquire(session: AgentSession, ownerNonce: string) {
     await transaction(this.db, async (tx) => {
       for (const resource of [
-        `workspace:${session.workspace.canonicalDirectory}`,
+        `workspace:${canonicalWorkspaceKey(session.workspace.canonicalDirectory)}`,
         `home:${session.workspace.nativeHomeIdentity}`,
       ]) {
         const row = (
           await tx.execute(q('SELECT * FROM agent_workspace_leases WHERE resource=?', resource))
         ).rows[0]
         if (row && (row.owner_nonce !== ownerNonce || row.agent_session_id !== session.id)) {
+          // #24 idle-owner retirement: a native-home lease held by ANOTHER
+          // session of the SAME coordinator (same owner nonce — we are provably
+          // alive and serialize our own drains) may transfer when its resident
+          // owner is durably quiescent: session 'idle' and zero non-terminal
+          // operations. Any holder still mid-drain exposes a 'queued' or later
+          // non-terminal operation inside this transaction, so the transfer can
+          // never race a concurrent acquire→prepare window of the owner. A
+          // DIFFERENT nonce stays an absolute refusal (stale auto-takeover is
+          // still prohibited); workspace leases never transfer (uncertain-death
+          // recovery fences keep their conservative semantics).
+          if (
+            row.owner_nonce === ownerNonce &&
+            resource.startsWith('home:') &&
+            (await this.quiescentLeaseOwner(tx, text(row.agent_session_id)))
+          ) {
+            await tx.execute(
+              q(
+                'UPDATE agent_workspace_leases SET agent_session_id=?,acquired_at=? WHERE resource=?',
+                session.id,
+                Date.now(),
+                resource,
+              ),
+            )
+            continue
+          }
           throw fail(
             'WORKSPACE_BUSY',
             'A managed native writer or recovery fence owns this resource.',
@@ -557,6 +593,31 @@ export class AgentStore {
         }
       }
     })
+  }
+  /**
+   * Durable quiescence of a lease-holding session, evaluated INSIDE the
+   * acquiring transaction (#24): the session row reads 'idle' and no operation
+   * is in a non-terminal state (queued counts — a session that has just
+   * acquired but not yet claimed its prompt is NOT quiescent).
+   */
+  private async quiescentLeaseOwner(tx: SqlTransaction, sessionId: string): Promise<boolean> {
+    const owner = (
+      await tx.execute(q('SELECT state FROM agent_sessions WHERE id=?', sessionId))
+    ).rows[0]
+    if (!owner || text(owner.state) !== 'idle') {
+      return false
+    }
+    const active = Number(
+      (
+        await tx.execute(
+          q(
+            "SELECT COUNT(*) AS n FROM agent_operations WHERE agent_session_id=? AND state NOT IN ('completed','failed','cancelled','rejected')",
+            sessionId,
+          ),
+        )
+      ).rows[0]?.n,
+    )
+    return active === 0
   }
   async release(sessionId: string, ownerNonce: string) {
     await this.db.execute(
