@@ -1,11 +1,14 @@
 /** Internal subprocess only. Never run the native runtime in the bot's process group.
  * POSIX: the native child is a detached session leader; stop() signals its whole
- * process group. Windows (ZK-016, 2026-09-18): containment is a Job Object held
- * by a PowerShell keeper subprocess. Containment is ACTIVE, not close-based:
- * on keeper stdin EOF (supervisor death), EXIT, or KILL the keeper calls
- * TerminateJobObject, which provably kills every assigned process and
- * descendant (KILL_ON_JOB_CLOSE proved unverifiable on this build, so it is set
- * best-effort but never trusted). — ZCode */
+ * process group, and (SWARM #23) a detached keeper in its own session watches the
+ * supervisor's life — when the supervisor dies however abruptly (SIGKILL, OOM, or
+ * a group-wide kill), the keeper's stdin EOFs and it terminates the watched
+ * process group (SIGTERM → grace → SIGKILL). Windows (ZK-016, 2026-09-18):
+ * containment is a Job Object held by a PowerShell keeper subprocess.
+ * Containment is ACTIVE, not close-based: on keeper stdin EOF (supervisor
+ * death), EXIT, or KILL the keeper calls TerminateJobObject, which provably
+ * kills every assigned process and descendant (KILL_ON_JOB_CLOSE proved
+ * unverifiable on this build, so it is set best-effort but never trusted). — ZCode */
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
 import { writeFileSync } from 'node:fs'
@@ -80,6 +83,49 @@ Write-Output "DONE $reason"
 $null = [ZKJobKeeper]::CloseHandle($job)
 `
 
+/** POSIX twin of KEEPER_PS1 (SWARM #23): a detached node keeper that owns one
+ * watched process group; WATCH <pgid> arms it. The supervisor holds the write
+ * end of our stdin, so ANY supervisor death — SIGKILL, OOM, a group-wide kill —
+ * EOFs our stdin and we terminate the watched group (SIGTERM → 5s grace →
+ * SIGKILL → 2s reap). Detached is what makes this work: a group-wide kill of
+ * the supervisor cannot reach a keeper in its own session. — ZCode */
+const KEEPER_JS = String.raw`
+const watched = { pgid: 0 }
+let stopping = false
+const alive = () => {
+  if (!watched.pgid) return false
+  try { process.kill(-watched.pgid, 0); return true } catch (e) { return e.code !== 'ESRCH' }
+}
+const poll = (endMs, next) => {
+  if (!alive() || Date.now() > endMs) next()
+  else setTimeout(() => poll(endMs, next), 20)
+}
+const terminate = () => {
+  if (!watched.pgid || !alive()) process.exit(0)
+  try { process.kill(-watched.pgid, 'SIGTERM') } catch {}
+  poll(Date.now() + 5000, () => {
+    if (alive()) { try { process.kill(-watched.pgid, 'SIGKILL') } catch {} }
+    poll(Date.now() + 2000, () => process.exit(0))
+  })
+}
+let buf = ''
+process.stdin.on('data', (c) => {
+  buf += c
+  let i
+  while ((i = buf.indexOf('\n')) >= 0) {
+    const line = buf.slice(0, i).trim()
+    buf = buf.slice(i + 1)
+    if (line === 'KILL') { stopping = true; terminate(); return }
+    if (line.startsWith('WATCH ')) {
+      watched.pgid = Number(line.slice(6))
+      process.stdout.write('WATCH-OK ' + watched.pgid + '\n')
+    }
+  }
+})
+process.stdin.on('end', () => { if (!stopping) terminate() })
+process.stdout.write('READY\n')
+`
+
 let keeper: ChildProcessWithoutNullStreams | undefined
 let keeperScript: string | undefined
 const keeperLineListeners = new Set<(line: string) => void>()
@@ -89,20 +135,27 @@ function onKeeperLine(fn: (line: string) => void) {
 }
 
 function startKeeper(): Promise<void> {
-  const script = path.join(tmpdir(), `zk-job-keeper-${process.pid}-${Date.now()}.ps1`)
-  keeperScript = script
-  writeFileSync(script, KEEPER_PS1, 'utf8')
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
       () => reject(new Error('job keeper startup timed out')),
       15000,
     )
     try {
-      keeper = spawn(
-        'powershell.exe',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script],
-        { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true },
-      )
+      if (isWin) {
+        const script = path.join(tmpdir(), `zk-job-keeper-${process.pid}-${Date.now()}.ps1`)
+        keeperScript = script
+        writeFileSync(script, KEEPER_PS1, 'utf8')
+        keeper = spawn(
+          'powershell.exe',
+          ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script],
+          { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true },
+        )
+      } else {
+        keeper = spawn(process.execPath, ['-e', KEEPER_JS], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          detached: true,
+        })
+      }
     } catch (error) {
       clearTimeout(timer)
       reject(error instanceof Error ? error : new Error(String(error)))
@@ -163,6 +216,27 @@ function assignToJob(pid: number): Promise<boolean> {
   })
 }
 
+/** POSIX arming: hand the native process group to the keeper and require its
+ * WATCH-OK ack — the EOF-watch containment is provably armed before we report
+ * the runtime ready. — SWARM #23 */
+function watchGroup(pgid: number): Promise<boolean> {
+  if (!keeper) return Promise.resolve(false)
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      off()
+      resolve(false)
+    }, 10000)
+    const off = onKeeperLine((line) => {
+      if (line === `WATCH-OK ${pgid}`) {
+        clearTimeout(timer)
+        off()
+        resolve(true)
+      }
+    })
+    keeper!.stdin.write(`WATCH ${pgid}\n`)
+  })
+}
+
 async function releaseKeeper() {
   if (!keeper) return
   try {
@@ -217,10 +291,10 @@ async function stop() {
   if (alive(pid)) {
     signal(pid, 'SIGKILL')
   }
-  if (isWin) {
-    // Job termination kills anything the direct signal missed (descendants).
-    await releaseKeeper()
-  }
+  // Keeper termination is belt-and-braces on both platforms: the job object
+  // (win32) or the watched-group kill (POSIX) takes anything the direct
+  // signal missed (descendants). — SWARM #23
+  await releaseKeeper()
   const killEnd = Date.now() + 2000
   while (alive(pid) && Date.now() < killEnd) await delay(20)
   process.exit(alive(pid) || !nativeExited ? 70 : 0)
@@ -267,14 +341,14 @@ process.on('message', (input: unknown) => {
     graceMs = Math.max(50, Math.min(value.graceMs, 30000))
   }
   const begin = async () => {
-    if (isWin) {
-      try {
-        await startKeeper()
-      } catch {
-        notifyParent({ type: 'failure' })
-        void stop()
-        return
-      }
+    // Keeper is mandatory on both platforms (SWARM #23): win32 job object,
+    // POSIX EOF-watched process group. Refuse to own the runtime without it.
+    try {
+      await startKeeper()
+    } catch {
+      notifyParent({ type: 'failure' })
+      void stop()
+      return
     }
     native = spawn(value.executable as string, value.args as string[], {
       cwd: value.cwd as string,
@@ -300,10 +374,12 @@ process.on('message', (input: unknown) => {
     owned.stderr.pipe(process.stderr)
     owned.once('spawn', async () => {
       const pid = owned.pid
-      if (isWin && pid !== undefined) {
-        const assigned = await assignToJob(pid)
-        if (!assigned && !stopping) {
-          // No job containment: refuse to own the process unsupervised.
+      if (pid !== undefined) {
+        // Containment arming is mandatory on both platforms: job object on
+        // win32, EOF-watched process group on POSIX. No ack means we refuse
+        // to own the process unsupervised.
+        const contained = isWin ? await assignToJob(pid) : await watchGroup(pid)
+        if (!contained && !stopping) {
           notifyParent({ type: 'failure' })
           void stop()
           return

@@ -83,8 +83,11 @@ export async function verifyLaunch(profile: LaunchProfile) {
     }
 }
 /** Independent IPC supervisor survives bot death and terminates its owned process
- * tree (POSIX session group; Windows job object via keeper — ZK-016). Escaped or
- * detached groups require stronger OS containment; not certified here. */
+ * tree — POSIX: the supervisor's detached session group, plus a detached keeper
+ * that kills the group when the supervisor's stdin EOFs, however the supervisor
+ * dies (SWARM #23); Windows: job object via keeper (ZK-016). Descendants that
+ * escape into their own session (setsid) or out of the job still require
+ * stronger OS containment; not certified here. */
 export async function startOwnedRuntime(profile: LaunchProfile): Promise<Result<OwnedRuntime>> {
   const outcome = await attempt(async () => {
     await verifyLaunch(profile)
