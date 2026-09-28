@@ -16,6 +16,7 @@ import type {
   InteractionAnswer,
   ModelSelection,
   NativeInteraction,
+  NativeSnapshot,
   ForkPoint,
 } from './types.js'
 import type { Attachment } from './attachments.js'
@@ -264,7 +265,15 @@ export class AgentCoordinator {
       })
     }
   }
-  private async prepare(session: AgentSession) {
+  /**
+   * #29: prepare returns the authoritative snapshot it already read — the
+   * caller's submit/control quiescence and model gates reuse it instead of
+   * re-reading a session that no native write has touched in between.
+   */
+  private async prepare(session: AgentSession): Promise<{
+    session: AgentSession
+    snapshot: NativeSnapshot
+  }> {
     await this.store.acquire(session, this.ownerNonce)
     if (!session.nativeSessionId) {
       if (session.state !== 'unbound') {
@@ -280,13 +289,13 @@ export class AgentCoordinator {
       const prepared = await this.backend.prepare(session)
       await this.store.bindNative(session.id, prepared.nativeSessionId, prepared.fingerprint)
       session = (await this.store.session(session.id))!
-    } else {
-      await this.backend.prepare(
-        session,
-        (await this.store.streamCursor(session.id, 'legacy'))?.sequence ?? -1,
-      )
+      return { session, snapshot: prepared.snapshot }
     }
-    return session
+    const resumed = await this.backend.prepare(
+      session,
+      (await this.store.streamCursor(session.id, 'legacy'))?.sequence ?? -1,
+    )
+    return { session, snapshot: resumed.snapshot }
   }
   /** One drain cycle. Returns true when native work was submitted this cycle. */
   private async drain(sessionId: string): Promise<boolean> {
@@ -321,11 +330,13 @@ export class AgentCoordinator {
       this.active.set(sessionId, op.id)
       assertModel(session.model, op.model)
       this.assertFence(sessionId, epoch)
-      session = await this.prepare(session)
+      const prepared = await this.prepare(session)
       this.assertFence(sessionId, epoch)
-      const snapshot = await this.backend.inspect(session)
-      assertModel(snapshot.model, session.model)
-      if (!quiescent(snapshot)) {
+      session = prepared.session
+      // #29: this snapshot is the submit-time quiescence/model read — no
+      // native write happened since prepare read it.
+      assertModel(prepared.snapshot.model, session.model)
+      if (!quiescent(prepared.snapshot)) {
         throw fail(
           'NATIVE_BUSY',
           'Native activity must be reconciled before a new prompt.',
@@ -354,7 +365,7 @@ export class AgentCoordinator {
         }
       }
       this.assertFence(sessionId, epoch)
-      await this.backend.submit(session, op.text, attachments)
+      await this.backend.submit(session, op.text, attachments, prepared.snapshot)
       // Events may already have committed terminal state before the ACK arrives.
       await this.store.transition(op.id, ['send-intent'], 'running', { generation })
       return true
@@ -478,9 +489,11 @@ export class AgentCoordinator {
         return
       }
       this.assertFence(session.id, epoch, op.id)
-      session = await this.prepare(session)
+      const prepared = await this.prepare(session)
       this.assertFence(session.id, epoch, op.id)
-      if (!quiescent(await this.backend.inspect(session))) {
+      session = prepared.session
+      // #29: the prepare-time snapshot is the control quiescence read.
+      if (!quiescent(prepared.snapshot)) {
         throw fail('NATIVE_BUSY', 'Control requires authoritative native quiescence.', 'control')
       }
       let point: ForkPoint | undefined
@@ -491,13 +504,13 @@ export class AgentCoordinator {
       await this.intent(op, ['preparing'], text(this.backend.generation))
       this.assertFence(session.id, epoch, op.id)
       if (op.kind === 'compact') {
-        await this.backend.compact(session)
+        await this.backend.compact(session, prepared.snapshot)
       } else if (op.kind === 'model') {
         const model = record(op.payload) as ModelSelection
         text(model.modelId)
         text(model.providerId)
         text(model.revision)
-        await this.backend.switchModel(session, model)
+        await this.backend.switchModel(session, model, prepared.snapshot)
         await this.store.setModel(session.id, model)
       } else if (op.kind === 'fork' && point) {
         const nativeId = await this.backend.fork(session, op.id, point)
@@ -705,9 +718,10 @@ export class AgentCoordinator {
         )
       }
       this.assertFence(sessionId, epoch)
-      const current = await this.prepare(session)
+      const prepared = await this.prepare(session)
       this.assertFence(sessionId, epoch)
-      if (!quiescent(await this.backend.inspect(current))) {
+      // #29: the prepare-time snapshot is the resumption quiescence read.
+      if (!quiescent(prepared.snapshot)) {
         throw fail('NATIVE_BUSY', 'Native activity has not settled.', 'control')
       }
       this.assertFence(sessionId, epoch)

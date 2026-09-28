@@ -4,7 +4,9 @@
 // launch profile are injected; only the synthetic codec exists until ZK-016
 // certification. — ZCode 2026-09-17
 import { randomUUID } from 'node:crypto'
-import { setTimeout as delay } from 'node:timers/promises'
+
+/** #29: coarse cancel-settle fallback cadence when no state.updated arrives. */
+const SETTLE_FALLBACK_POLL_MS = 250
 import { NativeClient } from './native/client.js'
 import { type LaunchProfile, type OwnedRuntime, startOwnedRuntime } from './native/process.js'
 import { spawn as childSpawn } from 'node:child_process'
@@ -134,6 +136,8 @@ type Connection = {
   writes: AbortController
   retirement?: Promise<Result<void>>
   replies: Map<RpcId, (result: Result<void>) => void>
+  /** #29: cancel-settle waiters woken by the state.updated notification lane. */
+  settleWaiters: Set<() => void>
 }
 type PendingInteraction = {
   request: NativeInteraction
@@ -210,6 +214,12 @@ export class ZcodeBackend {
       }
       this.listener(c.session.id, event)
     }
+  }
+  /** #29: wake every cancel-settle waiter registered on this connection. */
+  private wakeSettle(c: Connection) {
+    const waiters = [...c.settleWaiters]
+    c.settleWaiters.clear()
+    for (const wake of waiters) wake()
   }
   private current(session: AgentSession): Connection {
     const c = this.connection
@@ -368,6 +378,7 @@ export class ZcodeBackend {
       retired: false,
       writes: new AbortController(),
       replies: new Map(),
+      settleWaiters: new Set(),
     }
     this.connection = c
     runtime.onExit(() => client.disconnect())
@@ -490,9 +501,25 @@ export class ZcodeBackend {
     }
     return state
   }
-  async submit(session: AgentSession, input: string, attachments: readonly Attachment[] = []) {
+  /**
+   * #29: the caller's fresh snapshot (same native session, no native write
+   * since) replaces the submit-time quiescence/model readback; a snapshot that
+   * does not match this session is ignored and an authoritative read happens.
+   */
+  private static authoritative(
+    session: AgentSession,
+    snapshot: NativeSnapshot | undefined,
+  ): NativeSnapshot | undefined {
+    return snapshot?.sessionId === session.nativeSessionId ? snapshot : undefined
+  }
+  async submit(
+    session: AgentSession,
+    input: string,
+    attachments: readonly Attachment[] = [],
+    snapshot?: NativeSnapshot,
+  ) {
     const c = this.current(session)
-    const state = await this.inspect(session)
+    const state = ZcodeBackend.authoritative(session, snapshot) ?? (await this.inspect(session))
     if (!quiescent(state)) {
       throw fail(
         'NATIVE_BUSY',
@@ -501,11 +528,11 @@ export class ZcodeBackend {
       )
     }
     assertModel(state.model, session.model)
-    const images = []
-    for (const attachment of attachments)
-      images.push(
-        await nativeImage(attachment, this.profile.attachmentRoot, this.profile.imageCapability),
-      )
+    const images = await Promise.all(
+      attachments.map((attachment) =>
+        nativeImage(attachment, this.profile.attachmentRoot, this.profile.imageCapability),
+      ),
+    )
     const overlay = this.profile.modelOverlay?.(session.model)
     const result = record(
       unwrap(
@@ -550,17 +577,17 @@ export class ZcodeBackend {
     )
     // ACK delivery=queue is deliberately not used to infer failed steering.
   }
-  async compact(session: AgentSession) {
+  async compact(session: AgentSession, snapshot?: NativeSnapshot) {
     const c = this.current(session)
-    if (!quiescent(await this.inspect(session))) {
+    if (!quiescent(ZcodeBackend.authoritative(session, snapshot) ?? (await this.inspect(session)))) {
       throw fail('NATIVE_BUSY', 'Compaction requires native quiescence.', 'control')
     }
     unwrap(await this.write(c, 'session/compact', { sessionId: session.nativeSessionId }))
     return this.inspect(session)
   }
-  async switchModel(session: AgentSession, selection: ModelSelection) {
+  async switchModel(session: AgentSession, selection: ModelSelection, snapshot?: NativeSnapshot) {
     const c = this.current(session)
-    if (!quiescent(await this.inspect(session))) {
+    if (!quiescent(ZcodeBackend.authoritative(session, snapshot) ?? (await this.inspect(session)))) {
       throw fail('NATIVE_BUSY', 'Model changes require native quiescence.', 'control')
     }
     const overlay = this.profile.modelOverlay?.(selection)
@@ -580,10 +607,10 @@ export class ZcodeBackend {
         }),
       )
     }
-    const snapshot = await this.inspect(session)
-    assertModel(snapshot.model, selection)
+    const readback = await this.inspect(session)
+    assertModel(readback.model, selection)
     c.session.model = selection
-    return snapshot.model
+    return readback.model
   }
   async fork(session: AgentSession, operationId: string, point: ForkPoint) {
     const c = this.current(session)
@@ -690,19 +717,18 @@ export class ZcodeBackend {
           }),
           { timeoutMs: this.profile.cancelGraceMs },
         )
-        for (const taskId of before.background)
-          await c.client.request(
-            'session/cancelBackgroundTask',
-            { sessionId: session.nativeSessionId, taskId },
-            { timeoutMs: this.profile.cancelGraceMs },
-          )
-        const end = Date.now() + this.profile.cancelGraceMs
-        do {
-          if (quiescent(await this.inspect(session))) {
-            break
-          }
-          await delay(20)
-        } while (Date.now() < end)
+        // #29: per-task background cancels are independent — issue them
+        // together (each best-effort; the settle check below is authoritative).
+        await Promise.allSettled(
+          before.background.map((taskId) =>
+            c.client.request(
+              'session/cancelBackgroundTask',
+              { sessionId: session.nativeSessionId, taskId },
+              { timeoutMs: this.profile.cancelGraceMs },
+            ),
+          ),
+        )
+        await this.settleAfterCancel(c, session)
       } catch {
         /* A lost ACK cannot confirm stop; escalate only the owned runtime. */
       }
@@ -710,6 +736,41 @@ export class ZcodeBackend {
     // Even a confirmed native stop retires the connection, invalidating every
     // previously queued write and reverse-request generation before lease release.
     return this.retire(c)
+  }
+  /**
+   * #29: settle waits on the state.updated notification lane (one authoritative
+   * session/read per notification) with a coarse deadline-bound fallback probe
+   * — never a 20 ms full-snapshot polling loop. Best-effort like the old poll:
+   * a deadline expiry falls through to retirement, which owns the kill anyway.
+   */
+  private async settleAfterCancel(c: Connection, session: AgentSession): Promise<void> {
+    const end = Date.now() + this.profile.cancelGraceMs
+    for (;;) {
+      if (c.retired || c.client.isClosed) {
+        return
+      }
+      if (quiescent(await this.inspect(session))) {
+        return
+      }
+      if (Date.now() >= end) {
+        return
+      }
+      let wake: () => void = () => {}
+      const notified = new Promise<void>((resolve) => {
+        wake = resolve
+        c.settleWaiters.add(wake)
+      })
+      let timer: NodeJS.Timeout | undefined
+      const fallback = new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, SETTLE_FALLBACK_POLL_MS)
+      })
+      try {
+        await Promise.race([notified, fallback])
+      } finally {
+        c.settleWaiters.delete(wake)
+        if (timer) clearTimeout(timer)
+      }
+    }
   }
   dispose(): Promise<Result<void>> {
     if (this.disposing) return this.disposing
@@ -732,6 +793,8 @@ export class ZcodeBackend {
   private async retireConnection(c: Connection): Promise<Result<void>> {
     c.retired = true
     c.writes.abort()
+    // #29: a pending cancel-settle wait must not outlive its connection.
+    this.wakeSettle(c)
     for (const pending of this.interactions.values())
       pending.resolve({
         ok: false,
@@ -784,6 +847,8 @@ export class ZcodeBackend {
       // This source-observed top-level notification has no legacy replay seq.
       // Re-read authoritative state; never fabricate seq=0 or apply patch as completion.
       this.emit(c, { type: 'activity' })
+      // #29: a state change may have settled an in-flight cancel.
+      this.wakeSettle(c)
       return
     }
     if (method !== 'session/event') {
@@ -840,6 +905,8 @@ export class ZcodeBackend {
       e.type === 'session.updated'
     ) {
       this.emit(c, { type: 'activity' })
+      // #29: a state change may have settled an in-flight cancel.
+      this.wakeSettle(c)
     }
   }
   private v4(c: Connection, value: unknown) {
