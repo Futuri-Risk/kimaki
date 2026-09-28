@@ -18,6 +18,25 @@ let graceMs = 5000
 let nativeExited = false
 const isWin = process.platform === 'win32'
 
+/** Best-effort parent notification. On a closed IPC channel (parent death)
+ * process.send does not merely return false — Node 24 also queues an 'error'
+ * emit on the process object (node:internal/child_process:781) that, with no
+ * listener, crashes the supervisor mid-stop and orphans the native child; older
+ * nodes throw ERR_IPC_CHANNEL_CLOSED synchronously instead. Guard on
+ * process.connected — the same flag send() checks, and this function is
+ * synchronous, so it cannot flip between guard and send. A failed
+ * notification must never pre-empt the stop() that follows. — SWARM #22 */
+function notifyParent(message: unknown) {
+  if (!process.connected) {
+    return
+  }
+  try {
+    process.send?.(message)
+  } catch {
+    /* sync closed-channel throw: notification is best-effort */
+  }
+}
+
 /** P/Invoke job keeper: holds one job; ADD <pid> assigns it. */
 const KEEPER_PS1 = String.raw`
 $ErrorActionPreference = 'Stop'
@@ -252,7 +271,7 @@ process.on('message', (input: unknown) => {
       try {
         await startKeeper()
       } catch {
-        process.send?.({ type: 'failure' })
+        notifyParent({ type: 'failure' })
         void stop()
         return
       }
@@ -266,7 +285,7 @@ process.on('message', (input: unknown) => {
     })
     const owned = native
     owned.on('error', () => {
-      process.send?.({ type: 'failure' })
+      notifyParent({ type: 'failure' })
       void stop()
     })
     owned.stdin.on('error', () => {
@@ -285,12 +304,12 @@ process.on('message', (input: unknown) => {
         const assigned = await assignToJob(pid)
         if (!assigned && !stopping) {
           // No job containment: refuse to own the process unsupervised.
-          process.send?.({ type: 'failure' })
+          notifyParent({ type: 'failure' })
           void stop()
           return
         }
       }
-      if (!stopping) process.send?.({ type: 'ready', pid })
+      if (!stopping) notifyParent({ type: 'ready', pid })
     })
   }
   void begin()
