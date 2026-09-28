@@ -52,10 +52,11 @@ import * as schema from './schema.js'
 import { startHranaServer, stopHranaServer } from './hrana-server.js'
 import { initializeOpencodeForDirectory, stopOpencodeServer } from './opencode.js'
 import {
-  chooseLockPort,
+  chooseAvailableLockPort,
   cleanupTestSessions,
   initTestGitRepo,
   isFooterMessage,
+  normalizeFooterDuration,
   waitForBotMessageContaining,
   waitForFooterMessage,
 } from './test-utils.js'
@@ -263,11 +264,20 @@ describe('agent model resolution', () => {
   let botClient: Client
   let previousDefaultVerbosity: VerbosityLevel | null = null
   let testStartTime = Date.now()
+  // Set only after the opencode warmup succeeds. Guards afterAll: session
+  // cleanup would otherwise SPAWN a brand-new opencode server during
+  // teardown on half-initialized runs (beforeAll threw early), which is
+  // what pushed afterAll past its hookTimeout (#20).
+  let opencodeWarmedUp = false
 
   beforeAll(async () => {
     testStartTime = Date.now()
     directories = createRunDirectories()
-    const lockPort = chooseLockPort({ key: TEXT_CHANNEL_ID })
+    // Probe-bind the deterministic port: on win32, Hyper-V/WSL port
+    // exclusions shift every boot and can cover the hash-derived port
+    // (binding then fails with EACCES — see #20). chooseAvailableLockPort
+    // skips reserved/in-use ports and returns the first bindable one.
+    const lockPort = await chooseAvailableLockPort({ key: TEXT_CHANNEL_ID })
 
     process.env['KIMAKI_LOCK_PORT'] = String(lockPort)
     setDataDir(directories.dataDir)
@@ -429,19 +439,67 @@ describe('agent model resolution', () => {
     if (warmup instanceof Error) {
       throw warmup
     }
-  }, 20_000)
+
+    // Pay the first-turn debt before the timed tests (#20). The first
+    // opencode turn after server boot is the expensive one (session
+    // create, deterministic-provider transpile, event-stream settle) and
+    // on a loaded host it can stall past any reasonable per-test budget —
+    // observed >20s with the model preamble posted but no completion.
+    // A throwaway warmup turn with retries absorbs both the latency and
+    // the occasional stall; exhaustion fails beforeAll once with a clear
+    // message instead of distributing flakes across the first tests.
+    const sendWarmupTurn = async (label: string) => {
+      await discord.channel(TEXT_CHANNEL_ID).user(TEST_USER_ID).sendMessage({
+        content: `Reply with exactly: warmup-${label}`,
+      })
+      const thread = await discord.channel(TEXT_CHANNEL_ID).waitForThread({
+        timeout: 4_000,
+        predicate: (t) => {
+          return t.name === `Reply with exactly: warmup-${label}`
+        },
+      })
+      await waitForFooterMessage({
+        discord,
+        threadId: thread.id,
+        timeout: 15_000,
+        afterMessageIncludes: `warmup-${label}`,
+        afterAuthorId: TEST_USER_ID,
+      })
+    }
+    let pipelineWarmed = false
+    for (const attempt of ['a', 'b', 'c']) {
+      try {
+        await sendWarmupTurn(attempt)
+        pipelineWarmed = true
+        break
+      } catch {
+        // Retry: the first turn after boot occasionally stalls.
+      }
+    }
+    if (!pipelineWarmed) {
+      throw new Error('Warmup turn did not complete after 3 attempts')
+    }
+    opencodeWarmedUp = true
+  }, 120_000)
 
   afterAll(async () => {
-    if (directories) {
+    // Every step below must tolerate a beforeAll that threw partway
+    // through (#20): only clean up what was actually initialized, and
+    // never spawn new processes during teardown.
+    if (directories && opencodeWarmedUp) {
       await cleanupTestSessions({
         projectDirectory: directories.projectDirectory,
         testStartTime,
+      }).catch(() => {
+        return
       })
     }
     if (botClient) {
       void botClient.destroy()
     }
-    await stopOpencodeServer()
+    await stopOpencodeServer().catch(() => {
+      return
+    })
     await Promise.all([
       closeDatabase().catch(() => {
         return
@@ -459,9 +517,22 @@ describe('agent model resolution', () => {
       store.setState({ defaultVerbosity: previousDefaultVerbosity })
     }
     if (directories) {
-      fs.rmSync(directories.dataDir, { recursive: true, force: true })
+      // Windows teardown (#20): sqlite WAL/shm handles can be released a
+      // beat after close(), making rmSync fail with EPERM. Node's built-in
+      // retries cover exactly this; a final catch follows the established
+      // rule that cleanup must never fail tests (see cleanupTestSessions).
+      try {
+        fs.rmSync(directories.dataDir, {
+          recursive: true,
+          force: true,
+          maxRetries: 10,
+          retryDelay: 250,
+        })
+      } catch {
+        // Best-effort: leftover data-* dirs under tmp/ are inert.
+      }
     }
-  }, 5_000)
+  }, 20_000)
 
   test(
     'new thread uses agent model when channel agent is set',
@@ -483,12 +554,16 @@ describe('agent model resolution', () => {
 
       // Wait for the footer (starts with *project) — proves run completed.
       // Then assert which model ID appears in it.
+      // 20s budget: this is the FIRST turn against the freshly warmed
+      // opencode server (session create + config + agent discovery +
+      // deterministic-provider transpile); on a loaded host it can exceed
+      // 10s before any bot output appears (#20).
       await waitForBotMessageContaining({
         discord,
         threadId: thread.id,
         userId: TEST_USER_ID,
         text: '*project',
-        timeout: 4_000,
+        timeout: 20_000,
       })
 
       const messages = await discord.thread(thread.id).getMessages()
@@ -501,7 +576,7 @@ describe('agent model resolution', () => {
         )
       })
 
-      expect(await discord.thread(thread.id).text()).toMatchInlineSnapshot(`
+      expect(normalizeFooterDuration(await discord.thread(thread.id).text())).toMatchInlineSnapshot(`
         "--- from: user (agent-model-tester)
         Reply with exactly: agent-model-check
         --- from: assistant (TestBot)
@@ -523,7 +598,7 @@ describe('agent model resolution', () => {
       expect(footerMessage.content).toContain(AGENT_MODEL)
       expect(footerMessage.content).not.toContain(DEFAULT_MODEL)
     },
-    15_000,
+    45_000,
   )
 
   test(
@@ -542,12 +617,14 @@ describe('agent model resolution', () => {
         },
       })
 
+      // Second suite turn can still carry first-turn warmup debt on a
+      // loaded host (#20) — see the note on the first test.
       await waitForBotMessageContaining({
         discord,
         threadId: thread.id,
         userId: TEST_USER_ID,
         text: 'system-context-ok',
-        timeout: 4_000,
+        timeout: 20_000,
       })
 
       await waitForFooterMessage({
@@ -558,7 +635,7 @@ describe('agent model resolution', () => {
         afterAuthorId: discord.botUserId,
       })
 
-      expect(await discord.thread(thread.id).text()).toMatchInlineSnapshot(`
+      expect(normalizeFooterDuration(await discord.thread(thread.id).text())).toMatchInlineSnapshot(`
         "--- from: user (agent-model-tester)
         Reply with exactly: system-context-check
         --- from: assistant (TestBot)
@@ -567,7 +644,7 @@ describe('agent model resolution', () => {
         > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ agent-model-v2 ⋅ **test-agent*** <@200000000000000920>"
       `)
     },
-    15_000,
+    45_000,
   )
 
   test(
@@ -701,7 +778,7 @@ describe('agent model resolution', () => {
         )
       })
 
-      expect(await discord.thread(thread.id).text()).toMatchInlineSnapshot(`
+      expect(normalizeFooterDuration(await discord.thread(thread.id).text())).toMatchInlineSnapshot(`
         "--- from: user (agent-model-tester)
         Reply with exactly: channel-model-check
         --- from: assistant (TestBot)
@@ -755,7 +832,7 @@ describe('agent model resolution', () => {
           && isFooterMessage({ message, botUserId: discord.botUserId })
       })
 
-      expect(await discord.thread(thread.id).text()).toMatchInlineSnapshot(`
+      expect(normalizeFooterDuration(await discord.thread(thread.id).text())).toMatchInlineSnapshot(`
         "--- from: user (agent-model-tester)
         Reply with exactly: variant-check
         --- from: assistant (TestBot)
@@ -839,8 +916,9 @@ describe('agent model resolution', () => {
         ? await getSessionModel(forkedSessionId)
         : undefined
 
-      const forkedThreadText = (await discord.thread(forkedThread.id).text())
-        .replace(`<#${sourceThread.id}>`, '<#SOURCE_THREAD>')
+      const forkedThreadText = normalizeFooterDuration(
+        await discord.thread(forkedThread.id).text(),
+      ).replace(`<#${sourceThread.id}>`, '<#SOURCE_THREAD>')
 
       expect(forkedThreadText).toMatchInlineSnapshot(`
         "--- from: assistant (TestBot)
@@ -922,7 +1000,7 @@ describe('agent model resolution', () => {
         afterAuthorId: TEST_USER_ID,
       })
 
-      expect(await discord.thread(thread.id).text()).toMatchInlineSnapshot(`
+      expect(normalizeFooterDuration(await discord.thread(thread.id).text())).toMatchInlineSnapshot(`
         "--- from: user (agent-model-tester)
         Reply with exactly: first-thread-msg
         --- from: assistant (TestBot)
@@ -991,7 +1069,7 @@ describe('agent model resolution', () => {
       expect(sessionId).toBeDefined()
       expect(sessionId ? await getSessionAgent(sessionId) : undefined).toBe('plan')
       expect(await getChannelAgent(TEXT_CHANNEL_ID)).toBe('test-agent')
-      expect(await discord.thread(thread.id).text()).toMatchInlineSnapshot(`
+      expect(normalizeFooterDuration(await discord.thread(thread.id).text())).toMatchInlineSnapshot(`
         "--- from: assistant (TestBot)
         » **agent-model-tester** (plan): Reply with exactly: inline-plan-agent-msg
         > *using deterministic-provider/plan-model-v2 ⋅ plan*
@@ -1036,7 +1114,7 @@ describe('agent model resolution', () => {
 
       const sessionId = await getThreadSession(thread.id)
       expect(sessionId).toBeDefined()
-      expect(await discord.thread(thread.id).text()).toMatchInlineSnapshot(`
+      expect(normalizeFooterDuration(await discord.thread(thread.id).text())).toMatchInlineSnapshot(`
         "--- from: assistant (TestBot)
         » **agent-model-tester** (plan): Reply with exactly: inline-plan-agent-variant-msg
         > *using deterministic-provider/plan-model-v2 ⋅ plan*
@@ -1152,7 +1230,7 @@ describe('agent model resolution', () => {
       expect(sessionId).toBeDefined()
       expect(sessionId ? await getSessionAgent(sessionId) : undefined).toBe('plan')
       expect(await getChannelAgent(TEXT_CHANNEL_ID)).toBe('test-agent')
-      expect(await th.text()).toMatchInlineSnapshot(`
+      expect(normalizeFooterDuration(await th.text())).toMatchInlineSnapshot(`
         "--- from: user (agent-model-tester)
         Reply with exactly: inline-existing-first-msg
         --- from: assistant (TestBot)
@@ -1224,7 +1302,7 @@ describe('agent model resolution', () => {
         afterAuthorId: TEST_USER_ID,
       })
 
-      expect(await discord.thread(thread.id).text()).toMatchInlineSnapshot(`
+      expect(normalizeFooterDuration(await discord.thread(thread.id).text())).toMatchInlineSnapshot(`
         "--- from: user (agent-model-tester)
         Reply with exactly: switch-in-thread-msg
         --- from: assistant (TestBot)
@@ -1298,7 +1376,7 @@ describe('agent model resolution', () => {
         afterAuthorId: TEST_USER_ID,
       })
 
-      expect(await discord.thread(thread.id).text()).toMatchInlineSnapshot(`
+      expect(normalizeFooterDuration(await discord.thread(thread.id).text())).toMatchInlineSnapshot(`
         "--- from: user (agent-model-tester)
         Reply with exactly: race-switch-first-msg
         --- from: assistant (TestBot)
@@ -1361,7 +1439,7 @@ describe('agent model resolution', () => {
         afterAuthorId: discord.botUserId,
       })
 
-      expect(await discord.thread(thread.id).text()).toMatchInlineSnapshot(`
+      expect(normalizeFooterDuration(await discord.thread(thread.id).text())).toMatchInlineSnapshot(`
         "--- from: user (agent-model-tester)
         Reply with exactly: race-channel-follow-up
         --- from: assistant (TestBot)
@@ -1422,7 +1500,17 @@ describe('agent model resolution', () => {
 
       await th.waitForInteractionAck({ interactionId, timeout: 4_000 })
 
-      expect(await th.text()).toMatchInlineSnapshot(`
+      // The ack only proves the interaction was received; the confirmation
+      // message is posted asynchronously. Wait for it before snapshotting.
+      await waitForBotMessageContaining({
+        discord,
+        threadId: thread.id,
+        userId: TEST_USER_ID,
+        text: 'Using **plan** agent for this session',
+        timeout: 4_000,
+      })
+
+      expect(normalizeFooterDuration(await th.text())).toMatchInlineSnapshot(`
         "--- from: user (agent-model-tester)
         Reply with exactly: refresh-agent-model-msg
         --- from: assistant (TestBot)
@@ -1474,7 +1562,17 @@ describe('agent model resolution', () => {
 
       await th.waitForInteractionAck({ interactionId, timeout: 4_000 })
 
-      const threadText = await th.text()
+      // The ack only proves the interaction was received; the confirmation
+      // message is posted asynchronously. Wait for it before snapshotting.
+      await waitForBotMessageContaining({
+        discord,
+        threadId: thread.id,
+        userId: TEST_USER_ID,
+        text: 'Switched to **plan** agent for this session',
+        timeout: 4_000,
+      })
+
+      const threadText = normalizeFooterDuration(await th.text())
       expect(threadText).toMatchInlineSnapshot(`
         "--- from: user (agent-model-tester)
         Reply with exactly: channel-vs-agent-msg
@@ -1530,7 +1628,17 @@ describe('agent model resolution', () => {
 
       await th.waitForInteractionAck({ interactionId, timeout: 4_000 })
 
-      expect(await th.text()).toMatchInlineSnapshot(`
+      // The ack only proves the interaction was received; the confirmation
+      // message is posted asynchronously. Wait for it before snapshotting.
+      await waitForBotMessageContaining({
+        discord,
+        threadId: thread.id,
+        userId: TEST_USER_ID,
+        text: 'Switched to **plain** agent for this session',
+        timeout: 4_000,
+      })
+
+      expect(normalizeFooterDuration(await th.text())).toMatchInlineSnapshot(`
         "--- from: user (agent-model-tester)
         Reply with exactly: plain-agent-override-msg
         --- from: assistant (TestBot)
