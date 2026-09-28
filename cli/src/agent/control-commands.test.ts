@@ -35,7 +35,7 @@ import {
   queueNativePrompt,
   runNativeControl,
 } from './control-commands.js'
-import { coordinatorHarness } from './coordinator.test.js'
+import { coordinatorHarness } from './test-harness.js'
 
 async function controlHarness() {
   const h = await coordinatorHarness()

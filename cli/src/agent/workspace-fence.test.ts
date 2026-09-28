@@ -31,7 +31,7 @@ import {
   nativeWorkspaceWriter,
   writerFenceRefusal,
 } from './workspace-fence.js'
-import { coordinatorHarness } from './coordinator.test.js'
+import { coordinatorHarness } from './test-harness.js'
 import { deleteWorktree, mergeWorktree } from '../worktrees.js'
 
 test('an active native turn holds the lease and refuses every managed writer', async () => {

@@ -19,7 +19,7 @@ vi.mock('./host-coordinator.js', async (importOriginal) => ({
 }))
 
 import { AgentCoordinator } from './coordinator.js'
-import { coordinatorHarness, FakeBackend } from './coordinator.test.js'
+import { coordinatorHarness, FakeBackend } from './test-harness.js'
 import { describeRecovery, ingestScheduled, recoverWithCoordinator } from './schedule-bridge.js'
 
 const SCHEDULE_INPUT = {

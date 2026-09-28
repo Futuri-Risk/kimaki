@@ -19,7 +19,7 @@ import {
   type BridgePorts,
   type PromptView,
 } from './interaction-bridge.js'
-import { coordinatorHarness } from './coordinator.test.js'
+import { coordinatorHarness } from './test-harness.js'
 import type { NativeEvent, NativeInteraction } from './types.js'
 
 function recordPorts() {

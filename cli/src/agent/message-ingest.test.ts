@@ -43,7 +43,7 @@ import {
   resetNativeOutboxRenderer,
   setNativeDiscordClient,
 } from './message-ingest.js'
-import { coordinatorHarness } from './coordinator.test.js'
+import { coordinatorHarness } from './test-harness.js'
 import type { Cursor, DisplayPart } from './types.js'
 
 type FakeMessage = {
