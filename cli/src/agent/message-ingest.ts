@@ -13,6 +13,8 @@ import { getOwnerMachineId } from './host-identity.js'
 import { ingestScheduled } from './schedule-bridge.js'
 import { OutboxRenderer, type RendererPorts, type DeliveryProbe } from './renderer.js'
 import { stageDiscordAttachments } from './attachment-pipeline.js'
+import { AgentStore } from './store.js'
+import { libsqlSqlClient, serializeWrites } from './sql.js'
 import { SILENT_MESSAGE_FLAGS } from '../discord-utils.js'
 import type { AgentCoordinator } from './coordinator.js'
 import type { Attachment } from './attachments.js'
@@ -328,16 +330,87 @@ export async function ensureNativeThreadSession(args: {
     // The channel is native-configured but the runtime is off: visible.
     return { kind: 'offline' }
   }
+  const bound = await bindNativeSession(coordinator, args)
+  if ('sessionId' in bound) {
+    return { kind: 'created', sessionId: bound.sessionId }
+  }
+  // An intent frozen as opencode keeps the OpenCode fall-through; a missing
+  // certified profile is the visible 'offline' refusal.
+  return bound.refused === 'intent' ? { kind: 'not-native' } : { kind: 'offline' }
+}
+
+export type NativeThreadMigration =
+  | { kind: 'migrated'; sessionId: string; previousSessionId: string }
+  | { kind: 'not-applicable' }
+  | { kind: 'unavailable' }
+
+/**
+ * #25: migrate an EXISTING thread whose binding predates a channel's native
+ * configuration. When the channel default now says zcode, the thread rebinds
+ * to a fresh zc: session on this ingest (the previous OpenCode session row is
+ * untouched — only the thread binding moves). Every refusal keeps the current
+ * route: a channel not configured for zcode makes zero native writes, and an
+ * unavailable native runtime defers the migration instead of erroring the
+ * message. The reverse direction (native → OpenCode) never happens: a zc:
+ * binding cannot fall through to an OpenCode path (ZK-005).
+ */
+export async function migrateThreadToNative(args: {
+  threadId: string
+  channelId: string
+  projectDirectory: string
+}): Promise<NativeThreadMigration> {
+  const existing = await getThreadSession(args.threadId)
+  if (!existing) {
+    // No binding yet — new-thread flows own session creation.
+    return { kind: 'not-applicable' }
+  }
+  const backend = await resolveBackend(lookupBackendSidecar, existing)
+  if (backend === 'zcode') {
+    return { kind: 'not-applicable' }
+  }
+  // Default-off first: an OpenCode channel makes zero native writes.
+  const channelDefault = await agentChannelBackendDefault(args.channelId)
+  if (!channelDefault || channelDefault.backend !== 'zcode') {
+    return { kind: 'not-applicable' }
+  }
+  const coordinator = await getNativeCoordinator()
+  if (!coordinator) {
+    // Native runtime off: defer — the OpenCode route must keep working.
+    return { kind: 'unavailable' }
+  }
+  const bound = await bindNativeSession(coordinator, args)
+  if ('sessionId' in bound) {
+    return { kind: 'migrated', sessionId: bound.sessionId, previousSessionId: existing }
+  }
+  return bound.refused === 'intent' ? { kind: 'not-applicable' } : { kind: 'unavailable' }
+}
+
+/**
+ * Shared bind path (#25): sweep stale thread intents, freeze/refresh the
+ * thread's intent from the channel default, create the zc: session, rebind the
+ * thread, and complete the intent lifecycle ('workspace-pending' → 'bound').
+ */
+async function bindNativeSession(
+  coordinator: AgentCoordinator,
+  args: {
+    threadId: string
+    channelId: string
+    projectDirectory: string
+  },
+): Promise<{ sessionId: string } | { refused: 'intent' | 'profile' }> {
+  // Sweep point: intents whose thread never bound must not linger in
+  // 'workspace-pending' forever — every successful bind is also a sweep.
+  await coordinator.store.expireStaleThreadIntents(STALE_THREAD_INTENT_MAX_AGE_MS)
   const intent = await coordinator.store.freezeIntent(args.threadId, args.channelId, 'global')
   if (String(intent.backend_type) !== 'zcode') {
-    return { kind: 'not-native' }
+    return { refused: 'intent' }
   }
   const profileId = typeof intent.profile_id === 'string' ? intent.profile_id : 'zcode-primary'
   const { resolveNativeProfile } = await import('./native-profile.js')
   const profile = resolveNativeProfile(profileId)
   if (!profile?.enabled || !profile.defaultModel) {
     // No certified default selection: refuse rather than inventing a model.
-    return { kind: 'offline' }
+    return { refused: 'profile' }
   }
   const machineId = await getOwnerMachineId()
   const session = await coordinator.store.createNativeSession({
@@ -349,5 +422,95 @@ export async function ensureNativeThreadSession(args: {
     model: profile.defaultModel,
   })
   await upsertThreadSession({ threadId: args.threadId, sessionId: session.id, source: 'kimaki' })
-  return { kind: 'created', sessionId: session.id }
+  await coordinator.store.markThreadIntentBound(args.threadId)
+  return { sessionId: session.id }
+}
+
+// ── Channel backend configuration (#25) ─────────────────────────────────────
+
+/** A frozen intent whose thread never bound is stale after one day. */
+export const STALE_THREAD_INTENT_MAX_AGE_MS = 24 * 60 * 60 * 1000
+
+export type NativeHostCommand =
+  | { kind: 'set-backend'; backend: 'opencode' | 'zcode'; profileId: string | null }
+  | { kind: 'status' }
+  | { kind: 'unknown' }
+
+/**
+ * Host command parser (#25) — the production entry to the
+ * `agent_backend_defaults` write path. Grammar (full-message, prefix `zc:`,
+ * case-insensitive subcommand and backend token):
+ *
+ *   zc: backend zcode [profileId]   configure this channel to the native backend
+ *   zc: backend opencode            revert the channel to OpenCode
+ *   zc: status                      show the channel's effective default
+ *
+ * Any other `zc:`-prefixed message parses as 'unknown' (the caller shows
+ * usage); every other message parses as null and flows through normal
+ * routing. The prefix literal stays inside the agent boundary — no host
+ * module outside src/agent may mint the reserved namespace (ZK-006).
+ */
+export function parseNativeHostCommand(content: string): NativeHostCommand | null {
+  const trimmed = content.trim()
+  if (!trimmed.startsWith('zc:')) {
+    return null
+  }
+  const tokens = trimmed
+    .slice(3)
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length > 0)
+  if (tokens.length === 1 && tokens[0]!.toLowerCase() === 'status') {
+    return { kind: 'status' }
+  }
+  if (tokens.length >= 2 && tokens[0]!.toLowerCase() === 'backend') {
+    const backend = tokens[1]!.toLowerCase()
+    if (backend === 'opencode' && tokens.length === 2) {
+      return { kind: 'set-backend', backend: 'opencode', profileId: null }
+    }
+    if (backend === 'zcode' && tokens.length <= 3) {
+      return { kind: 'set-backend', backend: 'zcode', profileId: tokens[2] ?? null }
+    }
+  }
+  return { kind: 'unknown' }
+}
+
+export type ChannelBackendConfigResult =
+  | {
+      ok: true
+      backend: 'opencode' | 'zcode'
+      profileId: string | null
+      expiredIntents: number
+    }
+  | { ok: false; error: string }
+
+/**
+ * The production write path for `agent_backend_defaults` (#25): persists (or
+ * updates) the channel-scope default through the same durable store the
+ * coordinator freezes intents from, then sweeps stale thread intents — a
+ * config change is a natural maintenance point for rows whose thread never
+ * started. Works with the native runtime off: configuring a channel must not
+ * require the runtime it configures. An explicitly named profile must resolve
+ * to an enabled native profile, else the write is refused (an admin typo must
+ * not send every new thread to the visible 'offline' refusal).
+ */
+export async function configureChannelBackend(args: {
+  channelId: string
+  backend: 'opencode' | 'zcode'
+  profileId: string | null
+}): Promise<ChannelBackendConfigResult> {
+  if (args.backend === 'zcode' && args.profileId) {
+    const { resolveNativeProfile } = await import('./native-profile.js')
+    if (!resolveNativeProfile(args.profileId)?.enabled) {
+      return { ok: false, error: `Unknown or disabled native profile: ${args.profileId}` }
+    }
+  }
+  const { getRawDbClient } = await import('../db.js')
+  const store = new AgentStore(
+    serializeWrites(libsqlSqlClient(await getRawDbClient())),
+    await getOwnerMachineId(),
+  )
+  await store.setDefault('channel', args.channelId, args.backend, args.profileId)
+  const expiredIntents = await store.expireStaleThreadIntents(STALE_THREAD_INTENT_MAX_AGE_MS)
+  return { ok: true, backend: args.backend, profileId: args.profileId, expiredIntents }
 }

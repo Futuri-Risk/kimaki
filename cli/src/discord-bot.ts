@@ -72,8 +72,12 @@ import {
 import { isZcodeSessionId } from './agent/registry.js'
 import { writerFenceRefusal } from './agent/workspace-fence.js'
 import {
+  agentChannelBackendDefault,
+  configureChannelBackend,
   ensureNativeThreadSession,
   ingestNativeThreadMessage,
+  migrateThreadToNative,
+  parseNativeHostCommand,
   setNativeDiscordClient,
 } from './agent/message-ingest.js'
 import {
@@ -558,6 +562,12 @@ export async function startDiscordBot({
         // without getting a permission error - we just silently ignore.
         const channel = message.channel
 
+        // #25: native backend host command, parsed once (the parser lives in
+        // the agent boundary — the reserved namespace is native-only). It is
+        // exempt from mention mode like the `!` host shell and handled after
+        // the permission gates below.
+        const nativeHostCommand = parseNativeHostCommand(message.content ?? '')
+
         // In text channels, messages starting with a mention to another user
         // are fully ignored before any permission or mention-mode checks.
         // This prevents permission-error replies for user-to-user conversation.
@@ -570,7 +580,7 @@ export async function startDiscordBot({
           if (mentionModeEnabled) {
             const botMentioned = discordClient.user && message.mentions.has(discordClient.user.id)
             const isShellCommand = message.content?.startsWith('!')
-            if (!botMentioned && !isShellCommand) {
+            if (!botMentioned && !isShellCommand && !nativeHostCommand) {
               voiceLogger.log(`[IGNORED] Mention mode enabled, bot not mentioned`)
               return
             }
@@ -628,6 +638,69 @@ export async function startDiscordBot({
             })
             return
           }
+        }
+
+        // #25: production write path for agent_backend_defaults. The zc: host
+        // command configures the channel-scope backend default; the scope
+        // channel is the message's channel, or the parent channel for thread
+        // messages. The Kimaki-role gates above have already run, and
+        // CLI-injected prompts are agent content, not host commands — they
+        // keep their normal routing.
+        if (nativeHostCommand && !isCliInjectedPrompt) {
+          const nativeScopeChannelId = [
+            ChannelType.PublicThread,
+            ChannelType.PrivateThread,
+            ChannelType.AnnouncementThread,
+          ].includes(channel.type)
+            ? (channel as ThreadChannel).parent?.id || (channel as ThreadChannel).parentId
+            : channel.type === ChannelType.GuildText
+              ? channel.id
+              : undefined
+          if (!nativeScopeChannelId) {
+            await message.reply({
+              content: 'Backend configuration needs a channel scope (use it in a server channel).',
+              flags: SILENT_MESSAGE_FLAGS,
+            })
+            return
+          }
+          if (nativeHostCommand.kind === 'unknown') {
+            await message.reply({
+              content:
+                'Usage: `zc: backend zcode [profile]` to configure this channel to the native backend, `zc: backend opencode` to revert, `zc: status` to inspect.',
+              flags: SILENT_MESSAGE_FLAGS,
+            })
+            return
+          }
+          if (nativeHostCommand.kind === 'status') {
+            const currentDefault = await agentChannelBackendDefault(nativeScopeChannelId)
+            await message.reply({
+              content: currentDefault
+                ? `Channel backend default: **${currentDefault.backend}**${currentDefault.profileId ? ` (profile ${currentDefault.profileId})` : ''}.`
+                : 'Channel backend default: **opencode** (no explicit row; global default applies).',
+              flags: SILENT_MESSAGE_FLAGS,
+            })
+            return
+          }
+          const configured = await configureChannelBackend({
+            channelId: nativeScopeChannelId,
+            backend: nativeHostCommand.backend,
+            profileId: nativeHostCommand.profileId,
+          })
+          if (!configured.ok) {
+            await message.reply({
+              content: `✗ ${configured.error}`,
+              flags: SILENT_MESSAGE_FLAGS,
+            })
+            return
+          }
+          await message.reply({
+            content:
+              configured.backend === 'zcode'
+                ? `Channel backend default set to **zcode**${configured.profileId ? ` (profile ${configured.profileId})` : ''}. New threads start native; existing OpenCode threads migrate on their next message.`
+                : 'Channel backend default set to **opencode**. New threads start on OpenCode; native threads are never downgraded.',
+            flags: SILENT_MESSAGE_FLAGS,
+          })
+          return
         }
 
         const isThread = [
@@ -717,7 +790,42 @@ export async function startDiscordBot({
           // thread. A zc: session must never fall through to an OpenCode path;
           // a reserved ID without a sidecar throws here and surfaces as an error
           // reply (integrity failure, never permission to use OpenCode).
-          const threadBackend = await resolveIngressBackend(hasExistingSession || null)
+          let threadBackend = await resolveIngressBackend(hasExistingSession || null)
+
+          // #25: migration — a thread whose OpenCode binding predates a
+          // channel's native configuration rebinds to a fresh zc: session on
+          // this ingest when the channel default now says zcode. Attempted
+          // only when a non-native session exists (new threads bind at
+          // start); every refusal keeps the OpenCode route byte-identical,
+          // and a default-off channel makes zero native writes.
+          if (hasExistingSession && threadBackend === 'opencode' && parent) {
+            const nativeMigrationDirectory =
+              worktreeInfo?.status === 'ready' && worktreeInfo.workspace_directory
+                ? worktreeInfo.workspace_directory
+                : projectDirectory
+            if (nativeMigrationDirectory) {
+              const migration = await migrateThreadToNative({
+                threadId: thread.id,
+                channelId: parent.id,
+                projectDirectory: nativeMigrationDirectory,
+              })
+              if (migration.kind === 'migrated') {
+                discordLogger.log(
+                  `[ZCODE] thread ${thread.id} migrated to native session ${migration.sessionId} (was ${migration.previousSessionId})`,
+                )
+                threadBackend = 'zcode'
+                await message.reply({
+                  content:
+                    'This channel is now configured for the native ZCode backend, and this thread has been migrated. Your message goes to a fresh native session; the previous conversation stays in its old session.',
+                  flags: SILENT_MESSAGE_FLAGS,
+                })
+              } else if (migration.kind === 'unavailable') {
+                discordLogger.warn(
+                  `[ZCODE] thread ${thread.id} native migration deferred: runtime or profile unavailable`,
+                )
+              }
+            }
+          }
 
           // ! prefix runs a shell command instead of starting/continuing a session.
           // Use worktree directory if available, so commands run in the worktree cwd.

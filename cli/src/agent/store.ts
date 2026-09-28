@@ -373,6 +373,40 @@ export class AgentStore {
         .rows[0]!
     })
   }
+  /**
+   * #25: a durably bound zc: session is proof the frozen intent reached its
+   * thread — the row leaves 'workspace-pending' and becomes 'bound'. A bind
+   * supersedes any earlier state (including an expired 'failed' row that a
+   * late retry of the same thread just outran), so the lifecycle can only
+   * settle on the truth.
+   */
+  async markThreadIntentBound(threadId: string) {
+    await this.db.execute(
+      q(
+        "UPDATE agent_thread_intents SET state='bound',updated_at=? WHERE thread_id=? AND state<>'bound'",
+        Date.now(),
+        threadId,
+      ),
+    )
+  }
+  /**
+   * #25: an intent frozen at thread start that never reached a binding (host
+   * crash between freeze and create, uncertified profile, abandoned thread)
+   * must not sit in 'workspace-pending' forever: rows older than `maxAgeMs`
+   * expire to 'failed' (audit trail kept, not deleted). A later retry on the
+   * same thread still rebinds — freezeIntent returns the row unchanged and
+   * markThreadIntentBound supersedes the expired state on success.
+   */
+  async expireStaleThreadIntents(maxAgeMs: number): Promise<number> {
+    const r = await this.db.execute(
+      q(
+        "UPDATE agent_thread_intents SET state='failed',updated_at=? WHERE state='workspace-pending' AND created_at<?",
+        Date.now(),
+        Date.now() - maxAgeMs,
+      ),
+    )
+    return r.rowsAffected
+  }
   async admit(input: Input): Promise<{
     operation: Operation
     created: boolean
