@@ -1,6 +1,6 @@
 import { DiagnosticBuffer } from './diagnostics.js'
 import { spawn } from 'node:child_process'
-import { readFile, realpath } from 'node:fs/promises'
+import { readFile, realpath, stat } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -27,10 +27,21 @@ export type OwnedRuntime = {
   stderrBytes: () => number
   stderrLines: () => readonly string[]
 }
+// #31: launch fingerprinting hashed the 87 MB node.exe on EVERY launch
+// (~70-80 ms per file, twice, sequentially). The cache keys on
+// (path, size, mtime): a replaced binary — the drift this check exists to
+// catch, including desktop auto-updates — always re-hashes; an unchanged
+// binary is the same bytes and skips straight to the comparison.
+const hashCache = new Map<string, { size: number; mtimeMs: number; sha256: string }>()
 export async function fileHash(filename: string) {
-  return createHash('sha256')
-    .update(await readFile(filename))
-    .digest('hex')
+  const stats = await stat(filename)
+  const cached = hashCache.get(filename)
+  if (cached && cached.size === stats.size && cached.mtimeMs === stats.mtimeMs) {
+    return cached.sha256
+  }
+  const sha256 = createHash('sha256').update(await readFile(filename)).digest('hex')
+  hashCache.set(filename, { size: stats.size, mtimeMs: stats.mtimeMs, sha256 })
+  return sha256
 }
 export async function verifyLaunch(profile: LaunchProfile) {
   if (
@@ -71,10 +82,9 @@ export async function verifyLaunch(profile: LaunchProfile) {
   ) {
     throw fail('CONFIG_INVALID', 'Invalid native argument vector.')
   }
-  if (
-    (await fileHash(exe)) !== profile.executableSha256 ||
-    (await fileHash(entry)) !== profile.entrySha256
-  ) {
+  // #31: the two fingerprints are independent — verify them concurrently.
+  const [executableHash, entryHash] = await Promise.all([fileHash(exe), fileHash(entry)])
+  if (executableHash !== profile.executableSha256 || entryHash !== profile.entrySha256) {
     throw fail('RUNTIME_UNCERTIFIED', 'Native executable or entry fingerprint changed.')
   }
   for (const name of Object.keys(profile.environment))

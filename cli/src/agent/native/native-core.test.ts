@@ -188,3 +188,40 @@ describe('verifyLaunch preflight', () => {
     })
   })
 })
+
+describe('#31 fingerprint cache', () => {
+  test('an unchanged file keeps its hash; a replaced file re-hashes and verifyLaunch still refuses it', async () => {
+    // Entry and workspace in SEPARATE trees — verifyLaunch refuses
+    // workspace-local executables before reaching the hash comparison.
+    const root = await mkdtemp(path.join(tmpdir(), 'zc-hash-'))
+    const entryTree = await mkdtemp(path.join(tmpdir(), 'zc-hash-e-'))
+    onTestFinished(() => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }))
+    onTestFinished(() => rm(entryTree, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }))
+    const entry = path.join(entryTree, 'entry.mjs')
+    await writeFile(entry, 'process.exit(0)\n')
+    const first = await fileHash(entry)
+    assert.match(first, /^[0-9a-f]{64}$/)
+    // Same bytes → same answer (cache hit path).
+    assert.equal(await fileHash(entry), first)
+
+    // Replace the entry with DIFFERENT bytes: the cache must not mask drift —
+    // verifyLaunch (which now hashes exe+entry concurrently) still refuses.
+    await writeFile(entry, 'process.exit(1) // changed\n')
+    const exeHash = await fileHash(process.execPath)
+    await assert.rejects(
+      () =>
+        verifyLaunch({
+          executable: process.execPath,
+          args: [entry],
+          executableSha256: exeHash,
+          entryPath: entry,
+          entrySha256: first,
+          cwd: root,
+          environment: {},
+        }),
+      { code: 'RUNTIME_UNCERTIFIED' },
+    )
+    // And the new bytes hash differently.
+    assert.notEqual(await fileHash(entry), first)
+  })
+})

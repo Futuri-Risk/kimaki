@@ -129,9 +129,12 @@ export async function runDoctorInventory(input: {
   let entryBytes: number | null = null
   if (absolute && checks.some((c) => c.id === 'paths-canonical' && c.status === 'PASS')) {
     try {
-      executableSha256 = await sha256(executable)
-      entrySha256 = await sha256(entryPath)
-      entryBytes = (await stat(entryPath)).size
+      // #31: the three reads are independent — hash concurrently.
+      ;[executableSha256, entrySha256, entryBytes] = await Promise.all([
+        sha256(executable),
+        sha256(entryPath),
+        stat(entryPath).then((s) => s.size),
+      ])
       pass('fingerprints', 'SHA-256 fingerprints recorded for executable and entry.')
     } catch {
       fail('fingerprints', 'Executable or entry could not be read for fingerprinting.')
