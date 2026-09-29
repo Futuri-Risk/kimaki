@@ -1040,12 +1040,25 @@ export class AgentStore {
         }
       : null
   }
-  async outbox() {
-    return (
-      await this.db.execute(
-        "SELECT * FROM agent_outbox WHERE state IN ('pending','delivery-unknown') ORDER BY created_at,content_revision",
-      )
-    ).rows
+  /**
+   * Pending/delivery-unknown outbox rows in delivery order. #30: pass a
+   * sessionId to scope the scan — an ingest's flush must not re-read and
+   * re-format every other session's pending rows on each round.
+   */
+  async outbox(sessionId?: string) {
+    const rows = sessionId
+      ? await this.db.execute(
+          q(
+            "SELECT * FROM agent_outbox WHERE state IN ('pending','delivery-unknown') AND agent_session_id=? ORDER BY created_at,content_revision",
+            sessionId,
+          ),
+        )
+      : await this.db.execute(
+          q(
+            "SELECT * FROM agent_outbox WHERE state IN ('pending','delivery-unknown') ORDER BY created_at,content_revision",
+          ),
+        )
+    return rows.rows
   }
   async claimOutbox(id: string, expectedRevision?: number) {
     // Selection and coalescing race: claim only the payload revision actually read.

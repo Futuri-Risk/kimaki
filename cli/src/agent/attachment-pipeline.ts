@@ -31,31 +31,50 @@ export async function stageDiscordAttachments(args: {
   files: readonly DiscordAttachmentSource[]
   limitBytes?: number
 }): Promise<StagedAttachmentSet> {
+  // #30: bounded-parallel downloads (sequential per-file fetch latency summed
+  // into every ingest before); result order stays the input order.
+  const DOWNLOAD_CONCURRENCY = 4
+  type Outcome = { staged: Attachment } | { skipped: { filename: string; reason: string } }
+  const outcomes = new Array<Outcome>(args.files.length)
+  let next = 0
+  const worker = async () => {
+    for (;;) {
+      const index = next
+      next += 1
+      if (index >= args.files.length) return
+      const file = args.files[index]!
+      try {
+        const response = await fetch(file.url)
+        if (!response.ok) {
+          outcomes[index] = {
+            skipped: { filename: file.filename, reason: `download failed (${response.status})` },
+          }
+          continue
+        }
+        const buffer = Buffer.from(await response.arrayBuffer())
+        const attachment = await stageAttachment(
+          args.attachmentRoot,
+          {
+            filename: file.filename,
+            mimeType: file.mimeType,
+            bytes: buffer,
+          },
+          args.limitBytes,
+        )
+        await args.store.recordAttachment(args.sessionId, attachment)
+        outcomes[index] = { staged: attachment }
+      } catch (error) {
+        const code = (error as { code?: string }).code
+        outcomes[index] = { skipped: { filename: file.filename, reason: code ?? 'staging refused' } }
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(DOWNLOAD_CONCURRENCY, args.files.length) }, worker))
   const staged: Attachment[] = []
   const skipped: Array<{ filename: string; reason: string }> = []
-  for (const file of args.files) {
-    try {
-      const response = await fetch(file.url)
-      if (!response.ok) {
-        skipped.push({ filename: file.filename, reason: `download failed (${response.status})` })
-        continue
-      }
-      const buffer = Buffer.from(await response.arrayBuffer())
-      const attachment = await stageAttachment(
-        args.attachmentRoot,
-        {
-          filename: file.filename,
-          mimeType: file.mimeType,
-          bytes: buffer,
-        },
-        args.limitBytes,
-      )
-      await args.store.recordAttachment(args.sessionId, attachment)
-      staged.push(attachment)
-    } catch (error) {
-      const code = (error as { code?: string }).code
-      skipped.push({ filename: file.filename, reason: code ?? 'staging refused' })
-    }
+  for (const outcome of outcomes) {
+    if ('staged' in outcome) staged.push(outcome.staged)
+    else skipped.push(outcome.skipped)
   }
   return { staged, skipped }
 }

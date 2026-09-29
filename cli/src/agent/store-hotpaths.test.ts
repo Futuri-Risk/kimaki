@@ -126,3 +126,30 @@ describe('#26 operations() state filtering', () => {
     void b
   })
 })
+
+describe('#30 session-scoped outbox', () => {
+  test('outbox(sessionId) only returns that session rows; unfiltered keeps global view', async () => {
+    const h = await createStoreHarness()
+    // A second real session (the outbox has a foreign key on agent_sessions).
+    await h.store.insertSession({
+      ...h.session,
+      id: 'zc:session-2',
+      controllerThreadId: 'thread-2',
+    })
+    const insert = (id: string, sessionId: string, threadId: string) =>
+      h.store.db.execute({
+        sql: "INSERT INTO agent_outbox(id,agent_session_id,thread_id,display_part_id,content_revision,payload_json,state,created_at,updated_at) VALUES(?,?,?,?,?,?,'pending',?,?)",
+        args: [id, sessionId, threadId, id, 1, '{}', Date.now(), Date.now()],
+      })
+    await insert('o-1', h.session.id, 'thread-1')
+    await insert('o-2', 'zc:session-2', 'thread-2')
+
+    const scoped = await h.store.outbox(h.session.id)
+    assert.deepEqual(
+      scoped.map((r) => String(r.id)),
+      ['o-1'],
+      'scoped scan never reads another session pending rows',
+    )
+    assert.equal((await h.store.outbox()).length, 2, 'unfiltered stays global for reconcile paths')
+  })
+})

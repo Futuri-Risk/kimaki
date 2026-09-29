@@ -66,6 +66,8 @@ export class AgentCoordinator {
   private jobs = new Set<Promise<unknown>>()
   /** #24: consecutive kick cycles per session that left a queued prompt unclaimed. */
   private kickDeferrals = new Map<string, number>()
+  /** #30: waiters resolved the next time a session settles (no live work left). */
+  private readonly settlementWaiters = new Map<string, Set<() => void>>()
   private readonly kickBaseMs: number
   private readonly kickMaxMs: number
   private readonly kickMaxRetries: number
@@ -264,10 +266,47 @@ export class AgentCoordinator {
             timer.unref?.()
           } else {
             this.kickDeferrals.delete(sessionId)
+            // #30: nothing live and nothing queued — the session settled.
+            // Wake anyone parked on waitForSettlement (outbox flush).
+            if (current?.state === 'idle' && queue.length === 0) {
+              this.fireSettlement(sessionId)
+            }
           }
         }
       })
     }
+  }
+  /**
+   * #30: resolve when this session NEXT settles (a kick cycle ends with no
+   * live or queued operations), or when the timeout elapses. Callers pair
+   * this with their own active-state check — if the session is already
+   * settled no kick will run and this simply times out.
+   */
+  waitForSettlement(sessionId: string, timeoutMs: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      let set = this.settlementWaiters.get(sessionId)
+      if (!set) {
+        set = new Set()
+        this.settlementWaiters.set(sessionId, set)
+      }
+      const wake = () => {
+        clearTimeout(timer)
+        resolve(true)
+      }
+      set.add(wake)
+      const timer = setTimeout(() => {
+        set.delete(wake)
+        if (!set.size) this.settlementWaiters.delete(sessionId)
+        resolve(false)
+      }, timeoutMs)
+      timer.unref?.()
+    })
+  }
+  private fireSettlement(sessionId: string) {
+    const set = this.settlementWaiters.get(sessionId)
+    if (!set) return
+    this.settlementWaiters.delete(sessionId)
+    for (const wake of set) wake()
   }
   /**
    * #29: prepare returns the authoritative snapshot it already read — the

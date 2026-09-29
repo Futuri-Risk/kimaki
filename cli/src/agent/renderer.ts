@@ -147,8 +147,9 @@ export class OutboxRenderer {
     return prepareThreadMessageChunks(content, this.options.maxLength ?? DISCORD_MESSAGE_MAX_LENGTH)
   }
 
-  async flush(): Promise<void> {
-    for (const row of await this.store.outbox()) {
+  /** #30: pass a sessionId to scope delivery to one session's rows. */
+  async flush(sessionId?: string): Promise<void> {
+    for (const row of await this.store.outbox(sessionId)) {
       const id = text(row.id)
       const threadId = text(row.thread_id)
       const revision = integer(row.content_revision)

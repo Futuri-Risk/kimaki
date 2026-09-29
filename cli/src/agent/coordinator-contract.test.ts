@@ -29,6 +29,20 @@ describe('AgentCoordinator (in-process fake-native)', () => {
     await h.coordinator.close()
   })
 
+  test('#30 waitForSettlement wakes when a live turn settles, and times out while work is queued', async () => {
+    const h = await coordinatorHarness()
+    // Registered before any work exists: catches the settlement fire whenever
+    // the kick cycle ends with nothing queued or uncertain.
+    const settled = h.coordinator.waitForSettlement(h.session.id, 10_000)
+    const op = await h.submit('one', 'a')
+    await h.waitForState(op.id, 'completed')
+    assert.equal(await settled, true)
+    // With no live work and none arriving, the waiter honestly times out —
+    // callers pair the signal with their own active-state check.
+    assert.equal(await h.coordinator.waitForSettlement(h.session.id, 50), false)
+    await h.coordinator.close()
+  })
+
   test('duplicate admission of the same source returns the same operation and never resubmits', async () => {
     const h = await coordinatorHarness()
     const first = await h.submit('dup', 'once')

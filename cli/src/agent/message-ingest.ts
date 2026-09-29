@@ -133,7 +133,10 @@ export function resetNativeOutboxRenderer(): void {
 /**
  * Flush a session's outbox after admissions. Runs until the outbox drains or
  * the active work settles, so a turn's parts reach Discord without a separate
- * cron: every call is bounded and safe to re-run.
+ * cron: every call is bounded and safe to re-run. #30: the flush is scoped to
+ * the ingested session, each round's wait wakes early on the coordinator's
+ * settlement signal instead of a fixed sleep, and live work past the polling
+ * rounds parks on that signal (bounded) instead of walking away mid-turn.
  */
 export async function flushNativeOutbox(
   coordinator: AgentCoordinator,
@@ -142,14 +145,17 @@ export async function flushNativeOutbox(
 ): Promise<void> {
   const renderer = getNativeOutboxRenderer(coordinator)
   for (let i = 0; i < rounds; i++) {
-    await renderer.flush()
+    await renderer.flush(sessionId)
     if ((await countActiveNativeOperations(sessionId)) === 0) {
-      await renderer.flush()
+      await renderer.flush(sessionId)
       return
     }
-    await new Promise((resolve) => setTimeout(resolve, 250))
+    await coordinator.waitForSettlement(sessionId, 250)
   }
-  await renderer.flush()
+  if ((await countActiveNativeOperations(sessionId)) > 0) {
+    await coordinator.waitForSettlement(sessionId, 120_000)
+  }
+  await renderer.flush(sessionId)
 }
 
 // ── Message ingestion ───────────────────────────────────────────────────────
