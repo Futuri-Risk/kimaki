@@ -43,6 +43,7 @@ const PAID_ROWS = {
   N13: 'idle native compact',
   N14: 'conversation-only fork via rowsRange',
   N15: 'image byte + resume retention (only if an image-capable model is advertised)',
+  N15R: 'post-resume image visual recall (operator re-gate 2026-09-30: artifact-ref retention contract; requires --session of the N15 session)',
   N16: 'same SID after clean restart',
   N17: 'failure/restart resume with list omission',
 }
@@ -1790,6 +1791,53 @@ try {
         log.rows.N15.runtime2PidLivenessAfterStop = alive(runtime2.pid) ? 'ALIVE' : 'dead'
       }
     }
+  }
+
+  if (sessionId && rows.includes('N15R')) {
+    // N15R — operator re-gate (decided 2026-09-30 by the goal-continuation
+    // session, within the recorded caps; NO ledger amendment). Ruling: the
+    // native retention echo is an ARTIFACT-STORE REFERENCE
+    // (zcode-artifact://<session>/…, mime, stored bytes) — byte-identity of
+    // the client's upload is not a protocol guarantee (same divergence class
+    // as N05's runtimeModel). The re-gated contract: (a) the artifact-ref
+    // echo is present in the session rows, (b) it survives resume into a
+    // fresh owned runtime (the --session cold-resume above IS the restart
+    // leg), and (c) ONE post-resume follow-up turn demonstrates visual
+    // recall of the image. Counts against N15's remaining row cap (2/3 →
+    // 3/3) via countModelTurn('N15').
+    const page = await rowsRangePage('N15R')
+    const echoRows = page.valid ? page.rows.filter((r) => r.kind === 'userInput' && Array.isArray(r.attachments) && r.attachments.length > 0) : []
+    const refEcho = echoRows.length
+      ? {
+          found: true,
+          attachments: redact(echoRows.flatMap((r) => r.attachments)),
+          refMatch: echoRows.some((r) => r.attachments.some((a) => typeof a.ref === 'string' && a.ref.startsWith('zcode-artifact://') && a.mime === 'image/png')),
+        }
+      : { found: false, detail: 'no userInput row carried an attachments[] echo (retention NOT observed)' }
+    const followup = 'Earlier in this conversation you were shown a tiny attached image. Reply with exactly one word naming what that image showed. Do nothing else.'
+    const base = await projectionNow()
+    const baseline = base.ok ? { turnCount: base.projection?.turnCount ?? 0, stateRevision: base.runtime?.stateRevision ?? 0 } : { turnCount: 0, stateRevision: 0 }
+    const send = await call('N15R', 'session/send', { sessionId, content: followup })
+    const accepted = send && send.result && send.result.accepted === true
+    if (accepted) await countModelTurn('N15')
+    const settle = await settleTurn(client, sessionId, baseline)
+    const page2 = await rowsRangePage('N15R')
+    const assistantTexts = page2.valid ? page2.rows.filter((r) => r.kind === 'assistantText' && typeof r.text === 'string').map((r) => r.text) : []
+    const lastText = assistantTexts.length ? assistantTexts[assistantTexts.length - 1] : null
+    const visualRecall = Boolean(lastText && /\bdot\b/i.test(lastText))
+    record('N15R', {
+      description: PAID_ROWS.N15R,
+      operatorRuling:
+        '2026-09-30: byte-identity is not the protocol retention contract; the artifact-ref echo + post-resume visual recall is. Combined with the 2026-09-29 N15 capture (image accepted, first-turn visual round-trip sentinel "dot", clean restart, same-SID resume, ref echo pre+post restart), this row completes the re-gated N15 evidence.',
+      resumedSession: sessionId,
+      retentionEcho: refEcho,
+      send,
+      turnCounted: Boolean(accepted),
+      settle,
+      followUpAssistantText: lastText === null ? null : lastText.slice(0, 400),
+      visualRecall,
+      pass: Boolean(refEcho.found && refEcho.refMatch && accepted && settle.sawTerminal && visualRecall),
+    })
   }
 
 
