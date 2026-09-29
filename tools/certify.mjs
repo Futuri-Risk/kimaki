@@ -4,6 +4,14 @@
  * --paid-optin-recorded flag, with hard caps (≤3 model turns/row, ≤30 total)
  * enforced against a persistent spend ledger. N06 is out of scope (the
  * workspace/updateProviderRegistry method does not exist in bundle 0.16.5).
+ * N09–N17 drivers (2026-09-29) validate every request/response against shapes
+ * extracted from the installed bundle's zod schemas plus the r5 captures
+ * (evidence/zk16-win32-n07n08-r5: permission envelopes, send/readback, settle
+ * timings) and FAIL CLOSED with a named error whenever a runtime shape is
+ * unknown — never guessing around a divergence. Restart rows (N15/N16/N17)
+ * reuse a session that already executed a turn (seeded in-row, counted against
+ * that row's cap) because the 2026-09-28 N16 run proved an unexecuted session
+ * is never persisted (resume → -32004 sessionUnavailable; list empty).
  * Launches the real native app-server via the owned runtime, drives the
  * checklist sequences, and writes sanitized captured evidence per row.
  * Divergences are recorded, never guessed around. Requires a built CLI
@@ -12,6 +20,7 @@ import path from 'node:path'
 import { mkdir, writeFile, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { execFile } from 'node:child_process'
+import { createHash } from 'node:crypto'
 
 const FREE_ROWS = {
   N01: 'startup/readiness + session/list (read-only)',
@@ -63,6 +72,8 @@ const ALLOWED_METHODS = new Set([
   'session/resume',
   'session/cancelBackgroundTask',
   'v4/conversation/rowsRange',
+  // N10/N11/N14 controls ride the v4 command lane (checklist C-prefix params).
+  'v4/command',
 ])
 
 function arg(name) {
@@ -116,12 +127,13 @@ const launchEnvironment = { ...baseEnv, ...environment }
 
 if (!executable || !entryPath || !workspace || !outDir || !rows.length) {
   console.error(
-    'Usage: node tools/certify.mjs --executable <node> --entry <zcode.cjs> --workspace <dir> --out <evidence-dir> [--rows N01,N02,N03,N04,N05,N18 | paid rows N07..N17] [--mode build] [--timeout 20000] [--env KEY=VALUE ...] [--paid-optin-recorded] [--task <sentinel task text>]',
+    'Usage: node tools/certify.mjs --executable <node> --entry <zcode.cjs> --workspace <dir> --out <evidence-dir> [--rows N01,N02,N03,N04,N05,N18 | paid rows N07..N17] [--mode build] [--timeout 20000] [--env KEY=VALUE ...] [--paid-optin-recorded] [--task <sentinel task text>] [--session <existing native sessionId> (N13/N15/N16/N17 reuse a turn-bearing session instead of seeding one in-row)]',
   )
   process.exit(2)
 }
 const paidOptinFlag = process.argv.includes('--paid-optin-recorded')
 const taskText = arg('task')
+const sessionArg = arg('session')
 
 // ---- Paid-row gate (mechanical, hard): RECORDED section + explicit flag + caps.
 const DECISION_PATH = path.resolve(import.meta.dirname, '../docs/zcode-integration/PAID-ROWS-DECISION.md')
@@ -279,6 +291,9 @@ let disconnected = null
 // N08 machinery: what the runner does when the runtime asks permission.
 // 'refuse' (default, captured-not-answered) | 'deny' | 'allow' (allow-once).
 let permissionPolicy = 'refuse'
+// Restart rows (N15/N16/N17) track their second owned runtimes here so the
+// finally block can stop any that a throwing driver left alive.
+const secondRuntimes = []
 // Captured answer schema (bundle 0.16.5 zod jL): {decision:
 // 'allow'|'deny'|'escalate'|'modify', reason?, modifiedInput?, permissionUpdates?}
 // .strict() — extra keys are refused by the runtime. Omitted permissionUpdates
@@ -292,6 +307,74 @@ function validatePermissionAnswer(answer) {
   if (!PERMISSION_DECISIONS.has(answer.decision)) return "decision must be 'allow'|'deny'|'escalate'|'modify'"
   if (answer.reason !== undefined && typeof answer.reason !== 'string') return 'reason must be a string when present'
   return null
+}
+// N09 machinery: interaction/requestUserInput is the native question AND
+// plan-approval reverse request (bundle zod CYe answer: {action:
+// 'accept'|'decline'|'cancel', content?, reason?} .strict()). The request
+// params shape (bundle HZa/JZa senders): {input, prompt, questions[{header,
+// multiSelect, options[{description,label,preview?,value}], question}],
+// requestId, schema:{toolName}|{interaction:'plan_approval',toolName},
+// sessionId, origin?, toolCallId, toolName, turnId}. Question answers ride
+// content.answers keyed by question text (answer_0/answer fallbacks exist in
+// the bundle's normalizer); plan approval content.answers is keyed by the
+// fixed plan question 'Review this implementation plan.' -> 'approve'.
+// Like permissions: captured by default, answered only when a driver arms the
+// policy, exactly ONCE per arming (one-use reply).
+let userInputPolicy = { mode: 'refuse' }
+function validateUserInputRequest(params) {
+  if (!params || typeof params !== 'object' || Array.isArray(params)) return 'params must be an object'
+  for (const k of Object.keys(params)) {
+    if (!['input', 'prompt', 'questions', 'requestId', 'schema', 'sessionId', 'origin', 'toolCallId', 'toolName', 'turnId'].includes(k)) {
+      return `unknown key '${k}' (requestUserInput schema is strict; refusing to guess)`
+    }
+  }
+  if (!Array.isArray(params.questions) || params.questions.length === 0) return 'questions missing or empty'
+  for (const q of params.questions) {
+    if (!q || typeof q !== 'object') return 'question entry must be an object'
+    if (typeof q.question !== 'string' || typeof q.header !== 'string') return 'question/header must be strings'
+    if (!Array.isArray(q.options) || q.options.length === 0) return 'options missing or empty'
+    for (const o of q.options) {
+      if (!o || typeof o !== 'object' || typeof o.label !== 'string' || typeof o.value !== 'string') {
+        return 'option label/value must be strings'
+      }
+    }
+  }
+  if (!params.schema || typeof params.schema !== 'object' || typeof params.schema.toolName !== 'string') {
+    return 'schema.toolName missing'
+  }
+  if (typeof params.requestId !== 'string') return 'requestId missing'
+  return null
+}
+function validateUserInputAnswer(answer) {
+  if (!answer || typeof answer !== 'object' || Array.isArray(answer)) return 'answer must be an object'
+  for (const k of Object.keys(answer)) {
+    if (!['action', 'content', 'reason'].includes(k)) return `unknown key '${k}' (answer schema is strict)`
+  }
+  if (!['accept', 'decline', 'cancel'].includes(answer.action)) return "action must be 'accept'|'decline'|'cancel'"
+  if (answer.content !== undefined && (typeof answer.content !== 'object' || answer.content === null || Array.isArray(answer.content))) {
+    return 'content must be an object when present'
+  }
+  if (answer.reason !== undefined && typeof answer.reason !== 'string') return 'reason must be a string when present'
+  return null
+}
+/** Shared reverse-request handling for a client of any generation. Captures
+ * user-input requests; answers ONCE when a driver armed the policy. */
+async function handleUserInputRequest(params, gen = 1) {
+  log.userInputRequests = log.userInputRequests || []
+  push(log.userInputRequests, { at: Date.now(), params, ...(gen !== 1 ? { gen } : {}) })
+  if (userInputPolicy.mode === 'answer' && !userInputPolicy.used) {
+    userInputPolicy.used = true
+    const answer = userInputPolicy.buildAnswer(params)
+    const invalid = validateUserInputAnswer(answer)
+    if (invalid) {
+      return { ok: false, error: fail('ANSWER_INVALID', `Refusing to send invalid user-input answer: ${invalid}`, 'control', 'none') }
+    }
+    return { ok: true, value: answer }
+  }
+  return {
+    ok: false,
+    error: fail('HOST_REFUSED', `Certification runner refuses user-input request (policy=${userInputPolicy.mode}${userInputPolicy.used ? '; one-use answer already sent' : ''}; captured only).`, 'control', 'none'),
+  }
 }
 const client = new NativeClient({
   input: runtime.input,
@@ -341,6 +424,11 @@ const client = new NativeClient({
       }
       return { ok: false, error: fail('HOST_REFUSED', 'Certification runner refuses permission request (policy=refuse; captured only).', 'control', 'none') }
     }
+    if (method === 'interaction/requestUserInput') {
+      // N09 lane: question + plan-approval reverse requests. Captured always;
+      // answered at most once per arming via the shared policy helper.
+      return handleUserInputRequest(params)
+    }
     // Certification runner never auto-allows host requests — explicit refusal.
     return { ok: false, error: fail('HOST_REFUSED', `Certification runner refuses host request ${method}.`, 'control', 'none') }
   },
@@ -351,13 +439,13 @@ const client = new NativeClient({
 log.client = { generation: client.generation }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-async function call(row, method, params) {
+async function call(row, method, params, c = client) {
   if (!ALLOWED_METHODS.has(method)) {
     return { ok: false, error: { code: 'ROW_REFUSED', safeMessage: `Method ${method} outside free certification rows.` } }
   }
   log.envelopeLog.push({ dir: 'out', kind: 'request', method })
   const started = Date.now()
-  const result = await client.request(method, params)
+  const result = await c.request(method, params)
   const entry = { at: new Date().toISOString(), method, params: redact(params), ms: Date.now() - started }
   if (result.ok) entry.result = redact(result.value)
   else entry.error = result.error.toJSON()
@@ -487,6 +575,26 @@ try {
   }
 
   let sessionId = null
+  if (sessionArg) {
+    // Operator-supplied native session (N13/N15/N16/N17 reuse a turn-bearing
+    // session instead of seeding one in-row). Validated against session/read
+    // before any row drives it — an unreadable SID is a hard skip, never guessed.
+    const check = await client.request('session/read', { sessionId: sessionArg })
+    if (!check.ok) {
+      record('session-setup', {
+        skipped: `--session ${sessionArg} unreadable`,
+        error: check.error.toJSON(),
+      })
+    } else {
+      sessionId = sessionArg
+      log.sessionId = sessionId
+      log.sessionIdSource = '--session argument (operator-supplied, turn-bearing reuse)'
+      const ws = check.value?.session?.workspace?.workspacePath
+      log.sessionArgWorkspace = ws ?? null
+      const norm = (p) => path.resolve(String(p)).toLowerCase()
+      log.sessionArgWorkspaceMatchesWorkspace = typeof ws === 'string' && norm(ws) === norm(workspace)
+    }
+  }
   if (rows.includes('N02')) {
     const create = await call('N02', 'session/create', { workspace: W, mode })
     record('N02', { description: ALLOWED_ROWS.N02, create, mode })
@@ -523,6 +631,197 @@ try {
       record('session-setup', { skipped: 'no native session id available (list empty; create not permitted for free-only rows besides N02/N18)' })
     }
   }
+
+  // ---- Shared paid-row driver helpers (N09–N17). Shapes cited per driver are
+  // extracted from the installed bundle's zod schemas (2026-09-29 session) and
+  // the r5 captures; every parse fails closed with a named error.
+  /** Current projection snapshot via session/read (config-only). */
+  async function projectionNow(c = client, sid = sessionId) {
+    const r = await c.request('session/read', { sessionId: sid })
+    if (!r.ok || !r.value || typeof r.value !== 'object') return { ok: false, error: r.error.toJSON() }
+    return { ok: true, projection: r.value.projection ?? null, runtime: r.value.runtime ?? null, session: r.value.session ?? null, settings: r.value.settings ?? null, messages: r.value.messages ?? null }
+  }
+  /** Generalized two-stage settle (the 2026-09-19 dead-on-arrival fix, extended
+   * for turn-bearing sessions): stage 1 waits for liveness RELATIVE TO A
+   * BASELINE (fresh sessions: turnCount 0 -> >=1; reused sessions: revision or
+   * turnCount must ADVANCE, else a stale 'idle' projection would read as a
+   * false terminal); stage 2 waits for terminal + no pending reverse work. */
+  async function settleTurn(c = client, sid = sessionId, baseline = null) {
+    const start = Date.now()
+    const base =
+      baseline ??
+      (await (async () => {
+        const p = await projectionNow(c, sid)
+        return p.ok ? { turnCount: p.projection?.turnCount ?? 0, stateRevision: p.runtime?.stateRevision ?? 0 } : { turnCount: 0, stateRevision: 0 }
+      })())
+    const sawRunning = await until(async () => {
+      const p = await projectionNow(c, sid)
+      if (!p.ok || !p.projection) return false
+      const turnAdvanced = typeof p.projection.turnCount === 'number' && p.projection.turnCount > base.turnCount
+      const revAdvanced = p.runtime && typeof p.runtime.stateRevision === 'number' && p.runtime.stateRevision > base.stateRevision
+      return p.projection.status === 'running' || turnAdvanced || revAdvanced
+    }, 20000, 250)
+    const runningAtMs = sawRunning ? Date.now() - start : null
+    const sawTerminal = sawRunning
+      ? await until(async () => {
+          const p = await projectionNow(c, sid)
+          return (
+            p.ok &&
+            p.projection &&
+            p.projection.status !== 'running' &&
+            p.runtime &&
+            Array.isArray(p.runtime.pendingRequestIds) &&
+            p.runtime.pendingRequestIds.length === 0
+          )
+        }, 180000, 1000)
+      : false
+    return { sawRunning, runningAtMs, sawTerminal, withinMs: Date.now() - start, baseline: base }
+  }
+  const readFileOrNull = (p) => readFile(p, 'utf8').then((t) => t.trim()).catch(() => null)
+  const listWorkspaceFiles = async () => {
+    const fs = await import('node:fs')
+    return fs.promises.readdir(workspace).then((files) => files.filter((f) => !f.startsWith('.')).sort()).catch(() => null)
+  }
+  /** N13/N15/N16/N17 precondition: the session must already have executed a
+   * turn (the 2026-09-28 N16 run proved unexecuted sessions are never
+   * persisted — resume answers -32004 sessionUnavailable). If turnCount < 1,
+   * seed exactly one sentinel turn, counted against THIS row's cap. */
+  async function ensureTurnBearingSession(row) {
+    const before = await projectionNow()
+    const turnCount = before.ok && before.projection ? before.projection.turnCount : null
+    if (typeof turnCount === 'number' && turnCount >= 1) {
+      return { reused: true, turnCount, workspaceCheck: before.ok && before.session ? { workspacePath: before.session.workspace?.workspacePath ?? null, matchesWorkspace: String(before.session.workspace?.workspacePath ?? '').toLowerCase() === path.resolve(workspace).toLowerCase() } : null }
+    }
+    const task = `zk16-${row.toLowerCase()} seed ${Date.now()}: create a file named SENTINEL-${row}.txt containing exactly the word ok. Do nothing else.`
+    const permAtStart = (log.permissionRequests || []).length
+    permissionPolicy = 'allow'
+    const send = await call(row, 'session/send', { sessionId, content: task })
+    const accepted = send && send.result && send.result.accepted === true
+    if (accepted) await countModelTurn(row)
+    const settle = await settleTurn()
+    permissionPolicy = 'refuse'
+    const sentinel = await readFileOrNull(path.join(workspace, `SENTINEL-${row}.txt`))
+    const after = await projectionNow()
+    return {
+      reused: false,
+      seededBy: row,
+      send: redact(send),
+      accepted,
+      settle,
+      permissionsAnswered: (log.permissionRequests || []).length - permAtStart,
+      sentinel: { file: `SENTINEL-${row}.txt`, content: sentinel },
+      turnCount: after.ok && after.projection ? after.projection.turnCount : null,
+    }
+  }
+  /** v4/conversation/subscribe on the given client; returns the captured ack
+   * shape {subscriptionId, mode?, logEpoch, ...} or a named error. */
+  async function v4Subscribe(c = client, sid = sessionId) {
+    const res = await c.request('v4/conversation/subscribe', {
+      topic: `conversation/${sid}`,
+      connectionId: c.generation,
+      clientMode: 'desktop-continuous',
+    })
+    const ack = res.ok && res.value && typeof res.value === 'object' && res.value.ack && typeof res.value.ack === 'object' ? res.value.ack : null
+    const subscriptionId = ack && typeof ack.subscriptionId === 'string' ? ack.subscriptionId : null
+    const logEpoch = ack && typeof ack.logEpoch === 'string' ? ack.logEpoch : null
+    return { ok: res.ok && Boolean(subscriptionId) && Boolean(logEpoch), subscriptionId, logEpoch, ack: ack ? redact(ack) : null, error: res.ok ? null : res.error.toJSON() }
+  }
+  /** v4/conversation/rowsRange (bundle zod I0r params {sessionId, clientMode?,
+   * beforeRowId?, limit 1..200}); validates the captured result sEc {rows[],
+   * atSeq, atRevision, atLogEpoch, hasMore} fail-closed. */
+  async function rowsRangePage(row, c = client, sid = sessionId, beforeRowId = undefined) {
+    const params = { sessionId: sid, topic: `conversation/${sid}`, limit: 200, ...(beforeRowId !== undefined ? { beforeRowId } : {}) }
+    const res = await call(row, 'v4/conversation/rowsRange', params, c)
+    const v = res.result
+    const issue = !v || typeof v !== 'object'
+      ? 'result missing'
+      : ['rows', 'atSeq', 'atRevision', 'atLogEpoch', 'hasMore'].some((k) => !(k in v))
+        ? `result missing sEc keys (got ${Object.keys(v).join(',')})`
+        : !Array.isArray(v.rows)
+          ? 'rows not an array'
+          : v.rows.some((r) => !r || typeof r !== 'object' || typeof r.rowId !== 'number')
+            ? 'row entry missing numeric rowId (base row schema Wj)'
+            : null
+    return { entry: res, valid: !issue, issue, rows: issue ? null : v.rows, meta: issue ? null : { atSeq: v.atSeq, atRevision: v.atRevision, atLogEpoch: v.atLogEpoch, hasMore: v.hasMore } }
+  }
+  /** v4/command with the checklist C-prefix params + bundle envelope keys.
+   * Validates the ACK against bundle zod Ues {commandId, status, reasonCode?,
+   * message?, revisionAtDecision, result?} fail-closed. */
+  async function v4CommandSend(row, type, extra = {}) {
+    const params = {
+      commandId: `zk16-${row.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      clientId: 'kimaki-zcode',
+      sessionId,
+      issuedAt: Date.now(),
+      connectionId: client.generation,
+      clientMode: 'desktop-continuous',
+      type,
+      ...extra,
+    }
+    const entry = await call(row, 'v4/command', params)
+    const ack = entry.result
+    const issue = !ack || typeof ack !== 'object'
+      ? 'ack missing'
+      : Object.keys(ack).some((k) => !['memoryEnabled', 'ttftExcluded', 'commandId', 'status', 'reasonCode', 'message', 'revisionAtDecision', 'result'].includes(k))
+        ? `unknown ack key(s) ${Object.keys(ack).filter((k) => !['memoryEnabled', 'ttftExcluded', 'commandId', 'status', 'reasonCode', 'message', 'revisionAtDecision', 'result'].includes(k)).join(',')}`
+        : !['accepted', 'rejected', 'stale', 'duplicate', 'noop', 'failed'].includes(ack.status)
+          ? `unknown status '${ack.status}'`
+          : typeof ack.revisionAtDecision !== 'number'
+            ? 'revisionAtDecision missing/non-number'
+            : null
+    return { entry, ack, valid: !issue, issue, commandId: params.commandId }
+  }
+  /** Second owned runtime + gen-2 client for restart rows (N15/N16/N17).
+   * Shares the log arrays (gen: 2) and both interaction policies. Every launch
+   * is tracked (module-scope secondRuntimes) so the finally block can never
+   * leak a second owned process. */
+  async function startSecondRuntime() {
+    const second = await startOwnedRuntime({
+      executable,
+      entryPath,
+      args: [entryPath, 'app-server'],
+      cwd: workspace,
+      executableSha256: log.profile.executableSha256,
+      entrySha256: log.profile.entrySha256,
+      environment: launchEnvironment,
+      startupMs: 30000,
+      graceMs: 5000,
+    })
+    if (!second.ok) return { ok: false, error: second.error.toJSON() }
+    secondRuntimes.push(second.value)
+    const client2 = new NativeClient({
+      input: second.value.input,
+      output: second.value.output,
+      timeoutMs,
+      onNotification: (method, params) => {
+        push(log.notifications, { at: Date.now(), method, params, gen: 2 })
+        log.envelopeLog.push({ dir: 'in', kind: 'notification', method, gen: 2 })
+      },
+      onRequest: async (id, method, params) => {
+        push(log.reverseRequests, { at: Date.now(), id, method, params, gen: 2 })
+        log.envelopeLog.push({ dir: 'in', kind: 'request', id, method, gen: 2 })
+        if (method === 'session/requestRuntimePreferences') {
+          return { ok: true, value: { nativeSearchEnhancementsEnabled: false, memoryEnabled: false, askUserQuestionAutoResolutionEnabled: false } }
+        }
+        if (method === 'interaction/requestPermission') {
+          log.permissionRequests = log.permissionRequests || []
+          push(log.permissionRequests, { at: Date.now(), params, gen: 2 })
+          if (permissionPolicy === 'allow' || permissionPolicy === 'deny') {
+            const answer = { decision: permissionPolicy, reason: `ZK-016 gen-2 ${permissionPolicy} leg — disposable sentinel workspace, RECORDED 2026-09-18 opt-in` }
+            const invalid = validatePermissionAnswer(answer)
+            if (invalid) return { ok: false, error: fail('ANSWER_INVALID', `Refusing to send invalid permission answer: ${invalid}`, 'control', 'none') }
+            return { ok: true, value: answer }
+          }
+          return { ok: false, error: fail('HOST_REFUSED', 'Certification runner refuses permission request (policy=refuse; captured only).', 'control', 'none') }
+        }
+        if (method === 'interaction/requestUserInput') return handleUserInputRequest(params, 2)
+        return { ok: false, error: fail('HOST_REFUSED', `Certification runner refuses host request ${method}.`, 'control', 'none') }
+      },
+      onDisconnect: () => {},
+    })
+    return { ok: true, runtime: second.value, client: client2 }
+  }
+
 
   if (sessionId && rows.includes('N03')) {
     record('N03', { description: ALLOWED_ROWS.N03, read: await call('N03', 'session/read', { sessionId }) })
@@ -858,113 +1157,791 @@ try {
     }
   }
 
-  if (sessionId && rows.includes('N16')) {
-    // Same SID after clean restart - config-only (no model turn): capture the
-    // session state from the current connection, stop the owned process
-    // gracefully, launch a fresh runtime + NEW client generation, resume the
-    // SAME sessionId, and verify identity/model/workspace + resubscribe using
-    // the saved cursor.
-    const before = await client.request('session/read', { sessionId })
-    const modelBefore =
-      before.ok && before.value && before.value.settings ? before.value.settings.model : null
-    const sub = await client.request('session/subscribe', {
-      sessionId,
-      deliveryKind: 'desktop-continuous',
-      includeSnapshot: true,
-      afterSeq: 0,
-    })
-    const cursor = sub.ok && sub.value ? sub.value.eventSeq : null
-    log.rows.N16 = { stage: 'pre-restart', sessionId, cursor, model: redact(modelBefore) }
-    const stopA = await runtime.stop()
-    await sleep(500)
-    const second = await startOwnedRuntime({
-      executable,
-      entryPath,
-      args: [entryPath, 'app-server'],
-      cwd: workspace,
-      executableSha256: log.profile.executableSha256,
-      entrySha256: log.profile.entrySha256,
-      environment: launchEnvironment,
-      startupMs: 30000,
-      graceMs: 5000,
-    })
-    if (!second.ok) {
-      log.rows.N16.stage2 = { launchFailed: second.error.code }
+  if (sessionId && rows.includes('N09')) {
+    // Checklist N09 — question and plan round trip. Cause a GENUINE native
+    // question (AskUserQuestion -> interaction/requestUserInput) and a plan
+    // approval (ExitPlanMode in plan mode -> requestUserInput with schema.
+    // interaction='plan_approval'); reply to their ORIGINAL reverse-request ids
+    // with answers validated against the bundle answer schema (CYe). Never
+    // session/send the answer. A leg where the model never asks is NOT a pass.
+    const modelN09 = await advertisedModel()
+    if (!modelN09) {
+      record('N09', { description: PAID_ROWS.N09, notRun: 'MODEL_UNAVAILABLE', detail: 'no current/advertised model. No turn spent.' })
     } else {
-      const client2 = new NativeClient({
-        input: second.value.input,
-        output: second.value.output,
-        timeoutMs,
-        onNotification: (method, params) => {
-          push(log.notifications, { at: Date.now(), method, params, gen: 2 })
-          log.envelopeLog.push({ dir: 'in', kind: 'notification', method, gen: 2 })
+      // Leg A — question. The model must ask via AskUserQuestion; the runner
+      // answers the FIRST captured question once, choosing the first option.
+      const permBeforeA = (log.permissionRequests || []).length
+      const uiBeforeA = (log.userInputRequests || []).length
+      userInputPolicy = {
+        mode: 'answer',
+        used: false,
+        buildAnswer: (params) => {
+          const invalid = validateUserInputRequest(params)
+          if (invalid) return { action: 'decline', reason: `ZK-016 N09 fail-closed: ${invalid}` }
+          const q = params.questions[0]
+          const chosen = q.options[0]
+          return { action: 'accept', content: { answers: { [q.question]: chosen.value }, answer_0: chosen.value } }
         },
-        onRequest: async (id, method, params) => {
-          push(log.reverseRequests, { at: Date.now(), id, method, params, gen: 2 })
-          if (method === 'session/requestRuntimePreferences') {
-            return {
-              ok: true,
-              value: {
-                nativeSearchEnhancementsEnabled: false,
-                memoryEnabled: false,
-                askUserQuestionAutoResolutionEnabled: false,
-              },
-            }
-          }
-          return { ok: false, error: fail('HOST_REFUSED', `Certification runner refuses host request ${method}.`, 'control', 'none') }
-        },
-        onDisconnect: () => {},
-      })
-      const W = { workspacePath: workspace, workspaceKey: workspace }
-      const resume = await client2.request('session/resume', { sessionId, workspace: W })
-      const resumedOk = resume.ok && resume.value ? resume.value : null
-      const resumedId = resumedOk
-        ? (resumedOk.session && resumedOk.session.sessionId) || resumedOk.sessionId || null
-        : null
-      const read2 = await client2.request('session/read', { sessionId })
-      const model2 =
-        read2.ok && read2.value && read2.value.settings ? read2.value.settings.model : null
-      const sub2 = await client2.request('session/subscribe', {
-        sessionId,
-        deliveryKind: 'desktop-continuous',
-        includeSnapshot: false,
-        afterSeq: cursor ?? 0,
-      })
-      const list2 = await client2.request('session/list', { workspace: W, includeArchived: false, limit: 10 })
-      log.rows.N16.stage2 = {
-        stop: stopA.ok ? { ok: true } : { error: stopA.error.toJSON() },
-        resume: redact(resume.ok ? { keys: Object.keys(resumedOk || {}) } : resume.error.toJSON()),
-        sameSidResumed: resumedId === sessionId,
-        readbackModelMatches: JSON.stringify(redact(model2)) === JSON.stringify(redact(modelBefore)),
-        resubscribeWithSavedCursor: redact(sub2.ok ? { eventSeq: (sub2.value && sub2.value.eventSeq) || null } : sub2.error.toJSON()),
-        listContainsSession: redact(list2.ok ? list2.value : list2.error.toJSON()),
-        newGeneration: client2.generation,
-        oldGeneration: client.generation,
       }
-      client2.dispose()
-      const reap = await second.value.stop()
-      log.rows.N16.stage2.stop2 = reap.ok ? { ok: true } : { error: reap.error.toJSON() }
-      log.rows.N16.stage2.newPidLivenessAfterStop = alive(second.value.pid) ? 'ALIVE' : 'dead'
+      permissionPolicy = 'allow' // the post-answer file write is a tool side effect
+      const taskQ = `zk16-n09 question ${Date.now()}: Use the AskUserQuestion tool exactly once to ask me: "Which color should the file be?" with options "red" and "blue". After you receive my answer, create a file named SENTINEL-N09.txt containing exactly the chosen color word and nothing else. Do nothing else.`
+      const baseA = await projectionNow()
+      const baselineA = baseA.ok ? { turnCount: baseA.projection?.turnCount ?? 0, stateRevision: baseA.runtime?.stateRevision ?? 0 } : { turnCount: 0, stateRevision: 0 }
+      const sendQ = await call('N09', 'session/send', { sessionId, content: taskQ })
+      const acceptedQ = sendQ && sendQ.result && sendQ.result.accepted === true
+      if (acceptedQ) await countModelTurn('N09')
+      const settleQ = await settleTurn(client, sessionId, baselineA)
+      const questionFile = await readFileOrNull(path.join(workspace, 'SENTINEL-N09.txt'))
+      const uiAfterA = (log.userInputRequests || []).slice(uiBeforeA)
+      userInputPolicy = { mode: 'refuse' }
+      const questionLeg = {
+        send: sendQ,
+        settle: settleQ,
+        userInputsCaptured: uiAfterA.length,
+        userInputSample: redact(uiAfterA[0] ?? null),
+        answeredOnce: uiAfterA.length >= 1,
+        asked: uiAfterA.some((u) => {
+          const p = u.params
+          return p && Array.isArray(p.questions) && !(p.schema && p.schema.interaction === 'plan_approval')
+        }),
+        file: { written: questionFile !== null, content: questionFile },
+        permissionsAnswered: (log.permissionRequests || []).length - permBeforeA,
+      }
+      // Leg B — plan approval. Plan mode via session/setMode (config-only),
+      // ExitPlanMode triggers the plan_approval requestUserInput; answer
+      // accept/approve (bundle QZa path: content.answers keyed by the fixed
+      // plan question -> 'approve').
+      const setModePlan = await call('N09', 'session/setMode', { sessionId, mode: 'plan' })
+      const permBeforeB = (log.permissionRequests || []).length
+      const uiBeforeB = (log.userInputRequests || []).length
+      userInputPolicy = {
+        mode: 'answer',
+        used: false,
+        buildAnswer: (params) => {
+          const invalid = validateUserInputRequest(params)
+          if (invalid) return { action: 'decline', reason: `ZK-016 N09 fail-closed: ${invalid}` }
+          if (!(params.schema && params.schema.interaction === 'plan_approval')) {
+            return { action: 'decline', reason: 'ZK-016 N09 plan leg expected schema.interaction=plan_approval; refusing to answer a different form' }
+          }
+          return { action: 'accept', content: { answers: { 'Review this implementation plan.': 'approve' } } }
+        },
+      }
+      permissionPolicy = 'allow'
+      const taskP = `zk16-n09 plan ${Date.now()}: Call the ExitPlanMode tool exactly once with the one-line plan "create SENTINEL-N09-PLAN.txt containing ok". After the plan is approved, create the file SENTINEL-N09-PLAN.txt containing exactly the word ok. Do nothing else.`
+      const baseB = await projectionNow()
+      const baselineB = baseB.ok ? { turnCount: baseB.projection?.turnCount ?? 0, stateRevision: baseB.runtime?.stateRevision ?? 0 } : { turnCount: 0, stateRevision: 0 }
+      const sendP = await call('N09', 'session/send', { sessionId, content: taskP })
+      const acceptedP = sendP && sendP.result && sendP.result.accepted === true
+      if (acceptedP) await countModelTurn('N09')
+      const settleP = await settleTurn(client, sessionId, baselineB)
+      const planFile = await readFileOrNull(path.join(workspace, 'SENTINEL-N09-PLAN.txt'))
+      const uiAfterB = (log.userInputRequests || []).slice(uiBeforeB)
+      userInputPolicy = { mode: 'refuse' }
+      permissionPolicy = 'refuse'
+      const setModeBuild = await call('N09', 'session/setMode', { sessionId, mode: 'build' })
+      const planLeg = {
+        setModePlan,
+        send: sendP,
+        settle: settleP,
+        userInputsCaptured: uiAfterB.length,
+        userInputSample: redact(uiAfterB[0] ?? null),
+        planApprovalAsked: uiAfterB.some((u) => u.params?.schema?.interaction === 'plan_approval'),
+        answeredOnce: uiAfterB.length >= 1,
+        file: { written: planFile !== null, content: planFile },
+        permissionsAnswered: (log.permissionRequests || []).length - permBeforeB,
+        setModeBack: setModeBuild,
+      }
+      record('N09', {
+        description: PAID_ROWS.N09,
+        turnsCounted: Number(acceptedQ) + Number(acceptedP),
+        questionLeg,
+        planLeg,
+        // The ORIGINAL turn must continue after the answer (terminal settle with
+        // the sentinel written by the model, never an outer LLM answer).
+        pass:
+          questionLeg.asked &&
+          questionLeg.answeredOnce &&
+          settleQ.sawTerminal &&
+          questionLeg.file.written &&
+          planLeg.planApprovalAsked &&
+          planLeg.answeredOnce &&
+          settleP.sawTerminal &&
+          planLeg.file.written,
+      })
     }
-    record('N16', log.rows.N16)
   }
 
+  if (sessionId && rows.includes('N10')) {
+    // Checklist N10 — active text guidance. While a controlled task is
+    // demonstrably active, send v4/command C-prefix params, type:sendText,
+    // payload:{text, requestedDelivery:"guide"}. Capture the command decision
+    // (ACK Ues: status + revisionAtDecision + result.inputAccepted.delivery)
+    // and the steer correlation (turn.steerQueued/turn.steerDrained in the
+    // session/events lane, or their captured absence — never invented).
+    const modelN10 = await advertisedModel()
+    if (!modelN10) {
+      record('N10', { description: PAID_ROWS.N10, notRun: 'MODEL_UNAVAILABLE', detail: 'no current/advertised model. No turn spent.' })
+    } else {
+      const sub = await v4Subscribe()
+      const permBefore = (log.permissionRequests || []).length
+      permissionPolicy = 'allow'
+      const task = `zk16-n10 ${Date.now()}: Run ONE bash command that sleeps 25 seconds and then creates a file named SENTINEL-N10.txt containing exactly the word ok, and wait for it to finish. Do nothing else.`
+      const base = await projectionNow()
+      const baseline = base.ok ? { turnCount: base.projection?.turnCount ?? 0, stateRevision: base.runtime?.stateRevision ?? 0 } : { turnCount: 0, stateRevision: 0 }
+      const send = await call('N10', 'session/send', { sessionId, content: task })
+      const accepted = send && send.result && send.result.accepted === true
+      if (accepted) await countModelTurn('N10')
+      // Stage 1 liveness ONLY (guide must land while the turn is demonstrably
+      // active — the sleep gives a wide window).
+      const active = await until(async () => {
+        const p = await projectionNow()
+        return p.ok && p.projection && p.projection.status === 'running'
+      }, 20000, 200)
+      const guideText = `Guidance: do not wait for the sleep to finish. Create the file SENTINEL-N10-GUIDE.txt containing exactly the word steered, then finish immediately.`
+      const guide = active ? await v4CommandSend('N10', 'sendText', { payload: { text: guideText, requestedDelivery: 'guide' } }) : null
+      const guideAck = guide && guide.valid ? guide.ack : null
+      const settle = await settleTurn(client, sessionId, baseline)
+      const fileMain = await readFileOrNull(path.join(workspace, 'SENTINEL-N10.txt'))
+      const fileGuide = await readFileOrNull(path.join(workspace, 'SENTINEL-N10-GUIDE.txt'))
+      permissionPolicy = 'refuse'
+      // Steer correlation from the legacy event lane (bundle enum L5i includes
+      // turn.steerQueued / turn.steerDrained; their absence is recorded).
+      const events = await call('N10', 'session/events', { sessionId, limit: 200 })
+      const eventRows = events.result && Array.isArray(events.result.events) ? events.result.events : []
+      const steerKinds = eventRows.filter((e) => e && typeof e === 'object' && typeof e.kind === 'string' && e.kind.startsWith('turn.steer')).map((e) => redact(e))
+      record('N10', {
+        description: PAID_ROWS.N10,
+        v4Subscription: { ok: sub.ok, logEpoch: sub.logEpoch, subscriptionId: sub.subscriptionId },
+        send,
+        turnCounted: Boolean(accepted),
+        activeWhenGuided: Boolean(active),
+        guide: guide
+          ? { valid: guide.valid, issue: guide.issue, ack: redact(guideAck), commandId: guide.commandId, delivery: guideAck?.result?.delivery ?? null, status: guideAck?.status ?? null, revisionAtDecision: guideAck?.revisionAtDecision ?? null }
+          : { skipped: 'turn never demonstrably active (stage-1 liveness window elapsed)' },
+        settle,
+        steer: { kindsObserved: [...new Set(eventRows.map((e) => e?.kind).filter(Boolean))], steerEvents: steerKinds, correlated: steerKinds.length > 0 },
+        sentinels: { main: { written: fileMain !== null, content: fileMain }, guide: { written: fileGuide !== null, content: fileGuide } },
+        permissionsAnswered: (log.permissionRequests || []).length - permBefore,
+        // PASS is the command decision on an active turn + captured
+        // correlation evidence — never model obedience to the guide text.
+        pass: Boolean(active && guide && guide.valid && guideAck && ['accepted', 'duplicate'].includes(guideAck.status) && settle.sawTerminal),
+      })
+    }
+  }
+
+  if (sessionId && rows.includes('N11')) {
+    // Checklist N11 — stop with a real background writer. Spawn a background
+    // bash ticker, let the foreground turn settle, then stop via v4/command
+    // type:stop (C-prefix params) and cancel every recorded owned background
+    // task id via session/cancelBackgroundTask {sessionId, taskId}; prove the
+    // ticks CEASED. No workspace release on ACK alone.
+    const modelN11 = await advertisedModel()
+    if (!modelN11) {
+      record('N11', { description: PAID_ROWS.N11, notRun: 'MODEL_UNAVAILABLE', detail: 'no current/advertised model. No turn spent.' })
+    } else {
+      const sub = await v4Subscribe()
+      const permBefore = (log.permissionRequests || []).length
+      permissionPolicy = 'allow'
+      const task = `zk16-n11 ${Date.now()}: Start exactly ONE background bash task that runs this command and does not block you: for i in $(seq 1 120); do echo $i >> TICK-N11.txt; sleep 1; done . Return immediately after starting it. Do nothing else.`
+      const base = await projectionNow()
+      const baseline = base.ok ? { turnCount: base.projection?.turnCount ?? 0, stateRevision: base.runtime?.stateRevision ?? 0 } : { turnCount: 0, stateRevision: 0 }
+      const send = await call('N11', 'session/send', { sessionId, content: task })
+      const accepted = send && send.result && send.result.accepted === true
+      if (accepted) await countModelTurn('N11')
+      const settle = await settleTurn(client, sessionId, baseline)
+      permissionPolicy = 'refuse'
+      // Bounded wait for the background job to materialize in the projection
+      // (captured shape so far: backgroundJobs always []; entries are expected
+      // to carry taskId per bundle qsr — validated, never guessed).
+      let backgroundJobs = []
+      const jobsSeen = await until(async () => {
+        const p = await projectionNow()
+        backgroundJobs = p.ok && p.projection && Array.isArray(p.projection.backgroundJobs) ? p.projection.backgroundJobs : []
+        return backgroundJobs.length > 0
+      }, 20000, 500)
+      const tickFile = path.join(workspace, 'TICK-N11.txt')
+      const ticksBefore = await readFileOrNull(tickFile)
+      const jobShapeIssue = backgroundJobs.length && backgroundJobs.some((j) => !j || typeof j !== 'object' || typeof j.taskId !== 'string')
+        ? 'backgroundJobs entry missing string taskId (bundle qsr) — cancel leg refused'
+        : null
+      const taskIds = jobShapeIssue ? [] : backgroundJobs.map((j) => j.taskId)
+      const stop = await v4CommandSend('N11', 'stop', { payload: {} })
+      const cancels = []
+      for (const taskId of taskIds) {
+        cancels.push({ taskId, result: await call('N11', 'session/cancelBackgroundTask', { sessionId, taskId }) })
+      }
+      // Cessation window: the ticker appends once per second; 4s with a stable
+      // count is cessation evidence.
+      await sleep(4000)
+      const ticksAfter = await readFileOrNull(tickFile)
+      await sleep(2500)
+      const ticksAfter2 = await readFileOrNull(tickFile)
+      const subagents = await call('N11', 'session/subagents', { sessionId, endedLimit: 50 })
+      const finalRead = await projectionNow()
+      const cancelResultShape = cancels.map((c) => {
+        const v = c.result.result
+        const issue = !v || typeof v !== 'object'
+          ? 'result missing'
+          : ['cancelled', 'status', 'taskId'].some((k) => !(k in v))
+            ? `missing X5i keys (got ${v ? Object.keys(v).join(',') : 'null'})`
+            : null
+        return { taskId: c.taskId, cancelled: issue ? null : v.cancelled === true, status: issue ? null : v.status, shapeIssue: issue }
+      })
+      record('N11', {
+        description: PAID_ROWS.N11,
+        v4Subscription: { ok: sub.ok, logEpoch: sub.logEpoch },
+        send,
+        turnCounted: Boolean(accepted),
+        settle,
+        backgroundJobs: { observed: jobsSeen, count: backgroundJobs.length, shapeIssue: jobShapeIssue, jobs: redact(backgroundJobs), taskIds },
+        stopCommand: { valid: stop.valid, issue: stop.issue, ack: redact(stop.ack ?? null) },
+        cancels: redact(cancels),
+        cancelResultShape,
+        ticks: { before: ticksBefore, after4s: ticksAfter, after65s: ticksAfter2, ceased: ticksAfter !== null && ticksAfter2 !== null && ticksAfter === ticksAfter2 },
+        subagents,
+        finalStatus: finalRead.ok && finalRead.projection ? finalRead.projection.status : null,
+        permissionsAnswered: (log.permissionRequests || []).length - permBefore,
+        pass:
+          settle.sawTerminal &&
+          jobsSeen &&
+          !jobShapeIssue &&
+          stop.valid &&
+          ['accepted', 'duplicate', 'noop'].includes(stop.ack?.status) &&
+          cancelResultShape.length > 0 &&
+          cancelResultShape.every((c) => c.cancelled === true && !c.shapeIssue) &&
+          ticksBefore !== null &&
+          ticksAfter !== null &&
+          ticksAfter2 !== null &&
+          ticksAfter === ticksAfter2,
+      })
+    }
+  }
+
+  if (sessionId && rows.includes('N12')) {
+    // Checklist N12 — background and goal settlement. Goal work via the
+    // installed mechanism only: session/goal with bundle zsr actions
+    // {show,set,replace,pause,resume,clear} — enums from the bundle, never
+    // analogy. Inspect session/subagents {sessionId, endedLimit:50}; capture
+    // goalVerifications settlement; explicit verified cancellation via clear.
+    const modelN12 = await advertisedModel()
+    if (!modelN12) {
+      record('N12', { description: PAID_ROWS.N12, notRun: 'MODEL_UNAVAILABLE', detail: 'no current/advertised model. No turn spent.' })
+    } else {
+      const goalResultShape = (v) => {
+        const issue = !v || typeof v !== 'object'
+          ? 'result missing'
+          : ['response', 'snapshot'].some((k) => !(k in v))
+            ? `missing Y5i keys (got ${v ? Object.keys(v).join(',') : 'null'})`
+            : typeof v.response !== 'string'
+              ? 'response not a string'
+              : null
+        return { issue, startedTurn: issue ? null : v.startedTurn === true }
+      }
+      const permBefore = (log.permissionRequests || []).length
+      permissionPolicy = 'allow'
+      const objective = `The file GOAL-N12.txt exists containing exactly the word done. Verify it and then stop working on the goal.`
+      const goalSet = await call('N12', 'session/goal', { sessionId, action: 'set', objective })
+      const setShape = goalResultShape(goalSet.result)
+      if (setShape.startedTurn) await countModelTurn('N12') // goal set started a continuation turn (conservative count)
+      const base = await projectionNow()
+      const baseline = base.ok ? { turnCount: base.projection?.turnCount ?? 0, stateRevision: base.runtime?.stateRevision ?? 0 } : { turnCount: 0, stateRevision: 0 }
+      const settle1 = await settleTurn(client, sessionId, baseline)
+      const goalFile = await readFileOrNull(path.join(workspace, 'GOAL-N12.txt'))
+      const readAfterSet = await projectionNow()
+      const subagents = await call('N12', 'session/subagents', { sessionId, endedLimit: 50 })
+      const goalShow = await call('N12', 'session/goal', { sessionId, action: 'show' })
+      // Explicit verified cancellation: clear, then prove the goal lane is idle.
+      const goalClear = await call('N12', 'session/goal', { sessionId, action: 'clear' })
+      const clearShape = goalResultShape(goalClear.result)
+      if (clearShape.startedTurn) await countModelTurn('N12')
+      const settle2 = await settleTurn(client, sessionId, baseline)
+      permissionPolicy = 'refuse'
+      const readFinal = await projectionNow()
+      record('N12', {
+        description: PAID_ROWS.N12,
+        goalSet: { raw: redact(goalSet), shape: setShape },
+        settleAfterSet: settle1,
+        goalFile: { written: goalFile !== null, content: goalFile },
+        goalState: {
+          goalVerifications: readAfterSet.ok ? redact(readAfterSet.runtime?.goalVerifications ?? []) : null,
+          status: readAfterSet.ok && readAfterSet.projection ? readAfterSet.projection.status : null,
+          turnCount: readAfterSet.ok && readAfterSet.projection ? readAfterSet.projection.turnCount : null,
+        },
+        subagents,
+        goalShow: redact(goalShow),
+        goalClear: { raw: redact(goalClear), shape: clearShape },
+        settleAfterClear: settle2,
+        finalState: readFinal.ok ? { status: readFinal.projection?.status ?? null, turnCount: readFinal.projection?.turnCount ?? null, goalVerifications: redact(readFinal.runtime?.goalVerifications ?? []) } : null,
+        permissionsAnswered: (log.permissionRequests || []).length - permBefore,
+        // Foreground terminal while job/goal active, then settlement or
+        // explicit verified cancellation — shapes above, no invented enums.
+        // Some observable goal activity is required (a started continuation
+        // turn or recorded verifications); a trivially idle goal lane is not
+        // settlement evidence.
+        goalActivityObserved:
+          setShape.startedTurn === true ||
+          (readAfterSet.ok && Array.isArray(readAfterSet.runtime?.goalVerifications) && readAfterSet.runtime.goalVerifications.length > 0),
+        pass:
+          !setShape.issue &&
+          !clearShape.issue &&
+          (setShape.startedTurn === true || (readAfterSet.ok && Array.isArray(readAfterSet.runtime?.goalVerifications) && readAfterSet.runtime.goalVerifications.length > 0)) &&
+          settle1.sawTerminal &&
+          settle2.sawTerminal &&
+          typeof subagents.result === 'object' && subagents.result !== null,
+      })
+    }
+  }
+
+  if (sessionId && rows.includes('N13')) {
+    // Checklist N13 — idle native compact. Quiescence first (two-stage settle
+    // to terminal), session/compact {sessionId}, validate the captured result
+    // (bundle Z5i {response, snapshot, compact?{state accepted|already_running}}),
+    // then session/read: preserved SID/workspace/model, no automatic
+    // continuation (status stays idle, no new user input follows).
+    const seed = await ensureTurnBearingSession('N13')
+    if (!seed.reused && !seed.accepted) {
+      record('N13', { description: PAID_ROWS.N13, notRun: 'SEED_TURN_FAILED', detail: 'no turn-bearing session; seeding turn was not accepted. No compact attempted.', seed })
+    } else {
+      // Quiescence check (seed already settled): direct projection check, with
+      // a full two-stage settle only if work is still visibly active.
+      const q0 = await projectionNow()
+      let quiescent = q0.ok && q0.projection && q0.projection.status !== 'running' && Array.isArray(q0.runtime?.pendingRequestIds) && q0.runtime.pendingRequestIds.length === 0
+      const settle0 = quiescent ? { alreadyIdle: true } : await settleTurn()
+      const pre = await projectionNow()
+      const preBaseline = pre.ok ? { turnCount: pre.projection?.turnCount ?? 0, stateRevision: pre.runtime?.stateRevision ?? 0 } : { turnCount: 0, stateRevision: 0 }
+      const compact = await call('N13', 'session/compact', { sessionId })
+      const v = compact.result
+      const issue = !v || typeof v !== 'object'
+        ? 'result missing'
+        : Object.keys(v).some((k) => !['response', 'snapshot', 'compact'].includes(k))
+          ? `unknown key(s) ${Object.keys(v).filter((k) => !['response', 'snapshot', 'compact'].includes(k)).join(',')} (Z5i is strict)`
+          : typeof v.response !== 'string'
+            ? 'response not a string'
+            : v.compact !== undefined && (!v.compact || typeof v.compact !== 'object' || !['accepted', 'already_running'].includes(v.compact.state))
+              ? 'compact.state not accepted|already_running'
+              : null
+      if (!issue) await countModelTurn('N13') // compact runs the native summarizer — conservatively counted as a model turn
+      const settle1 = await settleTurn(client, sessionId, preBaseline)
+      const post = await projectionNow()
+      const preSession = pre.ok ? pre.session : null
+      const postSession = post.ok ? post.session : null
+      record('N13', {
+        description: PAID_ROWS.N13,
+        seed,
+        quiescentBefore: settle0,
+        preState: pre.ok ? { sessionId: preSession?.sessionId ?? null, workspace: preSession?.workspace ?? null, model: redact(pre.settings?.model?.current ?? null), turnCount: pre.projection?.turnCount ?? null, messageCount: Array.isArray(pre.messages) ? pre.messages.length : null } : { error: pre.error },
+        compact: { raw: redact(compact), shapeIssue: issue, compactState: v && v.compact ? v.compact.state : null },
+        settleAfter: settle1,
+        postState: post.ok ? { sessionId: postSession?.sessionId ?? null, workspace: postSession?.workspace ?? null, model: redact(post.settings?.model?.current ?? null), turnCount: post.projection?.turnCount ?? null, messageCount: Array.isArray(post.messages) ? post.messages.length : null, status: post.projection?.status ?? null } : { error: post.error },
+        identityPreserved:
+          pre.ok && post.ok &&
+          preSession?.sessionId === postSession?.sessionId &&
+          JSON.stringify(redact(preSession?.workspace ?? null)) === JSON.stringify(redact(postSession?.workspace ?? null)) &&
+          JSON.stringify(redact(pre.settings?.model?.current ?? null)) === JSON.stringify(redact(post.settings?.model?.current ?? null)),
+        noAutomaticContinuation: post.ok && post.projection ? post.projection.status === 'idle' : null,
+        pass: !issue && settle1.sawTerminal && (post.ok && postSession?.sessionId === sessionId && post.projection?.status === 'idle'),
+      })
+    }
+  }
+
+  if (sessionId && rows.includes('N14')) {
+    // Checklist N14 — conversation-only fork. rowsRange page schema (sEc),
+    // paging via beforeRowId when hasMore, CAS fork via v4/command
+    // type:forkAssistant payload{target{rowId,entityId}} baseRevision+
+    // baseLogEpoch (bundle wPe REQUIRES both for CAS commands), nested child
+    // SID from ACK result (Bes forkAssistant variant), child readback, and an
+    // unchanged filesystem. No legacy session/fork, no guessed row metadata.
+    const seed = await ensureTurnBearingSession('N14')
+    if (!seed.reused && !seed.accepted) {
+      record('N14', { description: PAID_ROWS.N14, notRun: 'SEED_TURN_FAILED', detail: 'no turn-bearing session; seeding turn was not accepted. No fork attempted.', seed })
+    } else {
+      // Quiescence before fork (seed already settled): direct projection check;
+      // full two-stage settle only if work is still visibly active.
+      const q0 = await projectionNow()
+      const quiescent = q0.ok && q0.projection && q0.projection.status !== 'running' && Array.isArray(q0.runtime?.pendingRequestIds) && q0.runtime.pendingRequestIds.length === 0
+      const settle0 = quiescent ? { alreadyIdle: true } : await settleTurn()
+      const sub = await v4Subscribe()
+      const filesBefore = await listWorkspaceFiles()
+      const page1 = await rowsRangePage('N14')
+      let page2 = null
+      if (page1.valid && page1.meta.hasMore && page1.rows.length > 0) {
+        page2 = await rowsRangePage('N14', client, sessionId, page1.rows[0].rowId)
+      }
+      const allRows = [...(page1.rows ?? []), ...(page2?.rows ?? [])]
+      const kindCensus = {}
+      for (const r of allRows) kindCensus[r.kind] = (kindCensus[r.kind] ?? 0) + 1
+      const forkable = allRows.filter((r) => r.kind === 'assistantText' && typeof r.entityId === 'string' && r.entityId && r.actions && r.actions.canFork === true)
+      let target = forkable.length ? forkable[forkable.length - 1] : null
+      if (!sub.ok) {
+        record('N14', { description: PAID_ROWS.N14, notRun: 'V4_SUBSCRIBE_FAILED', detail: 'no publisher logEpoch for the CAS fork; refusing to guess one.', subscribe: sub, seed })
+      } else if (!page1.valid) {
+        record('N14', { description: PAID_ROWS.N14, notRun: 'CAPTURE_SCHEMA_PENDING', detail: `rowsRange page schema unknown: ${page1.issue}. Fork stays disabled.`, seed, settle: settle0 })
+      } else if (!target) {
+        record('N14', {
+          description: PAID_ROWS.N14,
+          notRun: 'NO_FORKABLE_ROW',
+          detail: 'no assistantText row with entityId + actions.canFork=true in the captured page (refusing to fork a row the server did not mark forkable).',
+          kindCensus,
+          rowsSample: redact(allRows.slice(0, 8)),
+          seed,
+        })
+      } else {
+        // CAS freshness: re-read the page right before the command; the fork
+        // must target the CURRENT revision/epoch (stale -> CONTROL_STALE).
+        let cas = null
+        let attempt = 0
+        for (; attempt < 3; attempt++) {
+          const fresh = await rowsRangePage('N14')
+          const sameTarget = fresh.valid && fresh.rows.some((r) => r.rowId === target.rowId && r.entityId === target.entityId)
+          if (fresh.valid && sameTarget) {
+            cas = fresh
+            break
+          }
+          if (fresh.valid) {
+            const again = fresh.rows.filter((r) => r.kind === 'assistantText' && typeof r.entityId === 'string' && r.entityId && r.actions && r.actions.canFork === true)
+            if (again.length) target = again[again.length - 1]
+            cas = fresh
+            break
+          }
+        }
+        if (!cas || !cas.valid) {
+          record('N14', { description: PAID_ROWS.N14, notRun: 'CAS_REVALIDATION_FAILED', detail: `rowsRange re-read invalid on every attempt: ${cas ? cas.issue : 'no attempt succeeded'}.`, seed })
+        } else {
+          const fork = await v4CommandSend('N14', 'forkAssistant', {
+            payload: { target: { rowId: target.rowId, entityId: target.entityId } },
+            baseRevision: cas.meta.atRevision,
+            baseLogEpoch: cas.meta.atLogEpoch,
+          })
+          const ack = fork.valid ? fork.ack : null
+          const result = ack && ack.result && typeof ack.result === 'object' ? ack.result : null
+          const childSid = result && result.type === 'forkAssistant' && typeof result.sessionId === 'string' ? result.sessionId : null
+          const filesAfter = await listWorkspaceFiles()
+          let childRead = null
+          if (childSid) {
+            const r = await client.request('session/read', { sessionId: childSid })
+            childRead = r.ok ? redact({ sessionId: r.value?.session?.sessionId ?? null, status: r.value?.session?.status ?? null, workspace: r.value?.session?.workspace ?? null, model: r.value?.settings?.model?.current ?? null, turnCount: r.value?.projection?.turnCount ?? null }) : r.error.toJSON()
+          }
+          record('N14', {
+            description: PAID_ROWS.N14,
+            seed,
+            settle: settle0,
+            subscribe: { logEpoch: sub.logEpoch, subscriptionId: sub.subscriptionId },
+            rowsRange: { page1: { valid: page1.valid, issue: page1.issue, meta: page1.meta, rowCount: page1.rows?.length ?? null }, page2: page2 ? { valid: page2.valid, meta: page2.meta, rowCount: page2.rows?.length ?? null } : null, kindCensus },
+            target: target ? redact({ rowId: target.rowId, entityId: target.entityId, kind: target.kind, actions: target.actions ?? null }) : null,
+            casAttempt: attempt,
+            casMeta: cas.meta,
+            epochMatchesSubscribe: cas.meta.atLogEpoch === sub.logEpoch,
+            fork: { valid: fork.valid, issue: fork.issue, ack: redact(ack), childSid, resultType: result?.type ?? null, revisionAtDecision: ack?.revisionAtDecision ?? null },
+            childRead,
+            filesystem: { before: filesBefore, after: filesAfter, unchanged: JSON.stringify(filesBefore) === JSON.stringify(filesAfter) },
+            pass: Boolean(
+              fork.valid && ack && ack.status === 'accepted' && childSid && childSid !== sessionId &&
+              childRead && typeof childRead === 'object' && !('code' in childRead) &&
+              JSON.stringify(filesBefore) === JSON.stringify(filesAfter),
+            ),
+          })
+        }
+      }
+    }
+  }
+
+  if (sessionId && rows.includes('N15')) {
+    // Checklist N15 — image byte + resume retention. Only when the runtime
+    // advertises an image-capable model (settings.model.available[].properties
+    // .inputFormat.supportsImage — confirmed at runtime, never assumed). Sends
+    // a fixed 1x1 PNG byte (sha256 recorded) via the captured attachment shape
+    // (bundle Rar image: {kind,filename,mimeType,sizeBytes,dataBase64}
+    // .strict()), proves the native retention echo (rows) and re-proves it
+    // after a clean restart + session/resume with one explicit follow-up turn.
+    const read15 = await projectionNow()
+    const available15 = read15.ok && read15.settings && Array.isArray(read15.settings.model?.available) ? read15.settings.model.available : []
+    const current15 = read15.ok ? read15.settings?.model?.current ?? null : null
+    const entry15 = available15.find((a) => a && a.ref && current15 && a.ref.providerId === current15.providerId && a.ref.modelId === current15.modelId) ?? null
+    const supportsImage = entry15?.properties?.inputFormat?.supportsImage === true
+    if (!current15 || !entry15) {
+      record('N15', { description: PAID_ROWS.N15, notRun: 'MODEL_UNAVAILABLE', detail: 'no current advertised model entry to inspect for image support. No turn spent.' })
+    } else if (!supportsImage) {
+      record('N15', { description: PAID_ROWS.N15, notRun: 'IMAGE_UNAVAILABLE', detail: 'current model does not advertise properties.inputFormat.supportsImage=true at runtime. Row refuses by design.', model: redact(current15), inputFormat: redact(entry15.properties?.inputFormat ?? null) })
+    } else {
+      // Fixed 1x1 transparent PNG (70 bytes) — deterministic bytes, hashed.
+      const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+      const pngBytes = Buffer.from(pngBase64, 'base64')
+      const pngSha256 = createHash('sha256').update(pngBytes).digest('hex')
+      const attachment = { kind: 'image', filename: 'zk16-n15.png', mimeType: 'image/png', sizeBytes: pngBytes.length, dataBase64: pngBase64 }
+      const permBefore = (log.permissionRequests || []).length
+      permissionPolicy = 'allow'
+      const task = `zk16-n15 ${Date.now()}: Look at the attached image. Reply with exactly one word naming what kind of visual it is (a dot). Then create a file named SENTINEL-N15.txt containing exactly that one word. Do nothing else.`
+      const base = await projectionNow()
+      const baseline = base.ok ? { turnCount: base.projection?.turnCount ?? 0, stateRevision: base.runtime?.stateRevision ?? 0 } : { turnCount: 0, stateRevision: 0 }
+      const send = await call('N15', 'session/send', { sessionId, content: task, attachments: [attachment] })
+      const accepted = send && send.result && send.result.accepted === true
+      if (accepted) await countModelTurn('N15')
+      const settle = await settleTurn(client, sessionId, baseline)
+      const sentinel = await readFileOrNull(path.join(workspace, 'SENTINEL-N15.txt'))
+      permissionPolicy = 'refuse'
+      const sub = await v4Subscribe()
+      const page = await rowsRangePage('N15')
+      const echoRows = page.valid ? page.rows.filter((r) => r.kind === 'userInput' && Array.isArray(r.attachments) && r.attachments.length > 0) : []
+      const echo = echoRows.length
+        ? {
+            found: true,
+            attachments: redact(echoRows.flatMap((r) => r.attachments)),
+            byteMatch: echoRows.some((r) => r.attachments.some((a) => a.bytes === attachment.sizeBytes && a.fileName === attachment.filename)),
+          }
+        : { found: false, detail: 'no userInput row carried an attachments[] echo in the captured page (retention NOT observed)' }
+      // Resume retention: clean restart, same SID, echo must survive; one
+      // explicit follow-up turn proves the image stayed in native context.
+      const stopA = await runtime.stop()
+      const second = await startSecondRuntime()
+      if (!second.ok) {
+        record('N15', {
+          description: PAID_ROWS.N15,
+          send,
+          turnCounted: Boolean(accepted),
+          settle,
+          sentinel: { written: sentinel !== null, content: sentinel },
+          image: { sha256: pngSha256, sizeBytes: pngBytes.length },
+          retentionEcho: echo,
+          restart: { stop: stopA.ok ? { ok: true } : { error: stopA.error.toJSON() }, secondLaunch: second.error },
+          notRun: 'SECOND_LAUNCH_FAILED',
+          detail: 'restart leg failed; retention-after-resume not tested.',
+        })
+      } else {
+        const { runtime: runtime2, client: client2 } = second
+        const resume = await client2.request('session/resume', { sessionId, workspace: W })
+        const resumedId = resume.ok && resume.value && typeof resume.value === 'object' ? resume.value.session?.sessionId ?? null : null
+        const page2 = await rowsRangePage('N15', client2)
+        const echoRows2 = page2.valid ? page2.rows.filter((r) => r.kind === 'userInput' && Array.isArray(r.attachments) && r.attachments.length > 0) : []
+        const echoAfterResume = echoRows2.length ? { found: true, byteMatch: echoRows2.some((r) => r.attachments.some((a) => a.bytes === attachment.sizeBytes)) } : { found: false }
+        const permBefore2 = (log.permissionRequests || []).length
+        permissionPolicy = 'allow'
+        const followup = `Reply with exactly the same one word again. Do nothing else.`
+        const base2 = await projectionNow(client2)
+        const baseline2 = base2.ok ? { turnCount: base2.projection?.turnCount ?? 0, stateRevision: base2.runtime?.stateRevision ?? 0 } : { turnCount: 0, stateRevision: 0 }
+        const send2 = await call('N15', 'session/send', { sessionId, content: followup }, client2)
+        const accepted2 = send2 && send2.result && send2.result.accepted === true
+        if (accepted2) await countModelTurn('N15')
+        const settle2 = await settleTurn(client2, sessionId, baseline2)
+        permissionPolicy = 'refuse'
+        const readFinal = await projectionNow(client2)
+        record('N15', {
+          description: PAID_ROWS.N15,
+          model: { current: redact(current15), supportsImage, inputFormat: redact(entry15.properties?.inputFormat ?? null) },
+          image: { sha256: pngSha256, sizeBytes: pngBytes.length, mimeType: attachment.mimeType },
+          attachmentSent: redact(attachment),
+          send,
+          turnCounted: Boolean(accepted),
+          settle,
+          sentinel: { written: sentinel !== null, content: sentinel },
+          retentionEcho: echo,
+          restart: {
+            stop: stopA.ok ? { ok: true } : { error: stopA.error.toJSON() },
+            resume: resume.ok ? { sameSid: resumedId === sessionId } : resume.error.toJSON(),
+            echoAfterResume,
+            followUp: { send: send2, accepted: accepted2 === true, settle: settle2 },
+            finalTurnCount: readFinal.ok ? readFinal.projection?.turnCount ?? null : null,
+          },
+          permissionsAnswered: (log.permissionRequests || []).length - permBefore + ((log.permissionRequests || []).length - permBefore2),
+          pass: Boolean(
+            accepted && settle.sawTerminal && echo.found && echo.byteMatch &&
+            resume.ok && resumedId === sessionId && echoAfterResume.found && echoAfterResume.byteMatch &&
+            accepted2 && settle2.sawTerminal,
+          ),
+        })
+        client2.dispose()
+        const reap = await runtime2.stop()
+        log.rows.N15.runtime2Stop = reap.ok ? { ok: true } : { error: reap.error.toJSON() }
+        log.rows.N15.runtime2PidLivenessAfterStop = alive(runtime2.pid) ? 'ALIVE' : 'dead'
+      }
+    }
+  }
+
+
+  if (sessionId && rows.includes('N16')) {
+    // Same SID after clean restart. The 2026-09-28 run (evidence
+    // zk16-win32-n16) proved an unexecuted session is NEVER persisted: resume
+    // answered -32004 sessionUnavailable and session/list came back empty.
+    // Fix: the row now reuses a TURN-BEARING session — seeded in-row (counted
+    // against this row's cap) or supplied via --session. Restart itself is
+    // config-only: capture state, stop cleanly, fresh runtime + NEW client
+    // generation, resume the SAME sessionId, verify identity/model/workspace,
+    // resubscribe from the saved cursor.
+    const seed = await ensureTurnBearingSession('N16')
+    if (!seed.reused && !seed.accepted) {
+      record('N16', { description: PAID_ROWS.N16, notRun: 'SEED_TURN_FAILED', detail: 'no turn-bearing session; seeding turn was not accepted (unexecuted sessions are never persisted — 2026-09-28 evidence). Restart leg not attempted.', seed })
+    } else {
+      const before = await client.request('session/read', { sessionId })
+      const modelBefore =
+        before.ok && before.value && before.value.settings ? before.value.settings.model : null
+      const sub = await client.request('session/subscribe', {
+        sessionId,
+        deliveryKind: 'desktop-continuous',
+        includeSnapshot: true,
+        afterSeq: 0,
+      })
+      const cursor = sub.ok && sub.value ? sub.value.eventSeq : null
+      log.rows.N16 = { stage: 'pre-restart', sessionId, cursor, model: redact(modelBefore), seed }
+      const stopA = await runtime.stop()
+      const oldGeneration = client.generation
+      await sleep(500)
+      const second = await startSecondRuntime()
+      if (!second.ok) {
+        log.rows.N16.stage2 = { launchFailed: second.error }
+      } else {
+        const { runtime: runtime2, client: client2 } = second
+        const resume = await client2.request('session/resume', { sessionId, workspace: W })
+        const resumedOk = resume.ok && resume.value ? resume.value : null
+        const resumedId = resumedOk
+          ? (resumedOk.session && resumedOk.session.sessionId) || resumedOk.sessionId || null
+          : null
+        const read2 = await client2.request('session/read', { sessionId })
+        const model2 =
+          read2.ok && read2.value && read2.value.settings ? read2.value.settings.model : null
+        const sub2 = await client2.request('session/subscribe', {
+          sessionId,
+          deliveryKind: 'desktop-continuous',
+          includeSnapshot: false,
+          afterSeq: cursor ?? 0,
+        })
+        const list2 = await client2.request('session/list', { workspace: W, includeArchived: false, limit: 10 })
+        log.rows.N16.stage2 = {
+          stop: stopA.ok ? { ok: true } : { error: stopA.error.toJSON() },
+          resume: redact(resume.ok ? { keys: Object.keys(resumedOk || {}) } : resume.error.toJSON()),
+          sameSidResumed: resumedId === sessionId,
+          readbackModelMatches: JSON.stringify(redact(model2)) === JSON.stringify(redact(modelBefore)),
+          resubscribeWithSavedCursor: redact(sub2.ok ? { eventSeq: (sub2.value && sub2.value.eventSeq) || null } : sub2.error.toJSON()),
+          listContainsSession: redact(list2.ok ? list2.value : list2.error.toJSON()),
+          newGeneration: client2.generation,
+          oldGeneration,
+          oldClientClosedAfterStop: client.isClosed,
+        }
+        client2.dispose()
+        const reap = await runtime2.stop()
+        log.rows.N16.stage2.stop2 = reap.ok ? { ok: true } : { error: reap.error.toJSON() }
+        log.rows.N16.stage2.newPidLivenessAfterStop = alive(runtime2.pid) ? 'ALIVE' : 'dead'
+      }
+      record('N16', {
+        ...log.rows.N16,
+        pass: Boolean(
+          log.rows.N16.stage2 &&
+            !log.rows.N16.stage2.launchFailed &&
+            log.rows.N16.stage2.sameSidResumed === true &&
+            log.rows.N16.stage2.readbackModelMatches === true &&
+            log.rows.N16.stage2.stop2?.ok === true &&
+            log.rows.N16.stage2.newPidLivenessAfterStop === 'dead',
+        ),
+      })
+    }
+  }
+
+  if (sessionId && rows.includes('N17')) {
+    // Checklist N17 — failure/restart resume with list omission. Controlled
+    // connection drop mid-send (the "or connection" variant: the send is fired
+    // and the owned process stopped before any ACK can arrive; acceptance is
+    // UNKNOWN, so the turn is conservatively COUNTED — never under-counted),
+    // restart WITHOUT resending, then resume the known SID directly even if
+    // session/list omits it. Existing filesystem effects must survive, no
+    // whole-task replay may occur, and the orphan outcome is explicit.
+    const seed = await ensureTurnBearingSession('N17')
+    if (!seed.reused && !seed.accepted) {
+      record('N17', { description: PAID_ROWS.N17, notRun: 'SEED_TURN_FAILED', detail: 'no turn-bearing session; seeding turn was not accepted. Drop/restart leg not attempted.', seed })
+    } else {
+      const pre = await projectionNow()
+      const messagesBefore = pre.ok && Array.isArray(pre.messages) ? pre.messages.length : null
+      const turnCountBefore = pre.ok && pre.projection ? pre.projection.turnCount : null
+      const sentinelPath = path.join(workspace, 'SENTINEL-N17.txt')
+      const sentinelBefore = await readFileOrNull(sentinelPath)
+      // Controlled drop: fire the send, flush window, kill the connection via
+      // the owned-process stop. The pending request settles as an error; its
+      // acceptance can never be observed from this side.
+      const dropTask = `zk16-n17 drop ${Date.now()}: create a file named SENTINEL-N17-B.txt containing exactly the word dropped. Do nothing else.`
+      const droppedSend = client.request('session/send', { sessionId, content: dropTask })
+      await sleep(250) // bounded flush window; the race is inherent and recorded
+      const dropStopStarted = Date.now()
+      const stopA = await runtime.stop()
+      const droppedResult = await droppedSend
+      // Acceptance unknown → conservative count (never under-count a possibly
+      // admitted model turn).
+      await countModelTurn('N17')
+      const second = await startSecondRuntime()
+      if (!second.ok) {
+        record('N17', {
+          description: PAID_ROWS.N17,
+          seed,
+          preState: { messagesBefore, turnCountBefore, sentinelBefore },
+          drop: { task: dropTask, result: droppedResult.ok ? redact(droppedResult.value) : droppedResult.error.toJSON(), stopMs: Date.now() - dropStopStarted, stop: stopA.ok ? { ok: true } : { error: stopA.error.toJSON() } },
+          notRun: 'SECOND_LAUNCH_FAILED',
+          detail: 'restart failed; list-omission/resume leg not tested.',
+        })
+      } else {
+        const { runtime: runtime2, client: client2 } = second
+        const list2 = await client2.request('session/list', { workspace: W, includeArchived: false, limit: 10 })
+        const listedSids = list2.ok && list2.value && Array.isArray(list2.value.sessions) ? list2.value.sessions.map((s) => s && s.sessionId) : null
+        const listOmits = Array.isArray(listedSids) ? !listedSids.includes(sessionId) : null
+        // Resume the known SID DIRECTLY — no resend, whatever the list said.
+        const resume = await client2.request('session/resume', { sessionId, workspace: W })
+        const resumedId = resume.ok && resume.value && typeof resume.value === 'object' ? resume.value.session?.sessionId ?? null : null
+        const post = await projectionNow(client2)
+        const messagesAfter = post.ok && Array.isArray(post.messages) ? post.messages.length : null
+        const turnCountAfter = post.ok && post.projection ? post.projection.turnCount : null
+        const sentinelAfter = await readFileOrNull(sentinelPath)
+        const orphanFile = await readFileOrNull(path.join(workspace, 'SENTINEL-N17-B.txt'))
+        // Whole-task replay check: at most ONE new user/assistant pair beyond
+        // the pre-drop message count (the dropped send, IF admitted and run,
+        // settles as one pair; a duplicated history means replay).
+        const maxExpectedMessages = (messagesBefore ?? 0) + 2
+        record('N17', {
+          description: PAID_ROWS.N17,
+          seed,
+          preState: { messagesBefore, turnCountBefore, sentinelBefore },
+          drop: {
+            task: dropTask,
+            result: droppedResult.ok ? redact(droppedResult.value) : droppedResult.error.toJSON(),
+            stopMs: Date.now() - dropStopStarted,
+            stop: stopA.ok ? { ok: true } : { error: stopA.error.toJSON() },
+            acceptance: 'UNKNOWN (connection dropped pre-ACK; conservatively counted as a spent turn)',
+          },
+          restart: {
+            list: list2.ok ? { sessionIds: listedSids, omitsKnownSid: listOmits } : list2.error.toJSON(),
+            resume: resume.ok ? { sameSid: resumedId === sessionId, keys: Object.keys(resume.value ?? {}) } : resume.error.toJSON(),
+            postState: { messagesAfter, turnCountAfter, status: post.ok && post.projection ? post.projection.status : null },
+            noWholeTaskReplay: messagesBefore !== null && messagesAfter !== null ? messagesAfter <= maxExpectedMessages : null,
+            filesystemEffects: { sentinelBefore, sentinelAfter, intact: sentinelBefore === sentinelAfter },
+            orphanOutcome: { dropFileWritten: orphanFile !== null, dropFileContent: orphanFile, interpretation: orphanFile !== null ? 'dropped send WAS admitted and settled server-side (recorded, not replayed by the runner)' : 'dropped send never started (no effects)' },
+          },
+          pass: Boolean(
+            resume.ok && resumedId === sessionId && sentinelBefore === sentinelAfter &&
+            messagesBefore !== null && messagesAfter !== null && messagesAfter <= maxExpectedMessages,
+          ),
+        })
+        client2.dispose()
+        const reap = await runtime2.stop()
+        log.rows.N17.runtime2Stop = reap.ok ? { ok: true } : { error: reap.error.toJSON() }
+        log.rows.N17.runtime2PidLivenessAfterStop = alive(runtime2.pid) ? 'ALIVE' : 'dead'
+      }
+    }
+  }
+
+  // Safety net: a selected paid row with no recorded evidence means its driver
+  // never reached a record() (e.g. session unavailable). The drivers themselves
+  // record named notRun/shape outcomes — this loop never fabricates a PASS.
   for (const [row, reason] of [
-    ['N08', 'requires a captured native permission-request schema (codec fails closed until N08 capture); needs model turns to provoke the request'],
-    ['N09', 'requires captured question/plan schemas; unknown schemas fail closed by design'],
-    ['N10', 'requires an active controlled turn and the captured v4 command-event correlation (turn.steerQueued/steerDrained)'],
-    ['N11', 'requires an active background writer from N07-class task and captured stop/cancel event shapes'],
-    ['N12', 'requires the captured background/goal settlement shapes (do not invent goal enums)'],
-    ['N13', 'requires session/compact response capture (paid turn needed first to have context to compact)'],
-    ['N14', 'requires a captured v4/conversation/rowsRange page schema (forkPoint codec fails closed today)'],
-    ['N15', 'requires an advertised image-capable model and the captured attachment schema'],
-    ['N17', 'requires controlled ACK-drop capture; depends on N16 state'],
+    ['N08', 'driver ran without recording (permission legs incomplete)'],
+    ['N09', 'driver ran without recording (question/plan legs incomplete)'],
+    ['N10', 'driver ran without recording (guide leg incomplete)'],
+    ['N11', 'driver ran without recording (stop/cancel leg incomplete)'],
+    ['N12', 'driver ran without recording (goal settlement leg incomplete)'],
+    ['N13', 'driver ran without recording (compact leg incomplete)'],
+    ['N14', 'driver ran without recording (rowsRange/fork leg incomplete)'],
+    ['N15', 'driver ran without recording (image leg incomplete)'],
+    ['N16', 'driver ran without recording (restart leg incomplete)'],
+    ['N17', 'driver ran without recording (drop/restart leg incomplete)'],
   ]) {
     if (rows.includes(row) && !log.rows[row]) {
       record(row, {
         description: PAID_ROWS[row],
         notRun: 'CAPTURE_SCHEMA_PENDING',
-        detail: `${reason}. Ordered after N07 per the codec-per-divergence rule.`,
+        detail: `${reason}. Shapes fail closed; nothing is claimed without captured evidence.`,
       })
     }
   }
@@ -979,6 +1956,14 @@ try {
   }
 } finally {
   const stopResult = await runtime.stop()
+  // Restart rows stop their second runtimes in-row; this is the leak guard for
+  // a driver that throws between launch and its own stop (stop() is memoized,
+  // so an in-row stop followed by this one is a no-op).
+  log.secondRuntimeStops = []
+  for (const second of secondRuntimes) {
+    const reap = await second.stop()
+    log.secondRuntimeStops.push(reap.ok ? { ok: true, pid: second.pid } : { error: reap.error.toJSON(), pid: second.pid })
+  }
   await sleep(300)
   // N18 graceful-leg evidence: confirmed stop AND the native pid actually gone.
   log.stop = {
