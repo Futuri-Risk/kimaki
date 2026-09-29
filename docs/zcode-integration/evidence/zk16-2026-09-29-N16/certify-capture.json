@@ -1,0 +1,2748 @@
+{
+  "startedAt": "2026-09-29T22:09:32.128Z",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "C:/Program Files/nodejs/node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+    "entrySha256": "fad4c35c4c36ec210d8a06d3fa0e77de23c8545e2eb6ff90aea1eb38d1e6275f",
+    "args": [
+      "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "C:/Users/Cody",
+      "ZCODE_DATA_BASE_DIR": "D:/Filen/Reference/Tech/AI/Claude/ZCode Data",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/config/provider/zcode-builtin.json"
+    },
+    "cwd": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+  },
+  "rows": {
+    "N16": {
+      "stage": "pre-restart",
+      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+      "cursor": 41,
+      "model": {
+        "available": [
+          {
+            "ref": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            },
+            "label": "GLM-5.3",
+            "providerLabel": "zai-api",
+            "contextWindow": 200000,
+            "maxOutputTokens": 128000,
+            "reasoning": {
+              "levels": [
+                {
+                  "value": "low",
+                  "label": "low"
+                },
+                {
+                  "value": "high",
+                  "label": "high"
+                },
+                {
+                  "value": "max",
+                  "label": "max"
+                }
+              ],
+              "defaultLevel": "max"
+            },
+            "properties": {
+              "inputFormat": {
+                "supportsText": true,
+                "supportsImage": true,
+                "supportsVideo": true,
+                "supportsAudio": false,
+                "supportsPdf": false
+              },
+              "outputFormat": {
+                "supportsText": true
+              }
+            }
+          }
+        ],
+        "current": {
+          "providerId": "zai-api",
+          "modelId": "GLM-5.3",
+          "options": {
+            "reasoningLevel": "max"
+          }
+        },
+        "lastUsed": {
+          "providerId": "zai-api",
+          "modelId": "GLM-5.3"
+        }
+      },
+      "seed": {
+        "reused": false,
+        "seededBy": "N16",
+        "send": {
+          "at": "2026-09-29T22:09:34.591Z",
+          "method": "session/send",
+          "params": {
+            "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+            "content": "zk16-n16 seed 1790719774586: create a file named SENTINEL-N16.txt containing exactly the word ok. Do nothing else."
+          },
+          "ms": 5,
+          "result": {
+            "accepted": true,
+            "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+            "stateRevision": 1
+          }
+        },
+        "accepted": true,
+        "settle": {
+          "sawRunning": true,
+          "runningAtMs": 304,
+          "sawTerminal": true,
+          "withinMs": 44342,
+          "baseline": {
+            "turnCount": 1,
+            "stateRevision": 1
+          }
+        },
+        "permissionsAnswered": 1,
+        "sentinel": {
+          "file": "SENTINEL-N16.txt",
+          "content": "ok"
+        },
+        "turnCount": 1
+      },
+      "stage2": {
+        "stop": {
+          "ok": true
+        },
+        "resume": {
+          "keys": [
+            "messages",
+            "projection",
+            "protocol",
+            "runtime",
+            "session",
+            "settings",
+            "slashCommands",
+            "todos",
+            "todoGroups"
+          ]
+        },
+        "sameSidResumed": true,
+        "readbackModelMatches": true,
+        "resubscribeWithSavedCursor": {
+          "eventSeq": 7
+        },
+        "listContainsSession": {
+          "sessions": [
+            {
+              "createdAt": 1790684811322,
+              "mode": "build",
+              "traceId": "e24dcce1-2596-4edf-8a81-3b0e675844ff",
+              "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+              "sessionKind": "interactive",
+              "status": "idle",
+              "title": "Ask color question and create SENTINEL-N09.txt",
+              "titleSource": "generated",
+              "updatedAt": 1790719818363,
+              "workspace": {
+                "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+                "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+              }
+            },
+            {
+              "createdAt": 1790719579112,
+              "mode": "build",
+              "parentSessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+              "traceId": "e24dcce1-2596-4edf-8a81-3b0e675844ff",
+              "sessionId": "sess_644b5fa6-9f09-4340-96fa-0eb27fb4103c",
+              "sessionKind": "fork",
+              "status": "idle",
+              "title": "Fork of Ask color question and create SENTINEL-N09.txt",
+              "titleSource": "generated",
+              "updatedAt": 1790719579125,
+              "workspace": {
+                "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+                "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+              }
+            }
+          ]
+        },
+        "newGeneration": "60787b95-56c1-4972-9e08-a7709eb9d8d5",
+        "oldGeneration": "17c0ecdc-ddf0-4004-b236-da7f1709f33c",
+        "oldClientClosedAfterStop": true,
+        "stop2": {
+          "ok": true
+        },
+        "newPidLivenessAfterStop": "dead"
+      },
+      "pass": true
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-2",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/send"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "state.updated"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "computer-use/operation-event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "computer-use/operation-event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-3",
+      "method": "interaction/requestPermission"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "computer-use/operation-event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "computer-use/operation-event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "state.updated"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState",
+      "gen": 2
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState",
+      "gen": 2
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState",
+      "gen": 2
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState",
+      "gen": 2
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState",
+      "gen": 2
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "gen": 2
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-2",
+      "method": "session/requestRuntimePreferences",
+      "gen": 2
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [
+    {
+      "at": 1790719773795,
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "scope": "runtime-materialization"
+      }
+    },
+    {
+      "at": 1790719773959,
+      "id": "server-2",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "scope": "user-execution"
+      }
+    },
+    {
+      "at": 1790719814134,
+      "id": "server-3",
+      "method": "interaction/requestPermission",
+      "params": {
+        "input": {
+          "file_path": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N16.txt",
+          "content": "ok"
+        },
+        "reason": "Tool has side effects and requires approval",
+        "requestId": "perm_5466ca82-7b5f-4280-b001-1255699fd8d6",
+        "riskLevel": "medium",
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "options": [
+          {
+            "kind": "allow_once",
+            "name": "Allow once",
+            "optionId": "allow_once",
+            "response": {
+              "decision": "allow",
+              "reason": "Approved once"
+            }
+          },
+          {
+            "description": "Do not ask again for matching requests in this project",
+            "kind": "allow_always",
+            "name": "Always allow in this project",
+            "optionId": "allow_project",
+            "response": {
+              "decision": "allow",
+              "permissionUpdates": [
+                {
+                  "behavior": "allow",
+                  "rules": [
+                    {
+                      "toolName": "Write",
+                      "ruleContent": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N16.txt"
+                    }
+                  ],
+                  "type": "addRules"
+                }
+              ],
+              "reason": "Approved for this project"
+            }
+          },
+          {
+            "kind": "deny",
+            "name": "Deny",
+            "optionId": "deny",
+            "response": {
+              "decision": "deny",
+              "reason": "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed."
+            }
+          }
+        ],
+        "toolCallId": "call_8d0db69dd0074b0ea5887afe",
+        "toolName": "Write",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95"
+      }
+    },
+    {
+      "at": 1790719820919,
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "scope": "runtime-materialization"
+      },
+      "gen": 2
+    },
+    {
+      "at": 1790719821020,
+      "id": "server-2",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "scope": "user-execution"
+      },
+      "gen": 2
+    }
+  ],
+  "notifications": [
+    {
+      "at": 1790719773744,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "01318370-b31a-4d00-a019-714237712504",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1790719773745,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "01318370-b31a-4d00-a019-714237712504",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1790719773748,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "01318370-b31a-4d00-a019-714237712504",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 3
+      }
+    },
+    {
+      "at": 1790719773749,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "01318370-b31a-4d00-a019-714237712504",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 4
+      }
+    },
+    {
+      "at": 1790719773749,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "01318370-b31a-4d00-a019-714237712504",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 4
+      }
+    },
+    {
+      "at": 1790719774591,
+      "method": "state.updated",
+      "params": {
+        "patch": {
+          "status": "running"
+        },
+        "reason": "prompt_started",
+        "revision": 1,
+        "scope": "session",
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "type": "state.updated",
+        "workspace": {
+          "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+          "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+        }
+      }
+    },
+    {
+      "at": 1790719774602,
+      "method": "computer-use/operation-event",
+      "params": {
+        "eventId": "359f0867-41aa-4721-8861-d854d52304d6",
+        "sequenceNumber": 551,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "timestamp": 1790719774602,
+        "kind": "turn-started",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95"
+      }
+    },
+    {
+      "at": 1790719774604,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "359f0867-41aa-4721-8861-d854d52304d6",
+        "eventSeq": 551,
+        "occurredAt": 1790719774602,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "turn.started"
+      }
+    },
+    {
+      "at": 1790719775676,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "kind": "process_start",
+        "mcpId": "builtin:node_repl",
+        "mcpInstanceId": "aa7cf5bb-d580-4008-a76f-d8bd2d95f576",
+        "mcpIsolation": "workspace",
+        "mcpSource": "builtin",
+        "occurredAt": 1790719775676,
+        "platform": "win32"
+      }
+    },
+    {
+      "at": 1790719785630,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "kind": "process_start",
+        "mcpId": "custom:bf603b50c891",
+        "mcpInstanceId": "35d222f2-ee3d-41ce-bf79-42774cf4af6c",
+        "mcpIsolation": "session",
+        "mcpSource": "custom",
+        "occurredAt": 1790719785631,
+        "platform": "win32"
+      }
+    },
+    {
+      "at": 1790719785631,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "configuredCount": 2,
+        "connectedCount": 2,
+        "failedCount": 0,
+        "kind": "session_startup",
+        "occurredAt": 1790719785632,
+        "platform": "win32",
+        "processCount": 2,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6"
+      }
+    },
+    {
+      "at": 1790719785656,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "2368a2fb-8148-46ca-8f1b-97f59b1a7ea3",
+        "eventSeq": 553,
+        "occurredAt": 1790719785655,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "32961812-8bc9-429f-8e9f-b26d0ba2b836",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 1,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790719790473,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "eeb83e12-dd70-4103-921f-67474d93dd33",
+        "eventSeq": 554,
+        "occurredAt": 1790719790472,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "32961812-8bc9-429f-8e9f-b26d0ba2b836",
+        "status": "model_request_failed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 1,
+        "maxAttempts": 11,
+        "durationMs": 4820,
+        "reason": "rate_limited",
+        "retryable": true,
+        "statusCode": 429
+      }
+    },
+    {
+      "at": 1790719790474,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "cb586561-eb38-4381-9d67-f7d4107f26a3",
+        "eventSeq": 555,
+        "occurredAt": 1790719790474,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "32961812-8bc9-429f-8e9f-b26d0ba2b836",
+        "status": "model_retry_scheduled",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 1,
+        "maxAttempts": 11,
+        "reason": "rate_limited",
+        "statusCode": 429,
+        "delayMs": 4000,
+        "nextAttempt": 2
+      }
+    },
+    {
+      "at": 1790719794486,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "3f20d4cf-79d5-4251-b580-e2f364422859",
+        "eventSeq": 556,
+        "occurredAt": 1790719794486,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "617ec65d-f602-456b-b44e-ed1a1b59a106",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 2,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790719796821,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "a3590798-0eb0-4e85-b16e-cddaaab14651",
+        "eventSeq": 557,
+        "occurredAt": 1790719796821,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "617ec65d-f602-456b-b44e-ed1a1b59a106",
+        "status": "model_request_failed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 2,
+        "maxAttempts": 11,
+        "durationMs": 2335,
+        "reason": "rate_limited",
+        "retryable": true,
+        "statusCode": 429
+      }
+    },
+    {
+      "at": 1790719796824,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "27da3d5a-7326-4191-ab53-080df3dc6642",
+        "eventSeq": 558,
+        "occurredAt": 1790719796824,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "617ec65d-f602-456b-b44e-ed1a1b59a106",
+        "status": "model_retry_scheduled",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 2,
+        "maxAttempts": 11,
+        "reason": "rate_limited",
+        "statusCode": 429,
+        "delayMs": 7000,
+        "nextAttempt": 3
+      }
+    },
+    {
+      "at": 1790719803839,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "bb873723-f801-4776-bda0-a62a388070f6",
+        "eventSeq": 559,
+        "occurredAt": 1790719803835,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "6a62baba-b280-4410-b205-0363a98b2816",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 3,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790719806393,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "46608e94-4de3-4967-ad24-af7bd08db761",
+        "eventSeq": 560,
+        "occurredAt": 1790719806393,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "6a62baba-b280-4410-b205-0363a98b2816",
+        "status": "model_request_failed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 3,
+        "maxAttempts": 11,
+        "durationMs": 2561,
+        "reason": "rate_limited",
+        "retryable": true,
+        "statusCode": 429
+      }
+    },
+    {
+      "at": 1790719806395,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "7e194826-f969-4d02-9451-e183d2d662e7",
+        "eventSeq": 561,
+        "occurredAt": 1790719806395,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "6a62baba-b280-4410-b205-0363a98b2816",
+        "status": "model_retry_scheduled",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 3,
+        "maxAttempts": 11,
+        "reason": "rate_limited",
+        "statusCode": 429,
+        "delayMs": 4000,
+        "nextAttempt": 4
+      }
+    },
+    {
+      "at": 1790719810410,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "fc92013d-d21e-4e35-885a-d80c59823a58",
+        "eventSeq": 562,
+        "occurredAt": 1790719810410,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "e8fbf630-ea97-4414-94da-cbc91ac3bf42",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 4,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790719814082,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "fd3db78d-1c2a-460d-9806-041b31c11478",
+        "eventSeq": 565,
+        "occurredAt": 1790719814081,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 3,
+        "firstChunk": true,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814082,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "f56a5690-09bf-4b8d-ba86-58ff1f61f402",
+        "eventSeq": 566,
+        "occurredAt": 1790719814082,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814082,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "09efbcf1-b086-404f-968d-fd13e8685c84",
+        "eventSeq": 567,
+        "occurredAt": 1790719814082,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 6,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814083,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "0676c797-ded7-473d-8eef-9cc7b28d4037",
+        "eventSeq": 568,
+        "occurredAt": 1790719814083,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 3,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814083,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "ba8f19a7-3622-4bdf-a16d-a3b73cb9a325",
+        "eventSeq": 569,
+        "occurredAt": 1790719814084,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 3,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814084,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "fb337877-be25-4452-bcb4-913505062941",
+        "eventSeq": 570,
+        "occurredAt": 1790719814084,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 7,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814084,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "1f4bbb98-5b25-4d27-acda-40847bfff2ba",
+        "eventSeq": 571,
+        "occurredAt": 1790719814085,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814085,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "061bd907-28a1-45b2-b6b5-5d5596d3d94a",
+        "eventSeq": 572,
+        "occurredAt": 1790719814085,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814085,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "c58d36cf-f7e1-4e13-94b1-c6081701a469",
+        "eventSeq": 573,
+        "occurredAt": 1790719814085,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 6,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814085,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "9983607b-d55d-4191-8908-6dee7a40901d",
+        "eventSeq": 574,
+        "occurredAt": 1790719814086,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814086,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "49962b68-36c6-4d03-b9d6-3ed23cda745e",
+        "eventSeq": 575,
+        "occurredAt": 1790719814086,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814086,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "1178adfb-4425-48c3-bb5f-5e854fb01d5b",
+        "eventSeq": 576,
+        "occurredAt": 1790719814087,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814086,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "c5f78a7f-c87f-4cbc-9079-88731619f9f6",
+        "eventSeq": 577,
+        "occurredAt": 1790719814087,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814087,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "281b4249-abc0-4c02-9ee4-273794f45a72",
+        "eventSeq": 578,
+        "occurredAt": 1790719814087,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814087,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "e33815e9-1921-4adf-ad69-ff799f55b92b",
+        "eventSeq": 579,
+        "occurredAt": 1790719814087,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814087,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "19761b21-37a8-4a55-8a08-998b7b229df2",
+        "eventSeq": 580,
+        "occurredAt": 1790719814088,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 11,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814088,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "d7a2e00d-10af-451d-8ec3-8dc7f99c484d",
+        "eventSeq": 581,
+        "occurredAt": 1790719814088,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814088,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "0120de0d-e4ac-4d30-a6e3-0823aa9fd9c3",
+        "eventSeq": 582,
+        "occurredAt": 1790719814088,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814088,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "9c8ec663-1b40-45ec-b7a8-989af946afb0",
+        "eventSeq": 583,
+        "occurredAt": 1790719814089,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814089,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "362347b8-e1d9-44f6-b806-b4c0f4c33344",
+        "eventSeq": 584,
+        "occurredAt": 1790719814089,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 3,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814089,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "d4eae27e-d9e3-4708-8060-a5bd9303a07e",
+        "eventSeq": 585,
+        "occurredAt": 1790719814089,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814089,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "973f1d16-41fe-45fc-8ac1-c8829736fbe1",
+        "eventSeq": 586,
+        "occurredAt": 1790719814089,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 3,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814089,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "55e70672-3aca-4b9b-9221-a742789833f4",
+        "eventSeq": 587,
+        "occurredAt": 1790719814090,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814089,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "2c937910-8870-4dbc-b6ce-f7e13afaec5e",
+        "eventSeq": 588,
+        "occurredAt": 1790719814090,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814090,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "3a14bc02-4cdf-41ff-86d6-58dc5d16ca2c",
+        "eventSeq": 589,
+        "occurredAt": 1790719814090,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814090,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "4471023d-22ad-4a2e-8857-17281830f0b9",
+        "eventSeq": 590,
+        "occurredAt": 1790719814090,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 0,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8bpnm_06f0dd8c-5dfd-4e66-bd7e-96243a72728a"
+      }
+    },
+    {
+      "at": 1790719814101,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "d7ef60e5-12ee-419d-9dc7-0b9394328e1a",
+        "eventSeq": 597,
+        "occurredAt": 1790719814101,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "e8fbf630-ea97-4414-94da-cbc91ac3bf42",
+        "status": "model_request_completed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 4,
+        "maxAttempts": 11,
+        "durationMs": 3691
+      }
+    },
+    {
+      "at": 1790719814111,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "50d51baf-b322-47ec-a0e7-c0b67816fb78",
+        "eventSeq": 598,
+        "occurredAt": 1790719814110,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "usage.delta",
+        "requestId": "e8fbf630-ea97-4414-94da-cbc91ac3bf42",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "inputTokens": 35512,
+        "outputTokens": 72,
+        "totalTokens": 35584,
+        "reasoningTokens": 0,
+        "cacheReadTokens": 35392,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "at": 1790719814122,
+      "method": "computer-use/operation-event",
+      "params": {
+        "eventId": "47a7402f-3ebe-4615-9bc1-beb628a8198f",
+        "sequenceNumber": 600,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "timestamp": 1790719814119,
+        "kind": "tool-scheduled",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "toolCallId": "call_8d0db69dd0074b0ea5887afe",
+        "toolName": "Write"
+      }
+    },
+    {
+      "at": 1790719814123,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "47a7402f-3ebe-4615-9bc1-beb628a8198f",
+        "eventSeq": 600,
+        "occurredAt": 1790719814119,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "tool.lifecycle",
+        "phase": "scheduled",
+        "toolCallId": "call_8d0db69dd0074b0ea5887afe",
+        "toolName": "Write"
+      }
+    },
+    {
+      "at": 1790719814132,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "7159c386-2123-448a-91f6-89936901ad8c",
+        "eventSeq": 603,
+        "occurredAt": 1790719814131,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "permission.lifecycle",
+        "phase": "requested",
+        "requestId": "perm_5466ca82-7b5f-4280-b001-1255699fd8d6",
+        "toolCallId": "call_8d0db69dd0074b0ea5887afe",
+        "toolName": "Write"
+      }
+    },
+    {
+      "at": 1790719814152,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "32eab5be-ac8d-4497-b090-165fefde6569",
+        "eventSeq": 604,
+        "occurredAt": 1790719814138,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "permission.lifecycle",
+        "phase": "resolved",
+        "requestId": "perm_5466ca82-7b5f-4280-b001-1255699fd8d6",
+        "toolCallId": "call_8d0db69dd0074b0ea5887afe",
+        "decision": "allow"
+      }
+    },
+    {
+      "at": 1790719814154,
+      "method": "computer-use/operation-event",
+      "params": {
+        "eventId": "f5614908-8881-4d52-a933-2a75230f34f7",
+        "sequenceNumber": 605,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "timestamp": 1790719814153,
+        "kind": "tool-started",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "toolCallId": "call_8d0db69dd0074b0ea5887afe",
+        "toolName": "Write"
+      }
+    },
+    {
+      "at": 1790719814155,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "f5614908-8881-4d52-a933-2a75230f34f7",
+        "eventSeq": 605,
+        "occurredAt": 1790719814153,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "tool.lifecycle",
+        "phase": "started",
+        "toolCallId": "call_8d0db69dd0074b0ea5887afe",
+        "toolName": "Write"
+      }
+    },
+    {
+      "at": 1790719814164,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "fa43f9b7-4752-42cd-8444-c53089a66139",
+        "eventSeq": 606,
+        "occurredAt": 1790719814162,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "tool.lifecycle",
+        "phase": "completed",
+        "toolCallId": "call_8d0db69dd0074b0ea5887afe",
+        "toolName": "Write",
+        "durationMs": 9,
+        "performance": {
+          "totalMs": 34,
+          "permissionWaitMs": 5,
+          "fsReadMs": 0,
+          "fsWriteMs": 4,
+          "fileCount": 1,
+          "totalBytes": 2,
+          "maxFileBytes": 2,
+          "workspaceKind": "local"
+        }
+      }
+    },
+    {
+      "at": 1790719814195,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "d5d39a4a-5b05-41b7-b024-9663e4278682",
+        "eventSeq": 612,
+        "occurredAt": 1790719814195,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "cfd4f397-2df8-433d-b01f-e1c292d8a5fd",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 1,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790719818336,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "d18acc80-3180-4121-a649-83c25ebe8e39",
+        "eventSeq": 615,
+        "occurredAt": 1790719818337,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": true,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818337,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "d0035906-e731-4f44-bea6-14e9b0f55002",
+        "eventSeq": 616,
+        "occurredAt": 1790719818337,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818337,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "b74577f0-a16e-41d5-8190-00504558ec9d",
+        "eventSeq": 617,
+        "occurredAt": 1790719818337,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818337,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "7d0d4473-7cb3-4b88-b913-607d10734016",
+        "eventSeq": 618,
+        "occurredAt": 1790719818338,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818337,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "d32cd019-3a3b-433b-8e3b-de9dbaf07085",
+        "eventSeq": 619,
+        "occurredAt": 1790719818338,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818338,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "8f87f5a2-b204-4d2a-9645-f772dea1870e",
+        "eventSeq": 620,
+        "occurredAt": 1790719818338,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818338,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "d95a3210-56d2-430a-a9fe-ec2e38dfd942",
+        "eventSeq": 621,
+        "occurredAt": 1790719818339,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818338,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "9a6bf6bd-3f7d-4cb9-a2b8-1d0517ec098b",
+        "eventSeq": 622,
+        "occurredAt": 1790719818339,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818338,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "16539e67-6d3f-4a50-bd30-fa78865ebba9",
+        "eventSeq": 623,
+        "occurredAt": 1790719818339,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818339,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "0ddef86b-db0c-43cd-bd1d-1372c9a45850",
+        "eventSeq": 624,
+        "occurredAt": 1790719818339,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818339,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "68ec092a-d87a-4767-8c32-21146f61ef06",
+        "eventSeq": 625,
+        "occurredAt": 1790719818339,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818339,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "1df3b0f8-a21d-467f-941b-afff1c022924",
+        "eventSeq": 626,
+        "occurredAt": 1790719818339,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818339,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "3bb5c4ee-e989-4487-b7c9-e8dac87c6799",
+        "eventSeq": 627,
+        "occurredAt": 1790719818340,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 3,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818339,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "b44b7c00-a8f2-444a-953a-c9a9d96fbc38",
+        "eventSeq": 628,
+        "occurredAt": 1790719818340,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818339,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "aa6b9609-d243-4c11-a554-59344498e01e",
+        "eventSeq": 629,
+        "occurredAt": 1790719818340,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818340,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "3d247825-4b9c-43ff-8ac7-b9c3ac88ca3d",
+        "eventSeq": 630,
+        "occurredAt": 1790719818340,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 10,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818340,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "9a207231-beec-4789-afc0-6096708e7132",
+        "eventSeq": 631,
+        "occurredAt": 1790719818341,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 11,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818340,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "ad287054-a25b-4ab2-bb75-8723b1b63b8c",
+        "eventSeq": 632,
+        "occurredAt": 1790719818341,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818341,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "3d6d16da-972f-4dbf-bfbb-7eb29415ed80",
+        "eventSeq": 633,
+        "occurredAt": 1790719818341,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818341,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "768fc838-2808-4267-ac1e-276865c1be9b",
+        "eventSeq": 634,
+        "occurredAt": 1790719818341,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818341,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "3b053c2a-f25f-4f03-8e9d-483a03997662",
+        "eventSeq": 635,
+        "occurredAt": 1790719818342,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818341,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "fe720ad5-67db-4275-861c-f2aa0597ab24",
+        "eventSeq": 636,
+        "occurredAt": 1790719818342,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818342,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "163e09ac-9767-4b89-8a4c-dd6fddd59d27",
+        "eventSeq": 637,
+        "occurredAt": 1790719818342,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818342,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "230ee705-d5ca-497c-a1d5-95d36eebc40e",
+        "eventSeq": 638,
+        "occurredAt": 1790719818342,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818342,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "2cdfee0f-92d3-427a-95eb-30d5dc2767ee",
+        "eventSeq": 639,
+        "occurredAt": 1790719818343,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818342,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "b49d1740-94d1-4971-8bbb-4a09387d1e63",
+        "eventSeq": 640,
+        "occurredAt": 1790719818343,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 6,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun8cboo_377f06cd-6a33-4697-9e10-24a0827018da"
+      }
+    },
+    {
+      "at": 1790719818345,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "b330b33e-411d-4b26-8671-34b97a2994e1",
+        "eventSeq": 643,
+        "occurredAt": 1790719818346,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "model.request.status",
+        "requestId": "cfd4f397-2df8-433d-b01f-e1c292d8a5fd",
+        "status": "model_request_completed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_be5f4eeb-1344-4a84-b239-e744e2ebe247",
+        "attempt": 1,
+        "maxAttempts": 11,
+        "durationMs": 4150
+      }
+    },
+    {
+      "at": 1790719818354,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "4498628a-0e77-4ed4-9d42-d4dc681079de",
+        "eventSeq": 644,
+        "occurredAt": 1790719818354,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "usage.delta",
+        "requestId": "cfd4f397-2df8-433d-b01f-e1c292d8a5fd",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "inputTokens": 35639,
+        "outputTokens": 29,
+        "totalTokens": 35668,
+        "reasoningTokens": 0,
+        "cacheReadTokens": 35456,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "at": 1790719818372,
+      "method": "computer-use/operation-event",
+      "params": {
+        "eventId": "a0bce628-34f9-42db-b5e9-ecf1a49dbbef",
+        "sequenceNumber": 645,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "timestamp": 1790719818372,
+        "kind": "turn-completed",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95"
+      }
+    },
+    {
+      "at": 1790719818373,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "a0bce628-34f9-42db-b5e9-ecf1a49dbbef",
+        "eventSeq": 645,
+        "occurredAt": 1790719818372,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95",
+        "kind": "turn.terminal",
+        "status": "success",
+        "resultType": "success",
+        "durationMs": 43779,
+        "tokenCount": 71252,
+        "toolCallCount": 1
+      }
+    },
+    {
+      "at": 1790719818452,
+      "method": "state.updated",
+      "params": {
+        "patch": {
+          "mode": {
+            "current": "build"
+          },
+          "model": {
+            "available": [
+              {
+                "ref": {
+                  "providerId": "zai-api",
+                  "modelId": "GLM-5.3"
+                },
+                "label": "GLM-5.3",
+                "providerLabel": "zai-api",
+                "contextWindow": 200000,
+                "maxOutputTokens": 128000,
+                "reasoning": {
+                  "levels": [
+                    {
+                      "value": "low",
+                      "label": "low"
+                    },
+                    {
+                      "value": "high",
+                      "label": "high"
+                    },
+                    {
+                      "value": "max",
+                      "label": "max"
+                    }
+                  ],
+                  "defaultLevel": "max"
+                },
+                "properties": {
+                  "inputFormat": {
+                    "supportsText": true,
+                    "supportsImage": true,
+                    "supportsVideo": true,
+                    "supportsAudio": false,
+                    "supportsPdf": false
+                  },
+                  "outputFormat": {
+                    "supportsText": true
+                  }
+                }
+              }
+            ],
+            "current": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3",
+              "options": {
+                "reasoningLevel": "max"
+              }
+            },
+            "lastUsed": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            }
+          },
+          "permission": {
+            "mode": "build"
+          },
+          "thoughtLevel": {
+            "available": [
+              {
+                "label": "low",
+                "value": "low"
+              },
+              {
+                "label": "high",
+                "value": "high"
+              },
+              {
+                "label": "max",
+                "value": "max"
+              }
+            ],
+            "current": "max",
+            "enabled": true
+          }
+        },
+        "reason": "prompt_completed",
+        "revision": 2,
+        "scope": "session",
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "type": "state.updated",
+        "workspace": {
+          "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+          "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+        }
+      }
+    },
+    {
+      "at": 1790719820873,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b857fa10-8e2c-42b9-a81f-a88eaec658b4",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      },
+      "gen": 2
+    },
+    {
+      "at": 1790719820875,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b857fa10-8e2c-42b9-a81f-a88eaec658b4",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      },
+      "gen": 2
+    },
+    {
+      "at": 1790719820877,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b857fa10-8e2c-42b9-a81f-a88eaec658b4",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 3
+      },
+      "gen": 2
+    },
+    {
+      "at": 1790719820878,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b857fa10-8e2c-42b9-a81f-a88eaec658b4",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 4
+      },
+      "gen": 2
+    },
+    {
+      "at": 1790719820878,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b857fa10-8e2c-42b9-a81f-a88eaec658b4",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 4
+      },
+      "gen": 2
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 54256
+  },
+  "client": {
+    "generation": "17c0ecdc-ddf0-4004-b236-da7f1709f33c"
+  },
+  "sessionArgResume": {
+    "ok": true,
+    "keys": [
+      "messages",
+      "projection",
+      "protocol",
+      "runtime",
+      "session",
+      "settings",
+      "slashCommands",
+      "todos",
+      "todoGroups"
+    ]
+  },
+  "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+  "sessionIdSource": "--session argument (operator-supplied, turn-bearing reuse)",
+  "sessionArgWorkspace": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+  "sessionArgWorkspaceMatchesWorkspace": true,
+  "permissionRequests": [
+    {
+      "at": 1790719814134,
+      "params": {
+        "input": {
+          "file_path": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N16.txt",
+          "content": "ok"
+        },
+        "reason": "Tool has side effects and requires approval",
+        "requestId": "perm_5466ca82-7b5f-4280-b001-1255699fd8d6",
+        "riskLevel": "medium",
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "options": [
+          {
+            "kind": "allow_once",
+            "name": "Allow once",
+            "optionId": "allow_once",
+            "response": {
+              "decision": "allow",
+              "reason": "Approved once"
+            }
+          },
+          {
+            "description": "Do not ask again for matching requests in this project",
+            "kind": "allow_always",
+            "name": "Always allow in this project",
+            "optionId": "allow_project",
+            "response": {
+              "decision": "allow",
+              "permissionUpdates": [
+                {
+                  "behavior": "allow",
+                  "rules": [
+                    {
+                      "toolName": "Write",
+                      "ruleContent": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N16.txt"
+                    }
+                  ],
+                  "type": "addRules"
+                }
+              ],
+              "reason": "Approved for this project"
+            }
+          },
+          {
+            "kind": "deny",
+            "name": "Deny",
+            "optionId": "deny",
+            "response": {
+              "decision": "deny",
+              "reason": "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed."
+            }
+          }
+        ],
+        "toolCallId": "call_8d0db69dd0074b0ea5887afe",
+        "toolName": "Write",
+        "turnId": "turn_39330e96-96b5-43a5-8df4-7fcfab5a3a95"
+      }
+    }
+  ],
+  "secondRuntimeStops": [
+    {
+      "ok": true,
+      "pid": 61108
+    }
+  ],
+  "stop": {
+    "ok": true,
+    "nativePid": 54256,
+    "nativePidLivenessAfterStop": "dead"
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}

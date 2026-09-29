@@ -1,0 +1,3990 @@
+{
+  "startedAt": "2026-09-29T22:03:44.240Z",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "C:/Program Files/nodejs/node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+    "entrySha256": "fad4c35c4c36ec210d8a06d3fa0e77de23c8545e2eb6ff90aea1eb38d1e6275f",
+    "args": [
+      "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "C:/Users/Cody",
+      "ZCODE_DATA_BASE_DIR": "D:/Filen/Reference/Tech/AI/Claude/ZCode Data",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/config/provider/zcode-builtin.json"
+    },
+    "cwd": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+  },
+  "rows": {
+    "N13": {
+      "description": "idle native compact",
+      "seed": {
+        "reused": false,
+        "seededBy": "N13",
+        "send": {
+          "at": "2026-09-29T22:03:46.024Z",
+          "method": "session/send",
+          "params": {
+            "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+            "content": "zk16-n13 seed 1790719426022: create a file named SENTINEL-N13.txt containing exactly the word ok. Do nothing else."
+          },
+          "ms": 2,
+          "result": {
+            "accepted": true,
+            "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+            "stateRevision": 1
+          }
+        },
+        "accepted": true,
+        "settle": {
+          "sawRunning": true,
+          "runningAtMs": 191,
+          "sawTerminal": true,
+          "withinMs": 51198,
+          "baseline": {
+            "turnCount": 1,
+            "stateRevision": 1
+          }
+        },
+        "permissionsAnswered": 1,
+        "sentinel": {
+          "file": "SENTINEL-N13.txt",
+          "content": "ok"
+        },
+        "turnCount": 1
+      },
+      "quiescentBefore": {
+        "alreadyIdle": true
+      },
+      "preState": {
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "workspace": {
+          "workspacePath": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+          "workspaceKey": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+        },
+        "model": {
+          "providerId": "zai-api",
+          "modelId": "GLM-5.3",
+          "options": {
+            "reasoningLevel": "max"
+          }
+        },
+        "turnCount": 1,
+        "messageCount": 11
+      },
+      "compact": {
+        "raw": {
+          "at": "2026-09-29T22:04:37.550Z",
+          "method": "session/compact",
+          "params": {
+            "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6"
+          },
+          "ms": 102,
+          "result": {
+            "response": "",
+            "snapshot": {
+              "messages": [
+                {
+                  "info": {
+                    "agent": "zcode-agent",
+                    "messageId": "msg_mumni3bf_e2b5f400-37d5-4d8e-9551-075aad4d73de",
+                    "model": {
+                      "providerId": "zai-api",
+                      "modelId": "GLM-5.3",
+                      "options": {
+                        "reasoningLevel": "max"
+                      }
+                    },
+                    "role": "user",
+                    "semantics": {
+                      "origin": "real_user",
+                      "kind": "user_prompt",
+                      "uiVisibility": "visible",
+                      "providerVisibility": "visible",
+                      "transcriptVisibility": "visible"
+                    },
+                    "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                    "time": {
+                      "created": 1790684811344
+                    },
+                    "tools": {
+                      "Agent": true,
+                      "AskUserQuestion": true,
+                      "Bash": true,
+                      "CronCreate": true,
+                      "CronDelete": true,
+                      "CronList": true,
+                      "CronUpdate": true,
+                      "Edit": true,
+                      "EnterPlanMode": true,
+                      "ExitPlanMode": true,
+                      "Read": true,
+                      "Skill": true,
+                      "TaskOutput": true,
+                      "TaskStop": true,
+                      "TodoRead": true,
+                      "TodoWrite": true,
+                      "WebFetch": true,
+                      "WebSearch": true,
+                      "Write": true,
+                      "SendMessage": true,
+                      "ReadSessionContext": true
+                    }
+                  },
+                  "parts": [
+                    {
+                      "messageId": "msg_mumni3bf_e2b5f400-37d5-4d8e-9551-075aad4d73de",
+                      "partId": "part_mumni3bk_b54cf9a0-68dc-44ad-968a-49578c1c0600",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "text": "zk16-n09 question 1790684810879: Use the AskUserQuestion tool exactly once to ask me: \"Which color should the file be?\" with options \"red\" and \"blue\". After you receive my answer, create a file named SENTINEL-N09.txt containing exactly the chosen color word and nothing else. Do nothing else.",
+                      "type": "text"
+                    }
+                  ]
+                },
+                {
+                  "info": {
+                    "agent": "zcode-agent",
+                    "cost": 0,
+                    "finish": "tool-calls",
+                    "messageId": "msg_mumnibyg_985402ca-5e34-4eea-8e82-e222d9336440",
+                    "model": {
+                      "providerId": "zai-api",
+                      "modelId": "GLM-5.3"
+                    },
+                    "parentMessageId": "msg_mumni3bf_e2b5f400-37d5-4d8e-9551-075aad4d73de",
+                    "path": {
+                      "cwd": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+                      "root": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+                    },
+                    "role": "assistant",
+                    "semantics": {
+                      "origin": "agent_runtime",
+                      "kind": "assistant_response",
+                      "uiVisibility": "visible",
+                      "providerVisibility": "visible",
+                      "transcriptVisibility": "visible"
+                    },
+                    "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                    "time": {
+                      "created": 1790684822537,
+                      "completed": 1790684843902
+                    },
+                    "tokens": {
+                      "total": 34048,
+                      "input": 33886,
+                      "output": 162,
+                      "reasoning": 0,
+                      "cache": {
+                        "read": 27072,
+                        "write": 0
+                      }
+                    }
+                  },
+                  "parts": [
+                    {
+                      "messageId": "msg_mumnibyg_985402ca-5e34-4eea-8e82-e222d9336440",
+                      "partId": "part_mumnibym_da7c2ea9-2096-4bc6-8510-01f0885afe62",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "type": "step-start"
+                    },
+                    {
+                      "messageId": "msg_mumnibyg_985402ca-5e34-4eea-8e82-e222d9336440",
+                      "partId": "part_mumnisde_414d585a-afd3-4d18-b0ef-05a9456c21e6",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "metadata": {
+                        "anthropic": {
+                          "signature": "239cecfb81db46be9c7303b7"
+                        }
+                      },
+                      "text": "The user wants me to use the AskUserQuestion tool exactly once to ask \"Which color should the file be?\" with options \"red\" and \"blue\". Then after receiving the answer, create a file named SENTINEL-N09.txt containing exactly the chosen color word and nothing else. Do nothing else.\n\nLet me use the AskUserQuestion tool now.",
+                      "type": "reasoning"
+                    },
+                    {
+                      "messageId": "msg_mumnibyg_985402ca-5e34-4eea-8e82-e222d9336440",
+                      "partId": "part_mumnisdi_8a38b6c3-a513-4d53-aff5-033c837712df",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "text": "I'll ask you the color question now.",
+                      "type": "text"
+                    },
+                    {
+                      "messageId": "msg_mumnibyg_985402ca-5e34-4eea-8e82-e222d9336440",
+                      "partId": "part_mumnisdt_5494a52f-f801-4615-9be8-602cc9945c43",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "callId": "call_bb726de1f6f047b8bc125c73",
+                      "state": {
+                        "completedAt": 1790684843868,
+                        "input": {
+                          "questions": [
+                            {
+                              "question": "Which color should the file be?",
+                              "header": "Color",
+                              "options": [
+                                {
+                                  "label": "[depth]",
+                                  "description": "[depth]"
+                                },
+                                {
+                                  "label": "[depth]",
+                                  "description": "[depth]"
+                                }
+                              ],
+                              "multiSelect": false
+                            }
+                          ]
+                        },
+                        "metadata": {
+                          "schemaVersion": 1,
+                          "serialization": {
+                            "truncated": false,
+                            "originalBytes": 128,
+                            "returnedBytes": 128,
+                            "budgetStrategy": "truncate"
+                          }
+                        },
+                        "output": "User has answered your questions: \"Which color should the file be?\"=\"red\". You can now continue with the user's answers in mind.",
+                        "startedAt": 1790684843863,
+                        "status": "completed",
+                        "title": "AskUserQuestion"
+                      },
+                      "tool": "AskUserQuestion",
+                      "type": "tool"
+                    },
+                    {
+                      "messageId": "msg_mumnibyg_985402ca-5e34-4eea-8e82-e222d9336440",
+                      "partId": "part_mumnisfv_d3b315f0-92cd-45cf-bb87-01d1762e21ea",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "cost": 0,
+                      "reason": "tool-calls",
+                      "tokens": {
+                        "total": 34048,
+                        "input": 33886,
+                        "output": 162,
+                        "reasoning": 0,
+                        "cache": {
+                          "read": 27072,
+                          "write": 0
+                        }
+                      },
+                      "type": "step-finish"
+                    }
+                  ]
+                },
+                {
+                  "info": {
+                    "agent": "zcode-agent",
+                    "cost": 0,
+                    "finish": "tool-calls",
+                    "messageId": "msg_mumnisg5_3d32f1c2-e48f-44f0-8a71-c8291ab10320",
+                    "model": {
+                      "providerId": "zai-api",
+                      "modelId": "GLM-5.3"
+                    },
+                    "parentMessageId": "msg_mumni3bf_e2b5f400-37d5-4d8e-9551-075aad4d73de",
+                    "path": {
+                      "cwd": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+                      "root": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+                    },
+                    "role": "assistant",
+                    "semantics": {
+                      "origin": "agent_runtime",
+                      "kind": "assistant_response",
+                      "uiVisibility": "visible",
+                      "providerVisibility": "visible",
+                      "transcriptVisibility": "visible"
+                    },
+                    "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                    "time": {
+                      "created": 1790684843910,
+                      "completed": 1790684868115
+                    },
+                    "tokens": {
+                      "total": 34191,
+                      "input": 34081,
+                      "output": 110,
+                      "reasoning": 0,
+                      "cache": {
+                        "read": 33856,
+                        "write": 0
+                      }
+                    }
+                  },
+                  "parts": [
+                    {
+                      "messageId": "msg_mumnisg5_3d32f1c2-e48f-44f0-8a71-c8291ab10320",
+                      "partId": "part_mumnisg9_df6ca2bc-80af-49b8-8e60-cc52b4435ff4",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "type": "step-start"
+                    },
+                    {
+                      "messageId": "msg_mumnisg5_3d32f1c2-e48f-44f0-8a71-c8291ab10320",
+                      "partId": "part_mumnjb2i_b31bb811-20c8-47a9-9beb-531cdbd28239",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "metadata": {
+                        "anthropic": {
+                          "signature": "9cfd867d675346ca941a29b5"
+                        }
+                      },
+                      "text": "The user chose \"red\". Now I create the file SENTINEL-N09.txt containing exactly \"red\" and nothing else. The working directory is ~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws.",
+                      "type": "reasoning"
+                    },
+                    {
+                      "messageId": "msg_mumnisg5_3d32f1c2-e48f-44f0-8a71-c8291ab10320",
+                      "partId": "part_mumnjb2m_7f3019ef-0e9e-4384-ad48-147687a25612",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "text": "You chose red — creating the file now.",
+                      "type": "text"
+                    },
+                    {
+                      "messageId": "msg_mumnisg5_3d32f1c2-e48f-44f0-8a71-c8291ab10320",
+                      "partId": "part_mumnjb2v_f8ed88f2-886c-47fd-81fb-c58c7e44a326",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "callId": "call_1608fe387a2c4a978224e481",
+                      "state": {
+                        "completedAt": 1790684868092,
+                        "input": {
+                          "file_path": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N09.txt",
+                          "content": "red"
+                        },
+                        "metadata": {
+                          "schemaVersion": 1,
+                          "serialization": {
+                            "truncated": false,
+                            "originalBytes": 169,
+                            "returnedBytes": 169,
+                            "budgetStrategy": "truncate"
+                          }
+                        },
+                        "output": "File created successfully at: ~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N09.txt (file state is current in your context — no need to Read it back)",
+                        "startedAt": 1790684868081,
+                        "status": "completed",
+                        "title": "Write"
+                      },
+                      "tool": "Write",
+                      "type": "tool"
+                    },
+                    {
+                      "messageId": "msg_mumnisg5_3d32f1c2-e48f-44f0-8a71-c8291ab10320",
+                      "partId": "part_mumnjb4f_016287a5-ccf7-43c9-aa01-66f49ae53a39",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "cost": 0,
+                      "reason": "tool-calls",
+                      "tokens": {
+                        "total": 34191,
+                        "input": 34081,
+                        "output": 110,
+                        "reasoning": 0,
+                        "cache": {
+                          "read": 33856,
+                          "write": 0
+                        }
+                      },
+                      "type": "step-finish"
+                    }
+                  ]
+                },
+                {
+                  "info": {
+                    "agent": "zcode-agent",
+                    "cost": 0,
+                    "finish": "stop",
+                    "messageId": "msg_mumnjb4p_34682c28-f632-4852-9f14-a83b35f0933b",
+                    "model": {
+                      "providerId": "zai-api",
+                      "modelId": "GLM-5.3"
+                    },
+                    "parentMessageId": "msg_mumni3bf_e2b5f400-37d5-4d8e-9551-075aad4d73de",
+                    "path": {
+                      "cwd": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+                      "root": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+                    },
+                    "role": "assistant",
+                    "semantics": {
+                      "origin": "agent_runtime",
+                      "kind": "assistant_response",
+                      "uiVisibility": "visible",
+                      "providerVisibility": "visible",
+                      "transcriptVisibility": "visible"
+                    },
+                    "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                    "time": {
+                      "created": 1790684868121,
+                      "completed": 1790684889773
+                    },
+                    "tokens": {
+                      "total": 34281,
+                      "input": 34246,
+                      "output": 35,
+                      "reasoning": 0,
+                      "cache": {
+                        "read": 34048,
+                        "write": 0
+                      }
+                    }
+                  },
+                  "parts": [
+                    {
+                      "messageId": "msg_mumnjb4p_34682c28-f632-4852-9f14-a83b35f0933b",
+                      "partId": "part_mumnjb4u_b70b951f-7b80-4f47-8c1b-04862f91a41a",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "type": "step-start"
+                    },
+                    {
+                      "messageId": "msg_mumnjb4p_34682c28-f632-4852-9f14-a83b35f0933b",
+                      "partId": "part_mumnjrtr_fd17db56-8a16-497a-a6e8-3685382e8fcb",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "text": "Done. You chose \"red\", so I created `SENTINEL-N09.txt` in the working directory containing exactly the word `red` and nothing else.",
+                      "type": "text"
+                    },
+                    {
+                      "messageId": "msg_mumnjb4p_34682c28-f632-4852-9f14-a83b35f0933b",
+                      "partId": "part_mumnjru1_efb4d47e-97ea-4caa-8226-2d4e2d0d742d",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "cost": 0,
+                      "reason": "stop",
+                      "tokens": {
+                        "total": 34281,
+                        "input": 34246,
+                        "output": 35,
+                        "reasoning": 0,
+                        "cache": {
+                          "read": 34048,
+                          "write": 0
+                        }
+                      },
+                      "type": "step-finish"
+                    }
+                  ]
+                },
+                {
+                  "info": {
+                    "agent": "zcode-agent",
+                    "messageId": "msg_mumnjswz_179e2667-40e2-4b6d-9282-6cfc4c85fc2c",
+                    "model": {
+                      "providerId": "zai-api",
+                      "modelId": "GLM-5.3",
+                      "options": {
+                        "reasoningLevel": "max"
+                      }
+                    },
+                    "role": "user",
+                    "semantics": {
+                      "origin": "real_user",
+                      "kind": "user_prompt",
+                      "uiVisibility": "visible",
+                      "providerVisibility": "visible",
+                      "transcriptVisibility": "visible"
+                    },
+                    "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                    "time": {
+                      "created": 1790684891175
+                    },
+                    "tools": {
+                      "Agent": true,
+                      "AskUserQuestion": true,
+                      "Bash": true,
+                      "CronCreate": true,
+                      "CronDelete": true,
+                      "CronList": true,
+                      "CronUpdate": true,
+                      "Edit": true,
+                      "EnterPlanMode": true,
+                      "ExitPlanMode": true,
+                      "Read": true,
+                      "Skill": true,
+                      "TaskOutput": true,
+                      "TaskStop": true,
+                      "TodoRead": true,
+                      "TodoWrite": true,
+                      "WebFetch": true,
+                      "WebSearch": true,
+                      "Write": true,
+                      "SendMessage": true,
+                      "ReadSessionContext": true,
+                      "mcp__playwriter__execute": true,
+                      "mcp__playwriter__reset": true,
+                      "mcp__node_repl__js": true
+                    }
+                  },
+                  "parts": [
+                    {
+                      "messageId": "msg_mumnjswz_179e2667-40e2-4b6d-9282-6cfc4c85fc2c",
+                      "partId": "part_mumnjsx3_f18d10cd-52d5-494b-98b9-7ffff3cabd86",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "text": "zk16-n09 plan 1790684891069: Call the ExitPlanMode tool exactly once with the one-line plan \"create SENTINEL-N09-PLAN.txt containing ok\". After the plan is approved, create the file SENTINEL-N09-PLAN.txt containing exactly the word ok. Do nothing else.",
+                      "type": "text"
+                    }
+                  ]
+                },
+                {
+                  "info": {
+                    "agent": "zcode-agent",
+                    "cost": 0,
+                    "finish": "tool-calls",
+                    "messageId": "msg_mumnjsxc_7639daed-5666-49bd-a900-fe447cfb5dd3",
+                    "model": {
+                      "providerId": "zai-api",
+                      "modelId": "GLM-5.3"
+                    },
+                    "parentMessageId": "msg_mumnjswz_179e2667-40e2-4b6d-9282-6cfc4c85fc2c",
+                    "path": {
+                      "cwd": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+                      "root": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+                    },
+                    "role": "assistant",
+                    "semantics": {
+                      "origin": "agent_runtime",
+                      "kind": "assistant_response",
+                      "uiVisibility": "visible",
+                      "providerVisibility": "visible",
+                      "transcriptVisibility": "visible"
+                    },
+                    "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                    "time": {
+                      "created": 1790684891184,
+                      "completed": 1790684904671
+                    },
+                    "tokens": {
+                      "total": 35198,
+                      "input": 35056,
+                      "output": 142,
+                      "reasoning": 0,
+                      "cache": {
+                        "read": 34240,
+                        "write": 0
+                      }
+                    }
+                  },
+                  "parts": [
+                    {
+                      "messageId": "msg_mumnjsxc_7639daed-5666-49bd-a900-fe447cfb5dd3",
+                      "partId": "part_mumnjsxh_75f6f447-897f-42a1-a123-7ce22b7fdaca",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "type": "step-start"
+                    },
+                    {
+                      "messageId": "msg_mumnjsxc_7639daed-5666-49bd-a900-fe447cfb5dd3",
+                      "partId": "part_mumnk3ac_65ec285f-77bf-4f99-a0f9-a4c6c95b11ea",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "metadata": {
+                        "anthropic": {
+                          "signature": "4efeb99852b842098bfc836c"
+                        }
+                      },
+                      "text": "The user's request is simple: Call ExitPlanMode exactly once with the one-line plan \"create SENTINEL-N09-PLAN.txt containing ok\". After the plan is approved, create the file SENTINEL-N09-PLAN.txt containing exactly the word ok. Do nothing else.\n\nI'm in plan mode. The task is trivial — no exploration needed. I should just call ExitPlanMode with the plan \"create SENTINEL-N09-PLAN.txt containing ok\".",
+                      "type": "reasoning"
+                    },
+                    {
+                      "messageId": "msg_mumnjsxc_7639daed-5666-49bd-a900-fe447cfb5dd3",
+                      "partId": "part_mumnk3af_5f2a6a5a-8a24-4c50-b42b-ffecd2cb960c",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "text": "This is a simple, fully-specified task — no exploration needed. I'll present the plan for approval now.",
+                      "type": "text"
+                    },
+                    {
+                      "messageId": "msg_mumnjsxc_7639daed-5666-49bd-a900-fe447cfb5dd3",
+                      "partId": "part_mumnk3ao_ffaa4576-6c83-4956-a7ff-4e55618c1307",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "callId": "call_20cc21f512e44a0398b12f83",
+                      "state": {
+                        "completedAt": 1790684904659,
+                        "input": {
+                          "plan": "create SENTINEL-N09-PLAN.txt containing ok"
+                        },
+                        "metadata": {
+                          "schemaVersion": 1,
+                          "serialization": {
+                            "truncated": false,
+                            "originalBytes": 166,
+                            "returnedBytes": 166,
+                            "budgetStrategy": "truncate"
+                          }
+                        },
+                        "output": "User has approved your plan. You can now start coding. Start with updating your todo list if applicable.\n\n## Approved Plan:\ncreate SENTINEL-N09-PLAN.txt containing ok",
+                        "startedAt": 1790684904649,
+                        "status": "completed",
+                        "title": "ExitPlanMode"
+                      },
+                      "tool": "ExitPlanMode",
+                      "type": "tool"
+                    },
+                    {
+                      "messageId": "msg_mumnjsxc_7639daed-5666-49bd-a900-fe447cfb5dd3",
+                      "partId": "part_mumnk3bw_403f2f9f-3d6d-4f3b-a262-e9e5953e1af8",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "cost": 0,
+                      "reason": "tool-calls",
+                      "tokens": {
+                        "total": 35198,
+                        "input": 35056,
+                        "output": 142,
+                        "reasoning": 0,
+                        "cache": {
+                          "read": 34240,
+                          "write": 0
+                        }
+                      },
+                      "type": "step-finish"
+                    }
+                  ]
+                },
+                {
+                  "info": {
+                    "agent": "zcode-agent",
+                    "cost": 0,
+                    "finish": "tool-calls",
+                    "messageId": "msg_mumnk3c4_565b576b-83dc-477c-b65a-346716a94195",
+                    "model": {
+                      "providerId": "zai-api",
+                      "modelId": "GLM-5.3"
+                    },
+                    "parentMessageId": "msg_mumnjswz_179e2667-40e2-4b6d-9282-6cfc4c85fc2c",
+                    "path": {
+                      "cwd": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+                      "root": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+                    },
+                    "role": "assistant",
+                    "semantics": {
+                      "origin": "agent_runtime",
+                      "kind": "assistant_response",
+                      "uiVisibility": "visible",
+                      "providerVisibility": "visible",
+                      "transcriptVisibility": "visible"
+                    },
+                    "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                    "time": {
+                      "created": 1790684904676,
+                      "completed": 1790684917606
+                    },
+                    "tokens": {
+                      "total": 35321,
+                      "input": 35264,
+                      "output": 57,
+                      "reasoning": 0,
+                      "cache": {
+                        "read": 35008,
+                        "write": 0
+                      }
+                    }
+                  },
+                  "parts": [
+                    {
+                      "messageId": "msg_mumnk3c4_565b576b-83dc-477c-b65a-346716a94195",
+                      "partId": "part_mumnk3c8_2bf2fbeb-8950-4fe1-9d9a-8faa5f4308dd",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "type": "step-start"
+                    },
+                    {
+                      "messageId": "msg_mumnk3c4_565b576b-83dc-477c-b65a-346716a94195",
+                      "partId": "part_mumnkd90_c16b82f3-57d4-46ce-9399-2f107137d62e",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "text": "Plan approved — creating the file now.",
+                      "type": "text"
+                    },
+                    {
+                      "messageId": "msg_mumnk3c4_565b576b-83dc-477c-b65a-346716a94195",
+                      "partId": "part_mumnkd9v_67f10a88-5d3b-4add-9996-a0f6f2f1d821",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "callId": "call_7caa76077eed49fcb4e18e16",
+                      "state": {
+                        "completedAt": 1790684917588,
+                        "input": {
+                          "file_path": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N09-PLAN.txt",
+                          "content": "ok"
+                        },
+                        "metadata": {
+                          "schemaVersion": 1,
+                          "serialization": {
+                            "truncated": false,
+                            "originalBytes": 174,
+                            "returnedBytes": 174,
+                            "budgetStrategy": "truncate"
+                          }
+                        },
+                        "output": "File created successfully at: ~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N09-PLAN.txt (file state is current in your context — no need to Read it back)",
+                        "startedAt": 1790684917579,
+                        "status": "completed",
+                        "title": "Write"
+                      },
+                      "tool": "Write",
+                      "type": "tool"
+                    },
+                    {
+                      "messageId": "msg_mumnk3c4_565b576b-83dc-477c-b65a-346716a94195",
+                      "partId": "part_mumnkdb7_bd1ede4b-e2de-4c0a-859e-caa3ded4757f",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "cost": 0,
+                      "reason": "tool-calls",
+                      "tokens": {
+                        "total": 35321,
+                        "input": 35264,
+                        "output": 57,
+                        "reasoning": 0,
+                        "cache": {
+                          "read": 35008,
+                          "write": 0
+                        }
+                      },
+                      "type": "step-finish"
+                    }
+                  ]
+                },
+                {
+                  "info": {
+                    "agent": "zcode-agent",
+                    "cost": 0,
+                    "finish": "stop",
+                    "messageId": "msg_mumnkdbh_3ccc5a73-0bf3-43e3-bee1-337a220e6106",
+                    "model": {
+                      "providerId": "zai-api",
+                      "modelId": "GLM-5.3"
+                    },
+                    "parentMessageId": "msg_mumnjswz_179e2667-40e2-4b6d-9282-6cfc4c85fc2c",
+                    "path": {
+                      "cwd": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+                      "root": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+                    },
+                    "role": "assistant",
+                    "semantics": {
+                      "origin": "agent_runtime",
+                      "kind": "assistant_response",
+                      "uiVisibility": "visible",
+                      "providerVisibility": "visible",
+                      "transcriptVisibility": "visible"
+                    },
+                    "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                    "time": {
+                      "created": 1790684917613,
+                      "completed": 1790684927990
+                    },
+                    "tokens": {
+                      "total": 35415,
+                      "input": 35378,
+                      "output": 37,
+                      "reasoning": 0,
+                      "cache": {
+                        "read": 35200,
+                        "write": 0
+                      }
+                    }
+                  },
+                  "parts": [
+                    {
+                      "messageId": "msg_mumnkdbh_3ccc5a73-0bf3-43e3-bee1-337a220e6106",
+                      "partId": "part_mumnkdbk_1e2f6be1-af20-4141-8609-effb17171c64",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "type": "step-start"
+                    },
+                    {
+                      "messageId": "msg_mumnkdbh_3ccc5a73-0bf3-43e3-bee1-337a220e6106",
+                      "partId": "part_mumnklbc_7e5e241e-2047-4bf2-af8d-535bd9e8ac67",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "text": "Done. After the plan was approved, I created `SENTINEL-N09-PLAN.txt` in the working directory containing exactly the word `ok` and nothing else.",
+                      "type": "text"
+                    },
+                    {
+                      "messageId": "msg_mumnkdbh_3ccc5a73-0bf3-43e3-bee1-337a220e6106",
+                      "partId": "part_mumnklbm_7b445159-38c1-466f-97b5-3aa428bc76e8",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "cost": 0,
+                      "reason": "stop",
+                      "tokens": {
+                        "total": 35415,
+                        "input": 35378,
+                        "output": 37,
+                        "reasoning": 0,
+                        "cache": {
+                          "read": 35200,
+                          "write": 0
+                        }
+                      },
+                      "type": "step-finish"
+                    }
+                  ]
+                },
+                {
+                  "info": {
+                    "agent": "zcode-agent",
+                    "messageId": "msg_mun8406o_a1358b43-5e1e-4ec1-98ad-5b5e59d25b24",
+                    "model": {
+                      "providerId": "zai-api",
+                      "modelId": "GLM-5.3",
+                      "options": {
+                        "reasoningLevel": "max"
+                      }
+                    },
+                    "role": "user",
+                    "semantics": {
+                      "origin": "real_user",
+                      "kind": "user_prompt",
+                      "uiVisibility": "visible",
+                      "providerVisibility": "visible",
+                      "transcriptVisibility": "visible"
+                    },
+                    "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                    "time": {
+                      "created": 1790719426036
+                    },
+                    "tools": {
+                      "Agent": true,
+                      "AskUserQuestion": true,
+                      "Bash": true,
+                      "CronCreate": true,
+                      "CronDelete": true,
+                      "CronList": true,
+                      "CronUpdate": true,
+                      "Edit": true,
+                      "EnterPlanMode": true,
+                      "ExitPlanMode": true,
+                      "Read": true,
+                      "Skill": true,
+                      "TaskOutput": true,
+                      "TaskStop": true,
+                      "TodoRead": true,
+                      "TodoWrite": true,
+                      "WebFetch": true,
+                      "WebSearch": true,
+                      "Write": true,
+                      "SendMessage": true,
+                      "ReadSessionContext": true
+                    }
+                  },
+                  "parts": [
+                    {
+                      "messageId": "msg_mun8406o_a1358b43-5e1e-4ec1-98ad-5b5e59d25b24",
+                      "partId": "part_mun8406s_91ae31bd-caf8-4753-a141-bf3ec893de5e",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "text": "zk16-n13 seed 1790719426022: create a file named SENTINEL-N13.txt containing exactly the word ok. Do nothing else.",
+                      "type": "text"
+                    }
+                  ]
+                },
+                {
+                  "info": {
+                    "agent": "zcode-agent",
+                    "cost": 0,
+                    "finish": "tool-calls",
+                    "messageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa",
+                    "model": {
+                      "providerId": "zai-api",
+                      "modelId": "GLM-5.3"
+                    },
+                    "parentMessageId": "msg_mun8406o_a1358b43-5e1e-4ec1-98ad-5b5e59d25b24",
+                    "path": {
+                      "cwd": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+                      "root": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+                    },
+                    "role": "assistant",
+                    "semantics": {
+                      "origin": "agent_runtime",
+                      "kind": "assistant_response",
+                      "uiVisibility": "visible",
+                      "providerVisibility": "visible",
+                      "transcriptVisibility": "visible"
+                    },
+                    "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                    "time": {
+                      "created": 1790719437273,
+                      "completed": 1790719473238
+                    },
+                    "tokens": {
+                      "total": 34791,
+                      "input": 34720,
+                      "output": 71,
+                      "reasoning": 0,
+                      "cache": {
+                        "read": 27072,
+                        "write": 0
+                      }
+                    }
+                  },
+                  "parts": [
+                    {
+                      "messageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa",
+                      "partId": "part_mun848v1_c9bf5285-1376-48dd-93c0-7a1f2d8acf41",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "type": "step-start"
+                    },
+                    {
+                      "messageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa",
+                      "partId": "part_mun850jw_09520001-ba53-4b03-9c75-03d96c82d7a3",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "metadata": {
+                        "anthropic": {
+                          "signature": "57807ce220be4e97a62a0d34"
+                        }
+                      },
+                      "text": "Simple task: create SENTINEL-N13.txt containing exactly \"ok\". Do nothing else.",
+                      "type": "reasoning"
+                    },
+                    {
+                      "messageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa",
+                      "partId": "part_mun850jz_82e97792-4eba-49b1-becd-1c04669ffece",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "text": "Creating the file now.",
+                      "type": "text"
+                    },
+                    {
+                      "messageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa",
+                      "partId": "part_mun850kl_0a587959-d49b-49f0-a0d7-2313d1d17c01",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "callId": "call_3b60122693b849ca94c0304c",
+                      "state": {
+                        "completedAt": 1790719473222,
+                        "input": {
+                          "file_path": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N13.txt",
+                          "content": "ok"
+                        },
+                        "metadata": {
+                          "schemaVersion": 1,
+                          "serialization": {
+                            "truncated": false,
+                            "originalBytes": 169,
+                            "returnedBytes": 169,
+                            "budgetStrategy": "truncate"
+                          }
+                        },
+                        "output": "File created successfully at: ~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N13.txt (file state is current in your context — no need to Read it back)",
+                        "startedAt": 1790719473213,
+                        "status": "completed",
+                        "title": "Write"
+                      },
+                      "tool": "Write",
+                      "type": "tool"
+                    },
+                    {
+                      "messageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa",
+                      "partId": "part_mun850lv_bdb9e418-f570-4985-a18d-27e3c8a91309",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "cost": 0,
+                      "reason": "tool-calls",
+                      "tokens": {
+                        "total": 34791,
+                        "input": 34720,
+                        "output": 71,
+                        "reasoning": 0,
+                        "cache": {
+                          "read": 27072,
+                          "write": 0
+                        }
+                      },
+                      "type": "step-finish"
+                    }
+                  ]
+                },
+                {
+                  "info": {
+                    "agent": "zcode-agent",
+                    "cost": 0,
+                    "finish": "stop",
+                    "messageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347",
+                    "model": {
+                      "providerId": "zai-api",
+                      "modelId": "GLM-5.3"
+                    },
+                    "parentMessageId": "msg_mun8406o_a1358b43-5e1e-4ec1-98ad-5b5e59d25b24",
+                    "path": {
+                      "cwd": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+                      "root": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+                    },
+                    "role": "assistant",
+                    "semantics": {
+                      "origin": "agent_runtime",
+                      "kind": "assistant_response",
+                      "uiVisibility": "visible",
+                      "providerVisibility": "visible",
+                      "transcriptVisibility": "visible"
+                    },
+                    "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                    "time": {
+                      "created": 1790719473244,
+                      "completed": 1790719476999
+                    },
+                    "tokens": {
+                      "total": 34875,
+                      "input": 34846,
+                      "output": 29,
+                      "reasoning": 0,
+                      "cache": {
+                        "read": 34688,
+                        "write": 0
+                      }
+                    }
+                  },
+                  "parts": [
+                    {
+                      "messageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347",
+                      "partId": "part_mun850m6_ea4d502c-7b3e-4678-8478-a9522164c78b",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "type": "step-start"
+                    },
+                    {
+                      "messageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347",
+                      "partId": "part_mun853i2_f2eb2931-9ee5-4510-8eaa-1c2f34c2748e",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "text": "Done. `SENTINEL-N13.txt` was created in the working directory containing exactly the word `ok` and nothing else.",
+                      "type": "text"
+                    },
+                    {
+                      "messageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347",
+                      "partId": "part_mun853ib_9cc8a830-7131-410b-8ed1-8ecacfa588fa",
+                      "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                      "cost": 0,
+                      "reason": "stop",
+                      "tokens": {
+                        "total": 34875,
+                        "input": 34846,
+                        "output": 29,
+                        "reasoning": 0,
+                        "cache": {
+                          "read": 34688,
+                          "write": 0
+                        }
+                      },
+                      "type": "step-finish"
+                    }
+                  ]
+                }
+              ],
+              "projection": {
+                "activeToolCalls": [],
+                "backgroundJobs": [],
+                "contextUsed": 34875,
+                "contextWindow": 200000,
+                "currentTurnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+                "mode": "build",
+                "pendingPermissions": [],
+                "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                "status": "idle",
+                "target": null,
+                "totalTokenCount": 69666,
+                "turnCount": 1
+              },
+              "protocol": {
+                "name": "ZCode Protocol",
+                "version": 1
+              },
+              "runtime": {
+                "eventSeq": 41,
+                "pendingRequestIds": [],
+                "contextUsage": {
+                  "cache": {
+                    "inputTokens": 34846,
+                    "cacheReadTokens": 34688,
+                    "cacheWriteTokens": 0,
+                    "latestHitRate": 0.9954657636457556,
+                    "hitRate": 0.9412816197378522,
+                    "hitRateRequestCount": 8,
+                    "totalInputTokens": 277477,
+                    "totalCacheReadTokens": 261184,
+                    "totalCacheWriteTokens": 0
+                  },
+                  "cost": null,
+                  "size": 200000,
+                  "used": 34875
+                },
+                "goalVerifications": [],
+                "goalVerificationTimeline": [],
+                "stateRevision": 3
+              },
+              "session": {
+                "createdAt": 1790684811322,
+                "mode": "build",
+                "model": {
+                  "providerId": "zai-api",
+                  "modelId": "GLM-5.3"
+                },
+                "traceId": "e24dcce1-2596-4edf-8a81-3b0e675844ff",
+                "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+                "sessionKind": "interactive",
+                "status": "idle",
+                "target": null,
+                "title": "Ask color question and create SENTINEL-N09.txt",
+                "titleSource": "generated",
+                "updatedAt": 1790719476999,
+                "workspace": {
+                  "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+                  "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+                }
+              },
+              "settings": {
+                "mode": {
+                  "current": "build"
+                },
+                "model": {
+                  "available": [
+                    {
+                      "ref": {
+                        "providerId": "zai-api",
+                        "modelId": "GLM-5.3"
+                      },
+                      "label": "GLM-5.3",
+                      "providerLabel": "zai-api",
+                      "contextWindow": 200000,
+                      "maxOutputTokens": 128000,
+                      "reasoning": {
+                        "levels": [
+                          {
+                            "value": "low",
+                            "label": "low"
+                          },
+                          {
+                            "value": "high",
+                            "label": "high"
+                          },
+                          {
+                            "value": "max",
+                            "label": "max"
+                          }
+                        ],
+                        "defaultLevel": "max"
+                      },
+                      "properties": {
+                        "inputFormat": {
+                          "supportsText": true,
+                          "supportsImage": true,
+                          "supportsVideo": true,
+                          "supportsAudio": false,
+                          "supportsPdf": false
+                        },
+                        "outputFormat": {
+                          "supportsText": true
+                        }
+                      }
+                    }
+                  ],
+                  "current": {
+                    "providerId": "zai-api",
+                    "modelId": "GLM-5.3",
+                    "options": {
+                      "reasoningLevel": "max"
+                    }
+                  },
+                  "lastUsed": {
+                    "providerId": "zai-api",
+                    "modelId": "GLM-5.3"
+                  }
+                },
+                "permission": {
+                  "mode": "build"
+                },
+                "thoughtLevel": {
+                  "available": [
+                    {
+                      "label": "low",
+                      "value": "low"
+                    },
+                    {
+                      "label": "high",
+                      "value": "high"
+                    },
+                    {
+                      "label": "max",
+                      "value": "max"
+                    }
+                  ],
+                  "current": "max",
+                  "enabled": true
+                }
+              },
+              "slashCommands": [
+                {
+                  "description": "Show or set the current session goal.",
+                  "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+                  "name": "goal",
+                  "source": "builtin"
+                },
+                {
+                  "description": "Compact the current conversation with optional instructions.",
+                  "inputHint": "/compact [instructions]",
+                  "name": "compact",
+                  "source": "builtin"
+                },
+                {
+                  "description": "Create or update workspace AGENTS.md instructions.",
+                  "inputHint": "/init [notes]",
+                  "name": "init",
+                  "source": "builtin"
+                },
+                {
+                  "description": "Switch to Plan mode and optionally send a task.",
+                  "inputHint": "/plan [task]",
+                  "name": "plan",
+                  "source": "builtin"
+                }
+              ],
+              "todos": [],
+              "todoGroups": []
+            },
+            "compact": {
+              "state": "accepted"
+            }
+          }
+        },
+        "shapeIssue": null,
+        "compactState": "accepted"
+      },
+      "settleAfter": {
+        "sawRunning": true,
+        "runningAtMs": 75,
+        "sawTerminal": true,
+        "withinMs": 22976,
+        "baseline": {
+          "turnCount": 1,
+          "stateRevision": 2
+        }
+      },
+      "postState": {
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "workspace": {
+          "workspacePath": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+          "workspaceKey": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+        },
+        "model": {
+          "providerId": "zai-api",
+          "modelId": "GLM-5.3",
+          "options": {
+            "reasoningLevel": "max"
+          }
+        },
+        "turnCount": 2,
+        "messageCount": 14,
+        "status": "idle"
+      },
+      "identityPreserved": true,
+      "noAutomaticContinuation": true,
+      "pass": true
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-2",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/send"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "state.updated"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "computer-use/operation-event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "computer-use/operation-event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-3",
+      "method": "interaction/requestPermission"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "computer-use/operation-event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "computer-use/operation-event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "state.updated"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/compact"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "computer-use/operation-event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "state.updated"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/resourceSample"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "computer-use/operation-event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "state.updated"
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [
+    {
+      "at": 1790719425552,
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "scope": "runtime-materialization"
+      }
+    },
+    {
+      "at": 1790719425659,
+      "id": "server-2",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "scope": "user-execution"
+      }
+    },
+    {
+      "at": 1790719473207,
+      "id": "server-3",
+      "method": "interaction/requestPermission",
+      "params": {
+        "input": {
+          "file_path": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N13.txt",
+          "content": "ok"
+        },
+        "reason": "Tool has side effects and requires approval",
+        "requestId": "perm_aa19bce3-7cfa-44f7-a498-4f05bd1ace71",
+        "riskLevel": "medium",
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "options": [
+          {
+            "kind": "allow_once",
+            "name": "Allow once",
+            "optionId": "allow_once",
+            "response": {
+              "decision": "allow",
+              "reason": "Approved once"
+            }
+          },
+          {
+            "description": "Do not ask again for matching requests in this project",
+            "kind": "allow_always",
+            "name": "Always allow in this project",
+            "optionId": "allow_project",
+            "response": {
+              "decision": "allow",
+              "permissionUpdates": [
+                {
+                  "behavior": "allow",
+                  "rules": [
+                    {
+                      "toolName": "Write",
+                      "ruleContent": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N13.txt"
+                    }
+                  ],
+                  "type": "addRules"
+                }
+              ],
+              "reason": "Approved for this project"
+            }
+          },
+          {
+            "kind": "deny",
+            "name": "Deny",
+            "optionId": "deny",
+            "response": {
+              "decision": "deny",
+              "reason": "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed."
+            }
+          }
+        ],
+        "toolCallId": "call_3b60122693b849ca94c0304c",
+        "toolName": "Write",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932"
+      }
+    }
+  ],
+  "notifications": [
+    {
+      "at": 1790719425501,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b3537ab1-1194-4997-8b39-86ac2b43350e",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1790719425502,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b3537ab1-1194-4997-8b39-86ac2b43350e",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1790719425505,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b3537ab1-1194-4997-8b39-86ac2b43350e",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 2
+      }
+    },
+    {
+      "at": 1790719425506,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b3537ab1-1194-4997-8b39-86ac2b43350e",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 3
+      }
+    },
+    {
+      "at": 1790719425506,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b3537ab1-1194-4997-8b39-86ac2b43350e",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 4
+      }
+    },
+    {
+      "at": 1790719426024,
+      "method": "state.updated",
+      "params": {
+        "patch": {
+          "status": "running"
+        },
+        "reason": "prompt_started",
+        "revision": 1,
+        "scope": "session",
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "type": "state.updated",
+        "workspace": {
+          "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+          "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+        }
+      }
+    },
+    {
+      "at": 1790719426032,
+      "method": "computer-use/operation-event",
+      "params": {
+        "eventId": "b5008ec4-15e8-4f90-b597-38f323d5a770",
+        "sequenceNumber": 436,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "timestamp": 1790719426032,
+        "kind": "turn-started",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932"
+      }
+    },
+    {
+      "at": 1790719426033,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "b5008ec4-15e8-4f90-b597-38f323d5a770",
+        "eventSeq": 436,
+        "occurredAt": 1790719426032,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "turn.started"
+      }
+    },
+    {
+      "at": 1790719426768,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "kind": "process_start",
+        "mcpId": "builtin:node_repl",
+        "mcpInstanceId": "5de32b4b-56af-47d7-b761-cadd1166caad",
+        "mcpIsolation": "workspace",
+        "mcpSource": "builtin",
+        "occurredAt": 1790719426768,
+        "platform": "win32"
+      }
+    },
+    {
+      "at": 1790719437267,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "kind": "process_start",
+        "mcpId": "custom:9ad513ee823b",
+        "mcpInstanceId": "527e6c63-1a88-4a17-b167-10e550019350",
+        "mcpIsolation": "session",
+        "mcpSource": "custom",
+        "occurredAt": 1790719437267,
+        "platform": "win32"
+      }
+    },
+    {
+      "at": 1790719437268,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "configuredCount": 2,
+        "connectedCount": 2,
+        "failedCount": 0,
+        "kind": "session_startup",
+        "occurredAt": 1790719437268,
+        "platform": "win32",
+        "processCount": 2,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6"
+      }
+    },
+    {
+      "at": 1790719437306,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "0f2d3425-3994-481d-9280-733e4ab4f2d6",
+        "eventSeq": 438,
+        "occurredAt": 1790719437304,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "b8cac54c-2ca3-446f-ba3d-0ff297d1f002",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 1,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790719442204,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "810ab1d5-80d2-4add-af5c-364fe78685a4",
+        "eventSeq": 439,
+        "occurredAt": 1790719442204,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "b8cac54c-2ca3-446f-ba3d-0ff297d1f002",
+        "status": "model_request_failed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 1,
+        "maxAttempts": 11,
+        "durationMs": 4908,
+        "reason": "rate_limited",
+        "retryable": true,
+        "statusCode": 429
+      }
+    },
+    {
+      "at": 1790719442206,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "09e48d37-2948-49f5-84e5-415cecbd50e7",
+        "eventSeq": 440,
+        "occurredAt": 1790719442206,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "b8cac54c-2ca3-446f-ba3d-0ff297d1f002",
+        "status": "model_retry_scheduled",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 1,
+        "maxAttempts": 11,
+        "reason": "rate_limited",
+        "statusCode": 429,
+        "delayMs": 8000,
+        "nextAttempt": 2
+      }
+    },
+    {
+      "at": 1790719450240,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "022640f9-556e-46ae-9475-dfd9669b4334",
+        "eventSeq": 441,
+        "occurredAt": 1790719450238,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "e667ae87-891c-4201-9772-712957248b18",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 2,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790719452590,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "8cada23a-7de5-49cb-afd9-257c64679156",
+        "eventSeq": 442,
+        "occurredAt": 1790719452590,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "e667ae87-891c-4201-9772-712957248b18",
+        "status": "model_request_failed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 2,
+        "maxAttempts": 11,
+        "durationMs": 2353,
+        "reason": "rate_limited",
+        "retryable": true,
+        "statusCode": 429
+      }
+    },
+    {
+      "at": 1790719452592,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "7f1de4de-5078-40ef-8032-d2cd07ba7303",
+        "eventSeq": 443,
+        "occurredAt": 1790719452592,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "e667ae87-891c-4201-9772-712957248b18",
+        "status": "model_retry_scheduled",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 2,
+        "maxAttempts": 11,
+        "reason": "rate_limited",
+        "statusCode": 429,
+        "delayMs": 5000,
+        "nextAttempt": 3
+      }
+    },
+    {
+      "at": 1790719457609,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "5033c5a2-2097-4bcf-8fe7-0d6aabdfd9c7",
+        "eventSeq": 444,
+        "occurredAt": 1790719457609,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "9ed90632-120a-4908-aac0-8a5323294cc1",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 3,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790719460162,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "ee42a700-18c5-470b-9cac-51e348d261e9",
+        "eventSeq": 445,
+        "occurredAt": 1790719460162,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "9ed90632-120a-4908-aac0-8a5323294cc1",
+        "status": "model_request_failed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 3,
+        "maxAttempts": 11,
+        "durationMs": 2554,
+        "reason": "rate_limited",
+        "retryable": true,
+        "statusCode": 429
+      }
+    },
+    {
+      "at": 1790719460164,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "cbe8a894-5cea-4d9e-9589-81af3e3c8713",
+        "eventSeq": 446,
+        "occurredAt": 1790719460164,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "9ed90632-120a-4908-aac0-8a5323294cc1",
+        "status": "model_retry_scheduled",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 3,
+        "maxAttempts": 11,
+        "reason": "rate_limited",
+        "statusCode": 429,
+        "delayMs": 7000,
+        "nextAttempt": 4
+      }
+    },
+    {
+      "at": 1790719467182,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "b6358963-19a4-41a2-b84c-a04e4dc309b1",
+        "eventSeq": 447,
+        "occurredAt": 1790719467180,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "8fe00f1c-237b-48f4-9b7c-a54fb96f9b13",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 4,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790719473140,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "2a7b0ef2-0ccb-4e45-800b-debf507b5e4b",
+        "eventSeq": 450,
+        "occurredAt": 1790719473139,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 6,
+        "firstChunk": true,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473140,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "f83c7511-95ae-48ed-9fa3-f3fdf53cc0e6",
+        "eventSeq": 451,
+        "occurredAt": 1790719473140,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473140,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "56baadd4-4fbc-4b49-937e-47d04a1f8aa1",
+        "eventSeq": 452,
+        "occurredAt": 1790719473140,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473141,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "21e67518-d36c-424c-af99-dd30767a5412",
+        "eventSeq": 453,
+        "occurredAt": 1790719473141,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 7,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473142,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "4a1b23a9-630c-40bc-ad8f-f6c8c887c18d",
+        "eventSeq": 454,
+        "occurredAt": 1790719473142,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473142,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "e649c6f1-117f-4baa-85cd-8a8ef36c99c3",
+        "eventSeq": 455,
+        "occurredAt": 1790719473142,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473143,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "c73750c1-c330-407d-8759-a4c67fda04a4",
+        "eventSeq": 456,
+        "occurredAt": 1790719473143,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473143,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "e5c26438-706e-4e3a-bcd7-94c522c1ebef",
+        "eventSeq": 457,
+        "occurredAt": 1790719473143,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473143,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "0abf7477-4863-4853-bacb-d9b15482b83f",
+        "eventSeq": 458,
+        "occurredAt": 1790719473144,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473144,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "b7d37f1e-1656-4e51-b6be-4aa98e65b9b1",
+        "eventSeq": 459,
+        "occurredAt": 1790719473144,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473144,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "438bd21e-6d64-419e-a8c4-3aaa54205d3e",
+        "eventSeq": 460,
+        "occurredAt": 1790719473144,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 11,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473144,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "0e4abed1-5f39-490e-a4b8-029d28c30531",
+        "eventSeq": 461,
+        "occurredAt": 1790719473144,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473145,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "857f07ff-4519-45b1-b7f4-6909ea5b2ce8",
+        "eventSeq": 462,
+        "occurredAt": 1790719473145,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473145,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "e0cb467b-9234-45d9-a497-7d0b0919e0e9",
+        "eventSeq": 463,
+        "occurredAt": 1790719473145,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473145,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "735e09e6-3e19-4739-8aa0-0b03b67ee830",
+        "eventSeq": 464,
+        "occurredAt": 1790719473145,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473145,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "f508da9c-977b-4a67-a7e6-1f8279b4c27a",
+        "eventSeq": 465,
+        "occurredAt": 1790719473145,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 3,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473146,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "5f5457e4-211e-416d-b8d4-48d03f68e39c",
+        "eventSeq": 466,
+        "occurredAt": 1790719473146,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473146,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "100f9d35-432a-4e6a-8267-0012285e541c",
+        "eventSeq": 467,
+        "occurredAt": 1790719473146,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473146,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "8ccbb4f6-ad08-44ea-8fc8-ddbef7357dbb",
+        "eventSeq": 468,
+        "occurredAt": 1790719473147,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473147,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "96ecfcfa-019a-464f-8d04-874cb4a90752",
+        "eventSeq": 469,
+        "occurredAt": 1790719473147,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 0,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473148,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "815b04cd-4bbe-48b4-bcdf-3a3475c9bc30",
+        "eventSeq": 472,
+        "occurredAt": 1790719473148,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 8,
+        "firstChunk": true,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473148,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "e7136b2d-bd64-4dcb-aae3-5367f21063b7",
+        "eventSeq": 473,
+        "occurredAt": 1790719473148,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473148,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "a1d509b9-2bbf-4fbd-8383-92e0389750d7",
+        "eventSeq": 474,
+        "occurredAt": 1790719473148,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473149,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "26e66265-b9cd-4278-b01f-b793bec635a4",
+        "eventSeq": 475,
+        "occurredAt": 1790719473149,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473149,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "008b1361-07ad-413e-aa67-2650d996e702",
+        "eventSeq": 476,
+        "occurredAt": 1790719473149,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun848uw_d8859aad-d8ab-4320-94aa-34eb4074b5fa"
+      }
+    },
+    {
+      "at": 1790719473160,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "0a8484a3-84bd-4062-a59c-3697ebc38125",
+        "eventSeq": 483,
+        "occurredAt": 1790719473160,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "8fe00f1c-237b-48f4-9b7c-a54fb96f9b13",
+        "status": "model_request_completed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 4,
+        "maxAttempts": 11,
+        "durationMs": 5980
+      }
+    },
+    {
+      "at": 1790719473185,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "6aefaf30-b4d7-4596-81ce-a663bc7377da",
+        "eventSeq": 484,
+        "occurredAt": 1790719473183,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "usage.delta",
+        "requestId": "8fe00f1c-237b-48f4-9b7c-a54fb96f9b13",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "inputTokens": 34720,
+        "outputTokens": 71,
+        "totalTokens": 34791,
+        "reasoningTokens": 0,
+        "cacheReadTokens": 27072,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "at": 1790719473195,
+      "method": "computer-use/operation-event",
+      "params": {
+        "eventId": "89979f01-cd6f-4944-8126-a3b5456552fd",
+        "sequenceNumber": 486,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "timestamp": 1790719473194,
+        "kind": "tool-scheduled",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "toolCallId": "call_3b60122693b849ca94c0304c",
+        "toolName": "Write"
+      }
+    },
+    {
+      "at": 1790719473196,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "89979f01-cd6f-4944-8126-a3b5456552fd",
+        "eventSeq": 486,
+        "occurredAt": 1790719473194,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "tool.lifecycle",
+        "phase": "scheduled",
+        "toolCallId": "call_3b60122693b849ca94c0304c",
+        "toolName": "Write"
+      }
+    },
+    {
+      "at": 1790719473206,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "cd8c3516-0558-4772-83c0-8a3c0384da59",
+        "eventSeq": 489,
+        "occurredAt": 1790719473203,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "permission.lifecycle",
+        "phase": "requested",
+        "requestId": "perm_aa19bce3-7cfa-44f7-a498-4f05bd1ace71",
+        "toolCallId": "call_3b60122693b849ca94c0304c",
+        "toolName": "Write"
+      }
+    },
+    {
+      "at": 1790719473212,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "e10a5fc3-17e6-4e6b-a5b5-9f1aae0b1eb6",
+        "eventSeq": 490,
+        "occurredAt": 1790719473211,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "permission.lifecycle",
+        "phase": "resolved",
+        "requestId": "perm_aa19bce3-7cfa-44f7-a498-4f05bd1ace71",
+        "toolCallId": "call_3b60122693b849ca94c0304c",
+        "decision": "allow"
+      }
+    },
+    {
+      "at": 1790719473215,
+      "method": "computer-use/operation-event",
+      "params": {
+        "eventId": "beb79728-5143-43ac-b591-d0c004c3ff66",
+        "sequenceNumber": 491,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "timestamp": 1790719473213,
+        "kind": "tool-started",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "toolCallId": "call_3b60122693b849ca94c0304c",
+        "toolName": "Write"
+      }
+    },
+    {
+      "at": 1790719473215,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "beb79728-5143-43ac-b591-d0c004c3ff66",
+        "eventSeq": 491,
+        "occurredAt": 1790719473213,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "tool.lifecycle",
+        "phase": "started",
+        "toolCallId": "call_3b60122693b849ca94c0304c",
+        "toolName": "Write"
+      }
+    },
+    {
+      "at": 1790719473224,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "2c00da8b-31a4-49da-b0a9-37b33e8b00c3",
+        "eventSeq": 492,
+        "occurredAt": 1790719473222,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "tool.lifecycle",
+        "phase": "completed",
+        "toolCallId": "call_3b60122693b849ca94c0304c",
+        "toolName": "Write",
+        "durationMs": 8,
+        "performance": {
+          "totalMs": 20,
+          "permissionWaitMs": 5,
+          "fsReadMs": 0,
+          "fsWriteMs": 4,
+          "fileCount": 1,
+          "totalBytes": 2,
+          "maxFileBytes": 2,
+          "workspaceKind": "local"
+        }
+      }
+    },
+    {
+      "at": 1790719473254,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "5555a32d-b244-48dd-9a04-9b084cb20a01",
+        "eventSeq": 498,
+        "occurredAt": 1790719473254,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "4a5a0ec9-17bc-4d81-9e20-910743811bcc",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 1,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790719476975,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "795005f9-2d02-41e9-b444-263ecf7ffdac",
+        "eventSeq": 501,
+        "occurredAt": 1790719476975,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476975,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "1e35e06c-bb1f-4212-93f7-2f46703c4133",
+        "eventSeq": 502,
+        "occurredAt": 1790719476975,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476976,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "eae86a67-6b63-43e8-a6d3-3d2d56aed70b",
+        "eventSeq": 503,
+        "occurredAt": 1790719476976,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476976,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "464a2c37-d69a-458d-bc1b-c6ef42dbd778",
+        "eventSeq": 504,
+        "occurredAt": 1790719476976,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476976,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "2928921f-a815-4ffc-a43e-c39ae0fa1833",
+        "eventSeq": 505,
+        "occurredAt": 1790719476976,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476976,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "570f1c46-56c9-4be4-9d96-60fbb5336cc0",
+        "eventSeq": 506,
+        "occurredAt": 1790719476976,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476977,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "4354defd-cb57-463f-8939-0d3ee1f05ca4",
+        "eventSeq": 507,
+        "occurredAt": 1790719476977,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476977,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "b2d05a2c-2d05-461f-83a9-4adeedcebcd2",
+        "eventSeq": 508,
+        "occurredAt": 1790719476977,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476977,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "27f7dc03-a417-456a-8c75-e5733b5bc21b",
+        "eventSeq": 509,
+        "occurredAt": 1790719476977,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476977,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "c4ceffd5-722f-4c7a-8d2c-1db46e273a06",
+        "eventSeq": 510,
+        "occurredAt": 1790719476977,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476977,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "2329ab60-738b-4986-9107-affb48c0c3c5",
+        "eventSeq": 511,
+        "occurredAt": 1790719476977,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476977,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "abd7782e-27cf-4cd8-aba0-f7c43a6ce0c8",
+        "eventSeq": 512,
+        "occurredAt": 1790719476978,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476977,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "7e077853-3e3c-481d-ac0e-a07f54f9750a",
+        "eventSeq": 513,
+        "occurredAt": 1790719476978,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 3,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476978,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "43082edc-d46d-45d7-9835-ade7421d01be",
+        "eventSeq": 514,
+        "occurredAt": 1790719476978,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476978,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "87a2b307-58d5-4b3f-b7c8-6da24966e9fa",
+        "eventSeq": 515,
+        "occurredAt": 1790719476978,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476978,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "0ac61e62-cc55-4206-ba97-fa2375982fa5",
+        "eventSeq": 516,
+        "occurredAt": 1790719476978,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 10,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476978,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "09aa0dd3-3330-4798-9918-a4d3bb905858",
+        "eventSeq": 517,
+        "occurredAt": 1790719476979,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 11,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476979,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "2eeda5af-7690-4d11-aa53-8745c4be30af",
+        "eventSeq": 518,
+        "occurredAt": 1790719476979,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476979,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "57397562-1d05-442c-864a-16be599fd296",
+        "eventSeq": 519,
+        "occurredAt": 1790719476979,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476979,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "5e50d658-9ac4-4643-a8ad-119ef9ceb84d",
+        "eventSeq": 520,
+        "occurredAt": 1790719476979,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476979,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "2f9b2b53-8888-4d50-bd1a-babdf2f0102f",
+        "eventSeq": 521,
+        "occurredAt": 1790719476979,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476979,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "29746119-e65a-4e8d-a89b-ef82af24efda",
+        "eventSeq": 522,
+        "occurredAt": 1790719476980,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476980,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "2f4db554-4ca9-4531-bdbb-dd749663a88a",
+        "eventSeq": 523,
+        "occurredAt": 1790719476980,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476980,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "bf87689e-3877-45f7-bf4d-a56a032235d8",
+        "eventSeq": 524,
+        "occurredAt": 1790719476980,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476980,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "9873bbbd-fa65-4604-ba65-bcf07f5b9a0c",
+        "eventSeq": 525,
+        "occurredAt": 1790719476980,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476980,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "ac5e3605-e92f-42c7-aea4-0f31620deb29",
+        "eventSeq": 526,
+        "occurredAt": 1790719476980,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476980,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "8d1dfa9f-d766-4e4a-be6f-bed0bf08df93",
+        "eventSeq": 527,
+        "occurredAt": 1790719476981,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun850m4_7e19506c-18ae-4f6d-b70e-3890be237347"
+      }
+    },
+    {
+      "at": 1790719476983,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "4fa0496f-a882-4a40-9b26-a4d2319e72fb",
+        "eventSeq": 530,
+        "occurredAt": 1790719476983,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "model.request.status",
+        "requestId": "4a5a0ec9-17bc-4d81-9e20-910743811bcc",
+        "status": "model_request_completed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_4b668df4-91ca-44e4-9fca-4a575bc45291",
+        "attempt": 1,
+        "maxAttempts": 11,
+        "durationMs": 3730
+      }
+    },
+    {
+      "at": 1790719476992,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "ea71cc18-80ae-4171-a85e-36ca6e48473a",
+        "eventSeq": 531,
+        "occurredAt": 1790719476991,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "usage.delta",
+        "requestId": "4a5a0ec9-17bc-4d81-9e20-910743811bcc",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "inputTokens": 34846,
+        "outputTokens": 29,
+        "totalTokens": 34875,
+        "reasoningTokens": 0,
+        "cacheReadTokens": 34688,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "at": 1790719477007,
+      "method": "computer-use/operation-event",
+      "params": {
+        "eventId": "9ed6d8a1-3ede-4e18-a30f-bfdd58027b5d",
+        "sequenceNumber": 532,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "timestamp": 1790719477006,
+        "kind": "turn-completed",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932"
+      }
+    },
+    {
+      "at": 1790719477008,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "9ed6d8a1-3ede-4e18-a30f-bfdd58027b5d",
+        "eventSeq": 532,
+        "occurredAt": 1790719477006,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932",
+        "kind": "turn.terminal",
+        "status": "success",
+        "resultType": "success",
+        "durationMs": 50981,
+        "tokenCount": 69666,
+        "toolCallCount": 1
+      }
+    },
+    {
+      "at": 1790719477076,
+      "method": "state.updated",
+      "params": {
+        "patch": {
+          "mode": {
+            "current": "build"
+          },
+          "model": {
+            "available": [
+              {
+                "ref": {
+                  "providerId": "zai-api",
+                  "modelId": "GLM-5.3"
+                },
+                "label": "GLM-5.3",
+                "providerLabel": "zai-api",
+                "contextWindow": 200000,
+                "maxOutputTokens": 128000,
+                "reasoning": {
+                  "levels": [
+                    {
+                      "value": "low",
+                      "label": "low"
+                    },
+                    {
+                      "value": "high",
+                      "label": "high"
+                    },
+                    {
+                      "value": "max",
+                      "label": "max"
+                    }
+                  ],
+                  "defaultLevel": "max"
+                },
+                "properties": {
+                  "inputFormat": {
+                    "supportsText": true,
+                    "supportsImage": true,
+                    "supportsVideo": true,
+                    "supportsAudio": false,
+                    "supportsPdf": false
+                  },
+                  "outputFormat": {
+                    "supportsText": true
+                  }
+                }
+              }
+            ],
+            "current": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3",
+              "options": {
+                "reasoningLevel": "max"
+              }
+            },
+            "lastUsed": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            }
+          },
+          "permission": {
+            "mode": "build"
+          },
+          "thoughtLevel": {
+            "available": [
+              {
+                "label": "low",
+                "value": "low"
+              },
+              {
+                "label": "high",
+                "value": "high"
+              },
+              {
+                "label": "max",
+                "value": "max"
+              }
+            ],
+            "current": "max",
+            "enabled": true
+          }
+        },
+        "reason": "prompt_completed",
+        "revision": 2,
+        "scope": "session",
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "type": "state.updated",
+        "workspace": {
+          "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+          "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+        }
+      }
+    },
+    {
+      "at": 1790719477518,
+      "method": "computer-use/operation-event",
+      "params": {
+        "eventId": "14b12dc6-e477-4dbe-ad76-5b97b8d53d70",
+        "sequenceNumber": 533,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "timestamp": 1790719477458,
+        "kind": "turn-started",
+        "turnId": "turn_94ee99ec-1221-4edf-a1ca-f271d9e043c6"
+      }
+    },
+    {
+      "at": 1790719477519,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "14b12dc6-e477-4dbe-ad76-5b97b8d53d70",
+        "eventSeq": 533,
+        "occurredAt": 1790719477458,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_94ee99ec-1221-4edf-a1ca-f271d9e043c6",
+        "kind": "turn.started"
+      }
+    },
+    {
+      "at": 1790719477538,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "9963eafd-109b-4a55-8ed1-fe24d9184d65",
+        "eventSeq": 536,
+        "occurredAt": 1790719477538,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_94ee99ec-1221-4edf-a1ca-f271d9e043c6",
+        "kind": "model.request.status",
+        "requestId": "990ec6fe-3212-4f02-8c85-212c78232f50",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "compact",
+        "queryId": "query_f1e170e8-2354-48dd-ac0b-ebce1cc78ca0",
+        "attempt": 1,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790719477549,
+      "method": "state.updated",
+      "params": {
+        "patch": {
+          "status": "running"
+        },
+        "reason": "compact_started",
+        "revision": 3,
+        "scope": "session",
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "type": "state.updated",
+        "workspace": {
+          "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+          "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+        }
+      }
+    },
+    {
+      "at": 1790719485546,
+      "method": "process/resourceSample",
+      "params": {
+        "platform": "win32",
+        "arch": "x64",
+        "logicalCpuCount": 16,
+        "intervalMs": 60000,
+        "cpuCores": 0.2136,
+        "cpuPercent": 1.3347,
+        "rssKb": 336772,
+        "heapUsedKb": 131753.3516,
+        "instanceToken": "571c63020dcaab94",
+        "uptimeMinutes": 1,
+        "totalMemoryGb": 62
+      }
+    },
+    {
+      "at": 1790719499693,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "85d9c50e-432d-4176-b7df-f7e69b941f90",
+        "eventSeq": 537,
+        "occurredAt": 1790719499691,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_94ee99ec-1221-4edf-a1ca-f271d9e043c6",
+        "kind": "model.request.status",
+        "requestId": "990ec6fe-3212-4f02-8c85-212c78232f50",
+        "status": "model_request_completed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "compact",
+        "queryId": "query_f1e170e8-2354-48dd-ac0b-ebce1cc78ca0",
+        "attempt": 1,
+        "maxAttempts": 11,
+        "durationMs": 22153
+      }
+    },
+    {
+      "at": 1790719500014,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "3dcab8c9-5c65-4050-9c79-b0968aee2f8b",
+        "eventSeq": 540,
+        "occurredAt": 1790719500012,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_94ee99ec-1221-4edf-a1ca-f271d9e043c6",
+        "kind": "compaction.terminal",
+        "operationId": "cmp_4f85d814-f583-44bb-9121-c6e48556d012",
+        "messageId": "msg_mun853wx_0a776f74-5df4-400e-bbf6-346137f24588",
+        "summaryMessageId": "msg_mun85l8w_7db23883-3cb8-48f5-a9e5-642e4cc63f34",
+        "status": "completed",
+        "trigger": "manual",
+        "compactReason": "user_requested",
+        "startedAt": 1790719477521,
+        "endedAt": 1790719500002,
+        "preCompactTokenCount": 9614,
+        "postCompactTokenCount": 38502,
+        "truePostCompactTokenCount": 10331,
+        "modelName": "GLM-5.3",
+        "modelProvider": "zai-api"
+      }
+    },
+    {
+      "at": 1790719500015,
+      "method": "computer-use/operation-event",
+      "params": {
+        "eventId": "59264bfd-e5d6-4213-a884-806152379882",
+        "sequenceNumber": 541,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "timestamp": 1790719500014,
+        "kind": "turn-completed",
+        "turnId": "turn_94ee99ec-1221-4edf-a1ca-f271d9e043c6"
+      }
+    },
+    {
+      "at": 1790719500015,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "59264bfd-e5d6-4213-a884-806152379882",
+        "eventSeq": 541,
+        "occurredAt": 1790719500014,
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "turnId": "turn_94ee99ec-1221-4edf-a1ca-f271d9e043c6",
+        "kind": "turn.terminal",
+        "status": "success",
+        "resultType": "success",
+        "durationMs": 22556,
+        "tokenCount": 38502,
+        "toolCallCount": 0
+      }
+    },
+    {
+      "at": 1790719500097,
+      "method": "state.updated",
+      "params": {
+        "patch": {
+          "mode": {
+            "current": "build"
+          },
+          "model": {
+            "available": [
+              {
+                "ref": {
+                  "providerId": "zai-api",
+                  "modelId": "GLM-5.3"
+                },
+                "label": "GLM-5.3",
+                "providerLabel": "zai-api",
+                "contextWindow": 200000,
+                "maxOutputTokens": 128000,
+                "reasoning": {
+                  "levels": [
+                    {
+                      "value": "low",
+                      "label": "low"
+                    },
+                    {
+                      "value": "high",
+                      "label": "high"
+                    },
+                    {
+                      "value": "max",
+                      "label": "max"
+                    }
+                  ],
+                  "defaultLevel": "max"
+                },
+                "properties": {
+                  "inputFormat": {
+                    "supportsText": true,
+                    "supportsImage": true,
+                    "supportsVideo": true,
+                    "supportsAudio": false,
+                    "supportsPdf": false
+                  },
+                  "outputFormat": {
+                    "supportsText": true
+                  }
+                }
+              }
+            ],
+            "current": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3",
+              "options": {
+                "reasoningLevel": "max"
+              }
+            },
+            "lastUsed": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            }
+          },
+          "permission": {
+            "mode": "build"
+          },
+          "thoughtLevel": {
+            "available": [
+              {
+                "label": "low",
+                "value": "low"
+              },
+              {
+                "label": "high",
+                "value": "high"
+              },
+              {
+                "label": "max",
+                "value": "max"
+              }
+            ],
+            "current": "max",
+            "enabled": true
+          }
+        },
+        "reason": "session_compacted",
+        "revision": 4,
+        "scope": "session",
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "type": "state.updated",
+        "workspace": {
+          "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+          "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+        }
+      }
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 57816
+  },
+  "client": {
+    "generation": "a81f4894-b079-4905-a41e-40f12de99174"
+  },
+  "sessionArgResume": {
+    "ok": true,
+    "keys": [
+      "messages",
+      "projection",
+      "protocol",
+      "runtime",
+      "session",
+      "settings",
+      "slashCommands",
+      "todos",
+      "todoGroups"
+    ]
+  },
+  "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+  "sessionIdSource": "--session argument (operator-supplied, turn-bearing reuse)",
+  "sessionArgWorkspace": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws",
+  "sessionArgWorkspaceMatchesWorkspace": true,
+  "permissionRequests": [
+    {
+      "at": 1790719473207,
+      "params": {
+        "input": {
+          "file_path": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N13.txt",
+          "content": "ok"
+        },
+        "reason": "Tool has side effects and requires approval",
+        "requestId": "perm_aa19bce3-7cfa-44f7-a498-4f05bd1ace71",
+        "riskLevel": "medium",
+        "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+        "options": [
+          {
+            "kind": "allow_once",
+            "name": "Allow once",
+            "optionId": "allow_once",
+            "response": {
+              "decision": "allow",
+              "reason": "Approved once"
+            }
+          },
+          {
+            "description": "Do not ask again for matching requests in this project",
+            "kind": "allow_always",
+            "name": "Always allow in this project",
+            "optionId": "allow_project",
+            "response": {
+              "decision": "allow",
+              "permissionUpdates": [
+                {
+                  "behavior": "allow",
+                  "rules": [
+                    {
+                      "toolName": "Write",
+                      "ruleContent": "~win\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws\\SENTINEL-N13.txt"
+                    }
+                  ],
+                  "type": "addRules"
+                }
+              ],
+              "reason": "Approved for this project"
+            }
+          },
+          {
+            "kind": "deny",
+            "name": "Deny",
+            "optionId": "deny",
+            "response": {
+              "decision": "deny",
+              "reason": "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed."
+            }
+          }
+        ],
+        "toolCallId": "call_3b60122693b849ca94c0304c",
+        "toolName": "Write",
+        "turnId": "turn_600741e4-7ab1-4712-b07a-ac5d0b02a932"
+      }
+    }
+  ],
+  "secondRuntimeStops": [],
+  "stop": {
+    "ok": true,
+    "nativePid": 57816,
+    "nativePidLivenessAfterStop": "dead"
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}

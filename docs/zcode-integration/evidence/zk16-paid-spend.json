@@ -1,10 +1,19 @@
 {
-  "totalTurns": 5,
+  "totalTurns": 20,
   "perRow": {
     "N07": 3,
-    "N08": 2
+    "N08": 2,
+    "N09": 3,
+    "N10": 1,
+    "N11": 1,
+    "N12": 2,
+    "N13": 2,
+    "N14": 1,
+    "N15": 2,
+    "N16": 1,
+    "N17": 2
   },
-  "updatedAt": "2026-09-28T13:48:42.992Z",
+  "updatedAt": "2026-09-29T22:11:37.342Z",
   "note": "Certification spend ledger (model turns per paid row). N07 entries are ACCEPTED session/send attempts; all three executed ZERO inference (turnCount 0, contextUsed 0, no model-io rollout, no Turn started log) - count kept conservatively per accepted-send. Cap is binding: N07 hard-refused until the operator amends the ledger.",
   "resets": [
     {

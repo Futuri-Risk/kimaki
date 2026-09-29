@@ -579,7 +579,16 @@ try {
     // Operator-supplied native session (N13/N15/N16/N17 reuse a turn-bearing
     // session instead of seeding one in-row). Validated against session/read
     // before any row drives it — an unreadable SID is a hard skip, never guessed.
-    const check = await client.request('session/read', { sessionId: sessionArg })
+    // 2026-09-29 N13 run-1 discovery: a persisted turn-bearing session is
+    // VISIBLE in session/list but cold read/send answer NATIVE_-32004 until it
+    // is RESUMED into this runtime (the N16 restart mechanism). Resume once,
+    // then re-read; still unreadable → hard skip.
+    let check = await client.request('session/read', { sessionId: sessionArg })
+    if (!check.ok && String(check.error?.code ?? '').includes('32004')) {
+      const resumed = await client.request('session/resume', { sessionId: sessionArg, workspace: W })
+      log.sessionArgResume = resumed.ok ? { ok: true, keys: Object.keys(resumed.value ?? {}) } : resumed.error.toJSON()
+      if (resumed.ok) check = await client.request('session/read', { sessionId: sessionArg })
+    }
     if (!check.ok) {
       record('session-setup', {
         skipped: `--session ${sessionArg} unreadable`,
@@ -654,12 +663,17 @@ try {
         const p = await projectionNow(c, sid)
         return p.ok ? { turnCount: p.projection?.turnCount ?? 0, stateRevision: p.runtime?.stateRevision ?? 0 } : { turnCount: 0, stateRevision: 0 }
       })())
+    // 2026-09-29 N09 run-1 postmortem: session/send acceptance ITSELF bumps
+    // stateRevision, so a pre-send baseline makes revAdvanced fire instantly —
+    // stage 1 passed on the lagging idle projection, stage 2 read a FALSE
+    // terminal in 200ms, and the next leg's send hit the still-live turn
+    // (NATIVE_-32010). stateRevision is therefore NOT liveness evidence;
+    // liveness is status 'running' or an advanced turnCount (turns only).
     const sawRunning = await until(async () => {
       const p = await projectionNow(c, sid)
       if (!p.ok || !p.projection) return false
       const turnAdvanced = typeof p.projection.turnCount === 'number' && p.projection.turnCount > base.turnCount
-      const revAdvanced = p.runtime && typeof p.runtime.stateRevision === 'number' && p.runtime.stateRevision > base.stateRevision
-      return p.projection.status === 'running' || turnAdvanced || revAdvanced
+      return p.projection.status === 'running' || turnAdvanced
     }, 20000, 250)
     const runningAtMs = sawRunning ? Date.now() - start : null
     const sawTerminal = sawRunning
@@ -1253,7 +1267,7 @@ try {
       }
       record('N09', {
         description: PAID_ROWS.N09,
-        turnsCounted: Number(acceptedQ) + Number(acceptedP),
+        turnsCounted: Number(Boolean(acceptedQ)) + Number(Boolean(acceptedP)),
         questionLeg,
         planLeg,
         // The ORIGINAL turn must continue after the answer (terminal settle with
@@ -1448,14 +1462,36 @@ try {
       const settle1 = await settleTurn(client, sessionId, baseline)
       const goalFile = await readFileOrNull(path.join(workspace, 'GOAL-N12.txt'))
       const readAfterSet = await projectionNow()
-      const subagents = await call('N12', 'session/subagents', { sessionId, endedLimit: 50 })
-      const goalShow = await call('N12', 'session/goal', { sessionId, action: 'show' })
+      // 2026-09-29 N12 run-1 postmortem: the goal continuation keeps an ACTIVE
+      // PROMPT after the projection is already idle+terminal — session/goal
+      // show/clear were both rejected NATIVE_-32010 while verification was
+      // still in flight (pendingRequestIds does not cover the goal lane).
+      // Bounded wait for goal-lane RPC quiescence: show must stop rejecting.
+      let showQuietValue = null
+      let showLastError = null
+      const showQuiet = await until(async () => {
+        const s = await client.request('session/goal', { sessionId, action: 'show' })
+        if (s.ok) {
+          showQuietValue = s.value
+          return true
+        }
+        showLastError = s.error.toJSON()
+        return false
+      }, 120000, 2000)
+      const goalShow = showQuiet
+        ? { at: new Date().toISOString(), method: 'session/goal', params: redact({ sessionId, action: 'show' }), result: redact(showQuietValue), note: 'first show after bounded goal-lane quiescence wait' }
+        : await call('N12', 'session/goal', { sessionId, action: 'show' })
+      if (!showQuiet) log.rows.N12GoalLaneNeverQuiet = { waitedMs: 120000, lastError: showLastError }
       // Explicit verified cancellation: clear, then prove the goal lane is idle.
       const goalClear = await call('N12', 'session/goal', { sessionId, action: 'clear' })
       const clearShape = goalResultShape(goalClear.result)
       if (clearShape.startedTurn) await countModelTurn('N12')
-      const settle2 = await settleTurn(client, sessionId, baseline)
+      const settle2 =
+        clearShape.startedTurn === true
+          ? await settleTurn(client, sessionId, baseline)
+          : { skipped: 'clear did not start a continuation turn — nothing to settle' }
       permissionPolicy = 'refuse'
+      const subagents = await call('N12', 'session/subagents', { sessionId, endedLimit: 50 })
       const readFinal = await projectionNow()
       record('N12', {
         description: PAID_ROWS.N12,
@@ -1486,7 +1522,7 @@ try {
           !clearShape.issue &&
           (setShape.startedTurn === true || (readAfterSet.ok && Array.isArray(readAfterSet.runtime?.goalVerifications) && readAfterSet.runtime.goalVerifications.length > 0)) &&
           settle1.sawTerminal &&
-          settle2.sawTerminal &&
+          (settle2.skipped ? true : settle2.sawTerminal) &&
           typeof subagents.result === 'object' && subagents.result !== null,
       })
     }
