@@ -99,7 +99,10 @@ describe('ZK-016 win32 job-object supervision', () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'zk16-sup-'))
     onTestFinished(async () => {
       const { rm } = await import('node:fs/promises')
-      await rm(dir, { recursive: true, force: true })
+      // #28: parallel-fork timing lets the keeper's TerminateJobObject land a
+      // beat after treeDown is asserted; the keeper's handles release the temp
+      // home moments later, so EBUSY on rmdir needs bounded retries on win32.
+      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
     })
     const script = await nativeScript(dir)
     const io = startSupervisor(dir)
@@ -150,7 +153,10 @@ describe('ZK-016 win32 job-object supervision', () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'zk16-sup-'))
     onTestFinished(async () => {
       const { rm } = await import('node:fs/promises')
-      await rm(dir, { recursive: true, force: true })
+      // #28: parallel-fork timing lets the keeper's TerminateJobObject land a
+      // beat after treeDown is asserted; the keeper's handles release the temp
+      // home moments later, so EBUSY on rmdir needs bounded retries on win32.
+      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
     })
     const script = await nativeScript(dir)
     const io = startSupervisor(dir)
@@ -205,7 +211,10 @@ describe('ZK-016 win32 job-object supervision', () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'zk16-sup-'))
     onTestFinished(async () => {
       const { rm } = await import('node:fs/promises')
-      await rm(dir, { recursive: true, force: true })
+      // #28: parallel-fork timing lets the keeper's TerminateJobObject land a
+      // beat after treeDown is asserted; the keeper's handles release the temp
+      // home moments later, so EBUSY on rmdir needs bounded retries on win32.
+      await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
     })
     const script = await nativeScript(dir)
     const io = startSupervisor(dir)
