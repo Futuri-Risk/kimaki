@@ -1135,7 +1135,10 @@ describe('getTextAttachments', () => {
   }
 
   function snapshotAttachments(result: string) {
-    return result.replaceAll(getDataDir(), '<dataDir>')
+    // win32 path.join renders `\` separators inside the path= attribute —
+    // the snapshots pin the POSIX form, so normalize separators after the
+    // data-dir substitution (the attachment blocks carry no other slashes).
+    return result.replaceAll(getDataDir(), '<dataDir>').replaceAll('\\', '/')
   }
 
   test('inlines small text files and saves them locally', async () => {

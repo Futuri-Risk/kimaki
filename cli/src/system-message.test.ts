@@ -111,10 +111,14 @@ describe('system-message', () => {
     expect(system).toContain(KIMAKI_SYSTEM_PROMPT_MARKER)
     expect(system).toContain('kimaki upload-to-discord --session')
 
-    const fileMode = (await fs.promises.stat(filePath)).mode & 0o777
-    const dirMode = (await fs.promises.stat(path.dirname(filePath))).mode & 0o777
-    expect(fileMode).toBe(0o600)
-    expect(dirMode).toBe(0o700)
+    // 0600/0700 bits are a POSIX guarantee; NTFS maps everything readable to
+    // 0666 — the permission intent is enforced by the data-dir boundary there.
+    if (process.platform !== 'win32') {
+      const fileMode = (await fs.promises.stat(filePath)).mode & 0o777
+      const dirMode = (await fs.promises.stat(path.dirname(filePath))).mode & 0o777
+      expect(fileMode).toBe(0o600)
+      expect(dirMode).toBe(0o700)
+    }
 
     await deleteSessionSystemPrompt({ sessionId, dataDir })
     await expect(

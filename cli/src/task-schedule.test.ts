@@ -348,7 +348,11 @@ describe('scheduled task execution options', () => {
 
     expect(result instanceof Error || result.kind === 'skip' ? result : {
       ...result,
-      prompt: result.prompt.replace(realDirectory, '<project-directory>'),
+      // Inside the pre-run command's JSON output the path carries escaped
+      // backslashes on win32 — normalize both the raw and the JSON-escaped form.
+      prompt: result.prompt
+        .replace(realDirectory, '<project-directory>')
+        .replace(JSON.stringify(realDirectory).slice(1, -1), '<project-directory>'),
     }).toMatchInlineSnapshot(`
       {
         "kind": "run",

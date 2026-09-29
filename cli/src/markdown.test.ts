@@ -213,7 +213,19 @@ afterAll(async () => {
   }
   await stopOpencodeServer()
   if (directories) {
-    fs.rmSync(directories.dataDir, { recursive: true, force: true })
+    // win32: a just-stopped opencode server can hold the data dir past
+    // bounded retries. All assertions have already run — a leftover temp dir
+    // (swept with the workspace tmp) must not fail the suite.
+    try {
+      fs.rmSync(directories.dataDir, {
+        recursive: true,
+        force: true,
+        maxRetries: 10,
+        retryDelay: 100,
+      })
+    } catch {
+      // best-effort on win32
+    }
   }
 }, 5_000)
 
