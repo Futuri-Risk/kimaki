@@ -11,7 +11,7 @@ import { resolveBackend } from './registry.js'
 import { lookupBackendSidecar } from './host-sidecar.js'
 import { getNativeCoordinator } from './host-coordinator.js'
 import type { AgentCoordinator } from './coordinator.js'
-import type { Operation } from './types.js'
+import type { Operation, OperationState } from './types.js'
 
 export type ScheduledDispatch =
   | { kind: 'not-native' }
@@ -111,8 +111,13 @@ export async function recoverWithCoordinator(
   }
   await coordinator.store.recover(sessionId)
   const fresh = await coordinator.store.session(sessionId)
-  const operations = await coordinator.store.operations(sessionId)
-  const uncertainStates = ['submission-unknown', 'send-intent', 'cancel-unconfirmed']
+  const uncertainStates: readonly OperationState[] = [
+    'submission-unknown',
+    'send-intent',
+    'cancel-unconfirmed',
+  ]
+  // #26: recovery reporting only consumes the uncertain slice.
+  const operations = await coordinator.store.operations(sessionId, { states: uncertainStates })
   return {
     sessionId,
     state: fresh?.state ?? session.state,

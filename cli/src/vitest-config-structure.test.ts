@@ -11,6 +11,9 @@
 
 import { describe, test } from 'vitest'
 import assert from 'node:assert/strict'
+// The config lives at the package root, outside tsconfig rootDir=src, so tsc
+// cannot resolve it as a module — vitest itself loads it fine at runtime.
+// @ts-expect-error TS2307 outside the tsc program
 import config from '../vitest.config'
 
 type ProjectLike = {

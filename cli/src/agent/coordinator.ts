@@ -227,7 +227,11 @@ export class AgentCoordinator {
         } finally {
           this.draining.delete(sessionId)
           const current = await this.store.session(sessionId)
-          const queue = await this.store.operations(sessionId)
+          // #26: the queue re-read after a drain only looks at live/queued
+          // states — not the session's whole operation history.
+          const queue = await this.store.operations(sessionId, {
+            states: [...uncertain, 'preparing', 'queued'],
+          })
           if (
             current?.state === 'idle' &&
             !queue.some(
@@ -310,7 +314,11 @@ export class AgentCoordinator {
       ) {
         return false
       }
-      const operations = await this.store.operations(sessionId)
+      // #26: drain only decides between live/uncertain work and the next
+      // queued prompt — include 'queued' so the picker below can find it.
+      const operations = await this.store.operations(sessionId, {
+        states: [...uncertain, 'preparing', 'queued'],
+      })
       if (
         operations.some(
           (o) =>
@@ -413,7 +421,9 @@ export class AgentCoordinator {
         session = (await this.store.session(session.id))!
         const result = await this.backend.cancel(session, op.id)
         if (result.ok) {
-          for (const other of await this.store.operations(session.id))
+          for (const other of await this.store.operations(session.id, {
+            states: [...uncertain, 'preparing'],
+          }))
             if (
               other.id !== op.id &&
               (uncertain.includes(other.state as (typeof uncertain)[number]) ||
@@ -462,7 +472,8 @@ export class AgentCoordinator {
         }
         return
       }
-      const ops = await this.store.operations(session.id)
+      // #26: the model-order guard only compares against queued prompts.
+      const ops = await this.store.operations(session.id, { states: ['queued'] })
       if (
         op.kind === 'model' &&
         ops.some(
@@ -706,7 +717,7 @@ export class AgentCoordinator {
         throw fail('ACTOR_UNAUTHORIZED', 'Actor cannot resume this session.')
       }
       if (
-        (await this.store.operations(sessionId)).some((o) =>
+        (await this.store.operations(sessionId, { states: [...uncertain] })).some((o) =>
           uncertain.includes(o.state as (typeof uncertain)[number]),
         )
       ) {
@@ -759,7 +770,7 @@ export class AgentCoordinator {
       for (const lease of await this.store.leases()) {
         const sessionId = text(lease.agent_session_id)
         if (
-          !(await this.store.operations(sessionId)).some((o) =>
+          !(await this.store.operations(sessionId, { states: [...uncertain] })).some((o) =>
             uncertain.includes(o.state as (typeof uncertain)[number]),
           )
         ) {

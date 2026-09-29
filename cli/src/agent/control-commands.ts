@@ -90,9 +90,10 @@ export async function queueNativePrompt(args: {
   if (!result.ok) {
     return { kind: 'rejected', code: result.error.code, message: result.error.message }
   }
-  const queued = await coordinator.store.operations(resolved.sessionId)
+  // #26: the queue position only ranks queued prompts — skip full history.
+  const queued = await coordinator.store.operations(resolved.sessionId, { states: ['queued'] })
   const position = queued
-    .filter((o) => o.kind === 'prompt' && o.state === 'queued')
+    .filter((o) => o.kind === 'prompt')
     .findIndex((o) => o.id === result.value.id)
   await coordinator.settle()
   const final = await coordinator.store.operation(result.value.id)

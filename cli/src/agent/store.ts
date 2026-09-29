@@ -99,6 +99,24 @@ function parseSession(r: SqlRow): AgentSession {
   }
 }
 export class AgentStore {
+  // #26: streaming parts only update the projection cache — the native event
+  // stream is the source of truth and replays from the persisted cursor, so
+  // their snapshot writes coalesce per (session, stream) until quiescence.
+  // Parts that carry outbox effects (delivery !== 'snapshot' and not
+  // state === 'streaming') always flush synchronously, preserving the
+  // persistence-before-effects contract.
+  private readonly viewBuffers = new Map<
+    string,
+    {
+      sessionId: string
+      stream: string
+      parts: Map<string, DisplayPart>
+      cursor: Cursor
+      threadId: string
+      timer: ReturnType<typeof setTimeout> | null
+    }
+  >()
+  private readonly viewFlushErrors = new Map<string, unknown>()
   constructor(
     readonly db: SqlClient,
     readonly ownerMachineId: string,
@@ -252,14 +270,17 @@ export class AgentStore {
       )
     ).rows
     const keep = new Set(keepIds)
-    let removed = 0
-    for (const row of rows) {
-      if (!keep.has(text(row.id))) {
-        await this.db.execute(q('DELETE FROM agent_attachments WHERE id=?', text(row.id)))
-        removed++
-      }
-    }
-    return removed
+    const drop = rows.map((r) => text(r.id)).filter((id) => !keep.has(id))
+    if (!drop.length) return 0
+    // #26: one batched DELETE instead of a round-trip per dropped row.
+    await this.db.execute(
+      q(
+        `DELETE FROM agent_attachments WHERE agent_session_id=? AND id IN (${drop.map(() => '?').join(',')})`,
+        sessionId,
+        ...drop,
+      ),
+    )
+    return drop.length
   }
   async latestChildSession(parentId: string) {
     const r = (
@@ -531,15 +552,19 @@ export class AgentStore {
     const r = (await this.db.execute(q('SELECT * FROM agent_operations WHERE id=?', id))).rows[0]
     return r ? parseOperation(r) : null
   }
-  async operations(sessionId: string) {
-    return (
-      await this.db.execute(
-        q(
-          'SELECT * FROM agent_operations WHERE agent_session_id=? ORDER BY queue_order',
-          sessionId,
-        ),
-      )
-    ).rows.map(parseOperation)
+  /**
+   * Operations of a session in queue order. #26: pass `states` when the caller
+   * only needs particular lifecycles (kick/drain/queue-position/sweeper paths
+   * need queued/preparing/uncertain rows, not a session's whole history) — the
+   * unfiltered call remains for recovery and replay, which genuinely want it.
+   */
+  async operations(sessionId: string, opts: { states?: readonly OperationState[] } = {}) {
+    const states = opts.states
+    const sql = states?.length
+      ? `SELECT * FROM agent_operations WHERE agent_session_id=? AND state IN (${states.map(() => '?').join(',')}) ORDER BY queue_order`
+      : 'SELECT * FROM agent_operations WHERE agent_session_id=? ORDER BY queue_order'
+    const args = states?.length ? [sessionId, ...states] : [sessionId]
+    return (await this.db.execute(q(sql, ...args))).rows.map(parseOperation)
   }
   async transition(
     id: string,
@@ -808,7 +833,79 @@ export class AgentStore {
       ),
     )
   }
+  /**
+   * Project display parts into the durable stream snapshot and the delivery
+   * outbox. Streaming/snapshot-delivery parts are coalesced per
+   * (session, stream) — see {@link viewBuffers} — while any part carrying
+   * outbox effects flushes the whole buffer synchronously (persistence before
+   * effects). Callers that need the snapshot on disk (tests, teardown) use
+   * {@link flushView}.
+   */
   async view(sessionId: string, cursor: Cursor, parts: readonly DisplayPart[], threadId: string) {
+    const key = sessionId + '\u0000' + cursor.stream
+    const pending = this.viewFlushErrors.get(key)
+    if (pending !== undefined) {
+      this.viewFlushErrors.delete(key)
+      throw pending
+    }
+    const urgent = parts.some((p) => p.delivery !== 'snapshot' && p.state !== 'streaming')
+    if (urgent) {
+      const buffered = this.viewBuffers.get(key)
+      const merged = new Map(buffered?.parts ?? [])
+      for (const p of parts) merged.set(p.id, p)
+      if (buffered) this.dropViewBuffer(key)
+      return this.viewNow(sessionId, cursor, [...merged.values()], threadId)
+    }
+    let buffer = this.viewBuffers.get(key)
+    if (!buffer) {
+      buffer = { sessionId, stream: cursor.stream, parts: new Map(), cursor, threadId, timer: null }
+      this.viewBuffers.set(key, buffer)
+    }
+    for (const p of parts) buffer.parts.set(p.id, p)
+    buffer.cursor = cursor
+    buffer.threadId = threadId
+    if (buffer.parts.size >= 512) {
+      this.dropViewBuffer(key)
+      return this.viewNow(sessionId, cursor, [...buffer.parts.values()], threadId).catch((e) => {
+        this.viewFlushErrors.set(key, e)
+      })
+    }
+    if (!buffer.timer) {
+      buffer.timer = setTimeout(() => {
+        const current = this.viewBuffers.get(key)
+        if (!current) return
+        this.dropViewBuffer(key)
+        void this.viewNow(current.sessionId, current.cursor, [...current.parts.values()], current.threadId).catch(
+          (e) => {
+            this.viewFlushErrors.set(key, e)
+          },
+        )
+      }, 120)
+      buffer.timer.unref?.()
+    }
+  }
+  private dropViewBuffer(key: string) {
+    const buffer = this.viewBuffers.get(key)
+    if (buffer?.timer) clearTimeout(buffer.timer)
+    this.viewBuffers.delete(key)
+  }
+  /** Flush any coalesced streaming parts for a session to disk now. */
+  async flushView(sessionId: string) {
+    const errors: unknown[] = []
+    for (const key of [...this.viewBuffers.keys()]) {
+      const buffer = this.viewBuffers.get(key)
+      if (!buffer || buffer.sessionId !== sessionId) continue
+      this.dropViewBuffer(key)
+      try {
+        await this.viewNow(buffer.sessionId, buffer.cursor, [...buffer.parts.values()], buffer.threadId)
+      } catch (e) {
+        this.viewFlushErrors.set(key, e)
+        errors.push(e)
+      }
+    }
+    if (errors.length) throw errors[0]
+  }
+  private async viewNow(sessionId: string, cursor: Cursor, parts: readonly DisplayPart[], threadId: string) {
     await transaction(this.db, async (tx) => {
       const saved = (
         await tx.execute(
