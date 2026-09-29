@@ -7,11 +7,11 @@
 // run internals.
 
 import crypto from 'node:crypto'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { ChannelType, type ThreadChannel } from 'discord.js'
 import type {
   Event as OpenCodeEvent,
   Part,
-  PermissionRuleset,
   PermissionRequest,
   QuestionRequest,
   Message as OpenCodeMessage,
@@ -39,11 +39,27 @@ import {
 import { createLogger, LogPrefix } from '../logger.js'
 import {
   sendThreadMessage,
+  sendSessionPartMessage,
   SILENT_MESSAGE_FLAGS,
   NOTIFY_MESSAGE_FLAGS,
+  raceDiscordRename,
+  DISCORD_THREAD_RENAME_TIMEOUT_MS,
+  resolveThreadFooterMentionUserId,
 } from '../discord-utils.js'
-import type { DiscordFileAttachment } from '../message-formatting.js'
-import { formatPart } from '../message-formatting.js'
+import type { DiscordFileAttachment, SessionPartKind } from '../message-formatting.js'
+import {
+  asDiscordQuote,
+  formatPart,
+  formatTaskToolTitle,
+  planAssistantTurnFlush,
+  QUEUE_PREFIX,
+  sessionPartKind,
+  shouldLeadWithBlankLine,
+  shouldQuoteIntermediateTextPart,
+  STATUS_PREFIX,
+  WORKTREE_PREFIX,
+  type AssistantTurnFlushMode,
+} from '../message-formatting.js'
 import {
   getChannelVerbosity,
   getPartMessageIds,
@@ -55,11 +71,18 @@ import {
   setThreadParentSessionId,
   getThreadWorktreeOrWorkspace,
   setSessionAgent,
+  setSessionModel,
   clearSessionModel,
   getVariantCascade,
   setSessionStartSource,
+  getSessionStartSource,
+  getScheduledTask,
+  completeScheduledTaskRunsForSession,
+  failScheduledTaskRunsForSession,
+  startScheduledTaskRunSession,
   appendSessionEventsSinceLastTimestamp,
   getSessionEventSnapshot,
+  cancelSessionSleepForThread,
 } from '../database.js'
 import * as orm from 'drizzle-orm'
 import * as schema from '../schema.js'
@@ -73,6 +96,7 @@ import {
   showAskUserQuestionDropdowns,
   pendingQuestionContexts,
   cancelPendingQuestion,
+  findPendingQuestionContextForRequest,
 } from '../commands/ask-question.js'
 import {
   showActionButtons,
@@ -80,14 +104,9 @@ import {
   pendingActionButtonContexts,
   cancelPendingActionButtons,
 } from '../commands/action-buttons.js'
-import {
-  pendingFileUploadContexts,
-  cancelPendingFileUpload,
-} from '../commands/file-upload.js'
-import {
-  getCurrentModelInfo,
-  ensureSessionPreferencesSnapshot,
-} from '../commands/model.js'
+import { pendingFileUploadContexts, cancelPendingFileUpload } from '../commands/file-upload.js'
+import { getCurrentModelInfo, ensureSessionPreferencesSnapshot } from '../commands/model.js'
+import { displayedModelLabel, resolveDisplayedModelName, validateModelId } from './model-utils.js'
 import {
   getOpencodePromptContext,
   getOpencodeSystemMessage,
@@ -95,11 +114,14 @@ import {
   type AgentInfo,
   type RepliedMessageContext,
   type WorktreeInfo,
+  type ScheduledTaskSystemContext,
 } from '../system-message.js'
 import { getDataDir } from '../config.js'
+import { store } from '../store.js'
 import {
   trackEvent,
   type AnalyticsIngressMode,
+  type AnalyticsProps,
   type AnalyticsTurnInputKind,
   type AnalyticsTurnSource,
 } from '../analytics.js'
@@ -112,17 +134,24 @@ import {
 import {
   doesLatestUserTurnHaveNaturalCompletion,
   getLatestUserTurnCompletedToolCall,
+  didLatestUserTurnUseSleepTool,
   didQuestionQueueHandoffSinceLatestQuestionAsked,
+  deriveLatestUnansweredQuestion,
   getAssistantMessageIdsForLatestUserTurn,
   getCurrentTurnStartTime,
   isSessionBusy,
   getLatestRunInfo,
+  getIdleTokenUsageDelta,
   getDerivedSubtaskIndex,
   getDerivedSubtaskAgentType,
+  getTokenUsageSessionIdsForIdle,
+  isDerivedChildSession,
   getLatestAssistantMessageIdForLatestUserTurn,
+  getAssistantMessageKind,
   hasAssistantMessageCompletedBefore,
   isAssistantMessageInLatestUserTurn,
   isAssistantMessageNaturalCompletion,
+  shouldBufferSessionEvent,
   type EventBufferEvent,
   type EventBufferEntry,
 } from './event-stream-state.js'
@@ -144,16 +173,9 @@ export const pendingPermissions = new Map<
     }
   > // permissionId -> data
 >()
-import {
-  getThinkingValuesForModel,
-  matchThinkingValue,
-} from '../thinking-utils.js'
+import { getThinkingValuesForModel, matchThinkingValue } from '../thinking-utils.js'
 import { execAsync } from '../worktrees.js'
-import {
-  DiscordOperationError,
-  OpenCodeSdkError,
-  FilesystemOperationError,
-} from '../errors.js'
+import { DiscordOperationError, OpenCodeSdkError, FilesystemOperationError } from '../errors.js'
 
 import { notifyError } from '../sentry.js'
 import { createDebouncedProcessFlush } from '../debounced-process-flush.js'
@@ -176,8 +198,7 @@ function stripToastSessionId({ message }: { message: string }): string {
 }
 
 const shouldLogSessionEvents =
-  process.env['KIMAKI_LOG_SESSION_EVENTS'] === '1' ||
-  process.env['KIMAKI_VITEST'] === '1'
+  process.env['KIMAKI_LOG_SESSION_EVENTS'] === '1' || process.env['KIMAKI_VITEST'] === '1'
 
 // ── Registry ─────────────────────────────────────────────────────
 // Runtime instances are kept in a plain Map (not Zustand — the Map
@@ -185,9 +206,64 @@ const shouldLogSessionEvents =
 
 const runtimes = new Map<string, ThreadSessionRuntime>()
 
-export function getRuntime(
-  threadId: string,
-): ThreadSessionRuntime | undefined {
+// Per-thread FIFO for Discord arrival order of one-shot slash calls vs messages.
+// Covers /plan-agent (no prompt) and /foo-cmd /foo-skill. OpenCode already
+// queues promptAsync. /model, /agent, and /compact are not on this queue.
+const threadIngressChains = new Map<string, Promise<void>>()
+const threadIngressSlotAls = new AsyncLocalStorage<ThreadIngressSlot | undefined>()
+
+export type ThreadIngressSlot = {
+  wait: Promise<void>
+  release: () => void
+}
+
+export function reserveThreadIngress(threadId: string): ThreadIngressSlot {
+  const previous = threadIngressChains.get(threadId) ?? Promise.resolve()
+  let released = false
+  let releaseHeld = () => {}
+  const held = new Promise<void>((resolve) => {
+    releaseHeld = resolve
+  })
+  threadIngressChains.set(
+    threadId,
+    previous.then(() => held),
+  )
+  return {
+    wait: previous,
+    release: () => {
+      if (released) {
+        return
+      }
+      released = true
+      releaseHeld()
+    },
+  }
+}
+
+export async function runInThreadIngressSlot<T>(
+  slot: ThreadIngressSlot | undefined,
+  run: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await threadIngressSlotAls.run(slot, run)
+  } finally {
+    slot?.release()
+  }
+}
+
+export async function waitForCurrentThreadIngress(): Promise<void> {
+  const slot = threadIngressSlotAls.getStore()
+  if (!slot) {
+    return
+  }
+  await slot.wait
+}
+
+export function releaseCurrentThreadIngress(): void {
+  threadIngressSlotAls.getStore()?.release()
+}
+
+export function getRuntime(threadId: string): ThreadSessionRuntime | undefined {
   return runtimes.get(threadId)
 }
 
@@ -198,11 +274,10 @@ export type RuntimeOptions = {
   sdkDirectory: string
   channelId?: string
   appId?: string
+  sessionId?: string
 }
 
-export function getOrCreateRuntime(
-  opts: RuntimeOptions,
-): ThreadSessionRuntime {
+export function getOrCreateRuntime(opts: RuntimeOptions): ThreadSessionRuntime {
   const existing = runtimes.get(opts.threadId)
   if (existing) {
     if (existing.sdkDirectory !== opts.sdkDirectory) {
@@ -210,9 +285,15 @@ export function getOrCreateRuntime(
         `[RUNTIME] Ignoring sdkDirectory change for existing thread ${opts.threadId}: ${existing.sdkDirectory} → ${opts.sdkDirectory}`,
       )
     }
+    if (opts.sessionId && !existing.state?.sessionId) {
+      threadState.setSessionId(opts.threadId, opts.sessionId)
+    }
     return existing
   }
   threadState.ensureThread(opts.threadId) // add to global store
+  if (opts.sessionId) {
+    threadState.setSessionId(opts.threadId, opts.sessionId)
+  }
   const runtime = new ThreadSessionRuntime(opts)
   runtimes.set(opts.threadId, runtime)
   return runtime
@@ -226,6 +307,7 @@ export function disposeRuntime(threadId: string): void {
   runtime.dispose()
   runtimes.delete(threadId)
   threadState.removeThread(threadId) // remove from global store
+  threadIngressChains.delete(threadId)
 }
 
 export function disposeRuntimesForDirectory({
@@ -246,6 +328,7 @@ export function disposeRuntimesForDirectory({
     runtime.dispose()
     runtimes.delete(threadId)
     threadState.removeThread(threadId)
+    threadIngressChains.delete(threadId)
     count++
   }
   return count
@@ -256,26 +339,37 @@ export function getRuntimeCount(): number {
   return runtimes.size
 }
 
-export function disposeInactiveRuntimes({
+export async function disposeInactiveRuntimes({
   idleMs,
   nowMs = Date.now(),
+  shouldDispose,
 }: {
   idleMs: number
   nowMs?: number
-}): {
+  /**
+   * Optional async veto (ZK-012): return false to keep a runtime alive. The
+   * idle sweeper uses it so a native session with active or uncertain work
+   * (background/goal/control) never loses its runtime or ownership.
+   */
+  shouldDispose?: (threadId: string) => Promise<boolean> | boolean
+}): Promise<{
   disposedThreadIds: string[]
   disposedDirectories: string[]
-} {
-  const candidates = [...runtimes.entries()].filter(([, runtime]) => {
+}> {
+  const idleCandidates = [...runtimes.entries()].filter(([, runtime]) => {
     return runtime.isIdleForInactivityTimeout({ idleMs, nowMs })
   })
   const disposedDirectories = new Set<string>()
   const disposedThreadIds: string[] = []
 
-  for (const [threadId, runtime] of candidates) {
+  for (const [threadId, runtime] of idleCandidates) {
+    if (shouldDispose && !(await shouldDispose(threadId))) {
+      continue
+    }
     runtime.dispose()
     runtimes.delete(threadId)
     threadState.removeThread(threadId)
+    threadIngressChains.delete(threadId)
     disposedThreadIds.push(threadId)
     disposedDirectories.add(runtime.projectDirectory)
   }
@@ -301,9 +395,8 @@ function cleanupPendingUiForThread(threadId: string): void {
       if (ctx) {
         const client = getOpencodeClient(ctx.directory)
         if (client) {
-          const requestIds: string[] = ctx.requestIds.length > 0
-            ? ctx.requestIds
-            : [ctx.permission.id]
+          const requestIds: string[] =
+            ctx.requestIds.length > 0 ? ctx.requestIds : [ctx.permission.id]
           void Promise.all(
             requestIds.map((requestId) => {
               return client.permission.reply({
@@ -368,63 +461,39 @@ type TokenUsage = {
 }
 
 function getTokenTotal(tokens: TokenUsage): number {
-  return (
-    tokens.input +
-    tokens.output +
-    tokens.reasoning +
-    tokens.cache.read +
-    tokens.cache.write
-  )
+  return tokens.input + tokens.output + tokens.reasoning + tokens.cache.read + tokens.cache.write
 }
 
-/**
- * Built-in read-only tools that are hidden in default verbosity mode.
- * Any tool NOT in this list is considered "essential" and shown,
- * which means custom tools, MCP tools, and plugin tools are visible by default.
- */
-const HIDDEN_READONLY_TOOLS = [
-  'read',
-  'glob',
-  'grep',
-  'describe-media',
-  'todoread',
-]
-
-/** Check if a tool part is "essential" (shown in text-and-essential-tools mode). */
-export function isEssentialToolName(toolName: string): boolean {
-  // Hide known read-only built-in tools; show everything else
-  // (custom tools, MCP tools, plugin tools are visible by default)
-  return !HIDDEN_READONLY_TOOLS.some((name) => {
-    return toolName === name || toolName.endsWith(`_${name}`)
-  })
-}
-
-export function isEssentialToolPart(part: Part): boolean {
-  if (part.type !== 'tool') {
-    return false
-  }
-  if (!isEssentialToolName(part.tool)) {
-    return false
-  }
-  if (part.tool === 'bash') {
-    const hasSideEffect = part.state.input?.hasSideEffect
-    return hasSideEffect !== false
-  }
-  return true
-}
+// Verbosity essentials live in message-formatting so the native renderer can
+// reuse the exact host rule without importing the runtime graph. — ZCode ZK-008
+export {
+  HIDDEN_READONLY_TOOLS,
+  isEssentialToolName,
+  isEssentialToolPart,
+} from '../message-formatting.js'
+import { isEssentialToolPart } from '../message-formatting.js'
 
 // ── Thread title derivation ──────────────────────────────────────
 
 const DISCORD_THREAD_NAME_MAX = 100
-const WORKTREE_THREAD_PREFIX = '⬦ '
 
 // Prefixes that should survive OpenCode session title renames.
 // When a thread starts with one of these, the rename preserves it.
+// (Merge 2026-09-30: main's export + our WORKTREE_PREFIX constant unified —
+// both are the '⬦ ' status prefix.)
 export const PRESERVED_THREAD_PREFIXES: string[] = [
-  WORKTREE_THREAD_PREFIX,
+  WORKTREE_PREFIX,
   'btw: ',
   'Fork: ',
 ]
+
+function stripPreservedThreadPrefix(name: string) {
+  const matchedPrefix = PRESERVED_THREAD_PREFIXES.find((prefix) => {
+    return name.startsWith(prefix)
+  })
+  if (!matchedPrefix) return name
+  return name.slice(matchedPrefix.length).trim()
+}
 
 function getThreadNameCandidateFromSessionTitle({
   sessionTitle,
@@ -433,18 +502,22 @@ function getThreadNameCandidateFromSessionTitle({
   sessionTitle: string | undefined | null
   currentName: string
 }) {
-  const trimmed = sessionTitle?.trim()
+  const trimmed = sessionTitle?.replace(/<\/?callout\b[^>]*>/gi, '').trim()
   if (!trimmed) {
     return null
   }
-  if (/^new session\s*-/i.test(trimmed)) {
+  const withoutCopiedPrefix = stripPreservedThreadPrefix(trimmed)
+  if (!withoutCopiedPrefix) {
+    return null
+  }
+  if (/^new session\s*-/i.test(withoutCopiedPrefix)) {
     return null
   }
   const matchedPrefix =
     PRESERVED_THREAD_PREFIXES.find((p) => {
       return currentName.startsWith(p)
     }) ?? ''
-  return `${matchedPrefix}${trimmed}`.slice(0, DISCORD_THREAD_NAME_MAX)
+  return `${matchedPrefix}${withoutCopiedPrefix}`.slice(0, DISCORD_THREAD_NAME_MAX)
 }
 
 export function deriveThreadNameFromSessionTitle({
@@ -467,45 +540,6 @@ export function deriveThreadNameFromSessionTitle({
   return candidate
 }
 
-export function deriveThreadRenameFromSessionUpdate({
-  sessionTitle,
-  currentName,
-  lastSyncedName,
-}: {
-  sessionTitle: string | undefined | null
-  currentName: string
-  lastSyncedName: string | null
-}) {
-  if (lastSyncedName !== null && currentName !== lastSyncedName) {
-    return {
-      desiredName: null,
-      nextSyncedName: lastSyncedName,
-    }
-  }
-
-  const candidate = getThreadNameCandidateFromSessionTitle({
-    sessionTitle,
-    currentName,
-  })
-  if (candidate === null) {
-    return {
-      desiredName: null,
-      nextSyncedName: lastSyncedName,
-    }
-  }
-  if (candidate === currentName) {
-    return {
-      desiredName: null,
-      nextSyncedName: currentName,
-    }
-  }
-
-  return {
-    desiredName: candidate,
-    nextSyncedName: candidate,
-  }
-}
-
 // ── Ingress input type ───────────────────────────────────────────
 
 export type EnqueueResult = {
@@ -526,7 +560,6 @@ export type PreprocessResult = {
   prompt: string
   images?: DiscordFileAttachment[]
   repliedMessage?: RepliedMessageContext
-  permissionRules?: PermissionRuleset
   /** Resolved mode based on voice transcription result. */
   mode: 'opencode' | 'local-queue'
   /** When true, preprocessing determined the message should be silently dropped. */
@@ -562,6 +595,11 @@ export type IngressInput = {
   agent?: string
   model?: string
   /**
+   * Thinking-level variant from `/xxx-agent variant:`. Applied after
+   * agent/model snapshot so it wins over cascade for this turn.
+   */
+  variant?: string
+  /**
    * Raw permission rule strings from --permission flag ("tool:action" or
    * "tool:pattern:action"). Parsed into PermissionRuleset entries by
    * parsePermissionRules() and appended after buildSessionPermissions()
@@ -569,7 +607,6 @@ export type IngressInput = {
    * session creation (first dispatch).
    */
   permissions?: string[]
-  permissionRules?: PermissionRuleset
   injectionGuardPatterns?: string[]
   /**
    * Parent OpenCode session ID from explicit `kimaki send --parent-session` only.
@@ -577,7 +614,11 @@ export type IngressInput = {
    * Never set for /btw, /fork, or task/subagent children (keeps system prompt cache).
    */
   parentSessionId?: string
-  sessionStartSource?: { scheduleKind: 'at' | 'cron'; scheduledTaskId?: number }
+  sessionStartSource?: {
+    scheduleKind: 'at' | 'cron'
+    scheduledTaskId?: number
+    scheduledTaskRunId?: number
+  }
   /** Optional guard for retries: skip enqueue when session has changed. */
   expectedSessionId?: string
   /**
@@ -587,6 +628,12 @@ export type IngressInput = {
    * (e.g. user-to-user replies in a thread).
    */
   noReply?: boolean
+  /**
+   * True only for the wake prompt posted by the kimaki_sleep task runner.
+   * Every other ingress cancels a pending sleep; this one must not, because it
+   * is delivering that sleep rather than superseding it.
+   */
+  isSleepWake?: boolean
   /**
    * Product-analytics turn source. Defaults to discord. Set retry/cli/scheduled
    * at the ingress site so DAU queries can exclude non-user activity.
@@ -608,7 +655,11 @@ export type IngressInput = {
 
 function resolveTurnSource(input: {
   analyticsSource?: AnalyticsTurnSource
-  sessionStartSource?: { scheduleKind: 'at' | 'cron'; scheduledTaskId?: number }
+  sessionStartSource?: {
+    scheduleKind: 'at' | 'cron'
+    scheduledTaskId?: number
+    scheduledTaskRunId?: number
+  }
   sessionStartScheduleKind?: 'at' | 'cron'
 }): AnalyticsTurnSource {
   if (input.analyticsSource) return input.analyticsSource
@@ -663,13 +714,8 @@ function getWorktreePromptKey(worktree: WorktreeInfo | undefined): string | null
   if (!worktree) {
     return null
   }
-  return [
-    worktree.worktreeDirectory,
-    worktree.branch,
-    worktree.mainRepoDirectory,
-  ].join('::')
+  return [worktree.worktreeDirectory, worktree.branch, worktree.mainRepoDirectory].join('::')
 }
-
 
 // ── Runtime class ────────────────────────────────────────────────
 
@@ -693,32 +739,28 @@ export class ThreadSessionRuntime {
   // message and showing multiple back-to-back POSTs is wasteful.
   private typingKeepaliveTimeout: ReturnType<typeof setTimeout> | null = null
   private readonly typingRepulseDebounce: ReturnType<typeof createDebouncedTimeout>
+  private readonly deferredQuestionShow: ReturnType<typeof createDebouncedTimeout>
 
   private static TYPING_REPULSE_DEBOUNCE_MS = 500
+  private static DEFERRED_QUESTION_SHOW_MS = 1000
 
   // Notification throttles for retry/context notices.
   private lastDisplayedContextPercentage = 0
   private lastRateLimitDisplayTime = 0
 
-  // Last OpenCode-generated session title we successfully applied to the
-  // Discord thread name. Used to dedupe repeated session.updated events so
-  // we only call thread.setName() once per distinct title. Discord rate-limits
-  // channel/thread renames to ~2 per 10 minutes per thread, so we must avoid
-  // retrying. Not persisted — worst case on restart we re-apply the same title
-  // once (which is a no-op via deriveThreadNameFromSessionTitle).
+  // Last OpenCode session title we applied to Discord. Dedupes session.updated
+  // so we only call setName once per distinct title. Not persisted.
   private appliedOpencodeTitle: string | undefined
-
-  // Last Discord thread name known to match the OpenCode title. Persisted so a
-  // user rename is still respected after Kimaki restarts.
-  private lastSyncedThreadName: string | null | undefined
 
   // Part output buffering (write-side cache, not domain state)
   private partBuffer = new Map<string, Map<string, Part>>()
+  private shownQuestionRequestIds = new Set<string>()
 
   // Derivable cache (perf optimization for provider.list API call)
   private modelContextLimit: number | undefined
   private modelContextLimitKey: string | undefined
   private lastPromptWorktreeKey: string | null | undefined
+  private lastSentPartKind: SessionPartKind | undefined
 
   // Bounded buffer of recent SSE events with timestamps.
   // Used by waitForEvent() to scan for specific events that arrived
@@ -729,9 +771,7 @@ export class ThreadSessionRuntime {
   private static EVENT_BUFFER_TEXT_MAX_CHARS = 512
   private eventBuffer: EventBufferEntry[] = []
   private nextEventIndex = 0
-  private persistEventBufferDebounced: ReturnType<
-    typeof createDebouncedProcessFlush
-  >
+  private persistEventBufferDebounced: ReturnType<typeof createDebouncedProcessFlush>
   private readonly sentPartIdsBootstrap: Promise<void>
 
   // Serialized action queue for per-thread runtime transitions.
@@ -791,11 +831,20 @@ export class ThreadSessionRuntime {
         this.restartTypingKeepalive({ sendNow: true })
       },
     })
+    this.deferredQuestionShow = createDebouncedTimeout({
+      delayMs: ThreadSessionRuntime.DEFERRED_QUESTION_SHOW_MS,
+      callback: () => {
+        if (this.disposed) {
+          return
+        }
+        void this.dispatchAction(async () => {
+          await this.tryShowPendingQuestion({ ignoreUnfinishedText: true })
+        })
+      },
+    })
   }
 
-  private consumeWorktreePromptChange(
-    worktree: WorktreeInfo | undefined,
-  ): boolean {
+  private consumeWorktreePromptChange(worktree: WorktreeInfo | undefined): boolean {
     const nextKey = getWorktreePromptKey(worktree)
     const changed = this.lastPromptWorktreeKey !== nextKey
     this.lastPromptWorktreeKey = nextKey
@@ -811,11 +860,7 @@ export class ThreadSessionRuntime {
     return this.isMainSessionBusy() ? 'running' : 'idle'
   }
 
-  private getLastRuntimeActivityTimestamp({
-    nowMs: _nowMs,
-  }: {
-    nowMs: number
-  }): number {
+  private getLastRuntimeActivityTimestamp({ nowMs: _nowMs }: { nowMs: number }): number {
     const lastEvent = this.eventBuffer[this.eventBuffer.length - 1]
     const lastEventTimestamp = lastEvent?.timestamp
     if (typeof lastEventTimestamp === 'number' && Number.isFinite(lastEventTimestamp)) {
@@ -823,9 +868,9 @@ export class ThreadSessionRuntime {
     }
     const threadCreatedTimestamp = this.thread.createdTimestamp
     if (
-      typeof threadCreatedTimestamp === 'number'
-      && Number.isFinite(threadCreatedTimestamp)
-      && threadCreatedTimestamp > 0
+      typeof threadCreatedTimestamp === 'number' &&
+      Number.isFinite(threadCreatedTimestamp) &&
+      threadCreatedTimestamp > 0
     ) {
       return threadCreatedTimestamp
     }
@@ -852,11 +897,7 @@ export class ThreadSessionRuntime {
     return true
   }
 
-  getInactivitySnapshot({
-    nowMs,
-  }: {
-    nowMs: number
-  }): {
+  getInactivitySnapshot({ nowMs }: { nowMs: number }): {
     idleCandidate: boolean
     inactiveForMs: number
   } {
@@ -867,13 +908,7 @@ export class ThreadSessionRuntime {
     }
   }
 
-  isIdleForInactivityTimeout({
-    idleMs,
-    nowMs,
-  }: {
-    idleMs: number
-    nowMs: number
-  }): boolean {
+  isIdleForInactivityTimeout({ idleMs, nowMs }: { idleMs: number; nowMs: number }): boolean {
     const snapshot = this.getInactivitySnapshot({ nowMs })
     if (!snapshot.idleCandidate) {
       return false
@@ -923,9 +958,7 @@ export class ThreadSessionRuntime {
 
     this.eventBuffer = hydratedEvents.slice(-ThreadSessionRuntime.EVENT_BUFFER_MAX)
     const lastHydratedEvent = this.eventBuffer[this.eventBuffer.length - 1]
-    this.nextEventIndex = lastHydratedEvent
-      ? Number(lastHydratedEvent.eventIndex || 0) + 1
-      : 0
+    this.nextEventIndex = lastHydratedEvent ? Number(lastHydratedEvent.eventIndex || 0) + 1 : 0
     logger.log(
       `[SESSION EVENT DB] Hydrated ${this.eventBuffer.length} events for session ${sessionId}`,
     )
@@ -938,9 +971,10 @@ export class ThreadSessionRuntime {
     }
 
     const events = this.eventBuffer.flatMap((entry) => {
-      const eventSessionId = entry.event.type === 'queue.question-handoff-started'
-        ? entry.event.properties.sessionID
-        : getOpencodeEventSessionId(entry.event)
+      const eventSessionId =
+        entry.event.type === 'queue.question-handoff-started'
+          ? entry.event.properties.sessionID
+          : getOpencodeEventSessionId(entry.event)
       if (eventSessionId !== sessionId) {
         return []
       }
@@ -970,9 +1004,10 @@ export class ThreadSessionRuntime {
     if (!sessionId) {
       return 'none'
     }
-    const latestAssistant = this.getLatestAssistantMessageIdForCurrentTurn({
-      sessionId,
-    }) || 'none'
+    const latestAssistant =
+      this.getLatestAssistantMessageIdForCurrentTurn({
+        sessionId,
+      }) || 'none'
     const assistantCount = this.getAssistantMessageIdsForCurrentTurn({
       sessionId,
     }).size
@@ -986,6 +1021,52 @@ export class ThreadSessionRuntime {
       return false
     }
     return isSessionBusy({ events: this.eventBuffer, sessionId })
+  }
+
+  private async persistIngressVariant({
+    sessionId,
+    channelId,
+    appId,
+    agentPreference,
+    getClient,
+    variant,
+  }: {
+    sessionId: string
+    channelId?: string
+    appId?: string
+    agentPreference?: string
+    getClient: Awaited<ReturnType<typeof initializeOpencodeForDirectory>>
+    variant?: string
+  }) {
+    if (!variant) return
+    if (getClient instanceof Error) return
+    const variantModelInfo = await getCurrentModelInfo({
+      sessionId,
+      channelId,
+      appId,
+      agentPreference,
+      getClient,
+      directory: this.sdkDirectory,
+    })
+    if (variantModelInfo.type === 'none') return
+    const providersResponse = await getClient()
+      .provider.list({ directory: this.sdkDirectory })
+      .catch((e) => new OpenCodeSdkError({ operation: 'provider.list', cause: e }))
+    if (providersResponse instanceof Error || !providersResponse.data) return
+    const matchedVariant = matchThinkingValue({
+      requestedValue: variant,
+      availableValues: getThinkingValuesForModel({
+        providers: providersResponse.data.all,
+        providerId: variantModelInfo.providerID,
+        modelId: variantModelInfo.modelID,
+      }),
+    })
+    if (!matchedVariant) return
+    await setSessionModel({
+      sessionId,
+      modelId: variantModelInfo.model,
+      variant: matchedVariant,
+    })
   }
 
   private getAssistantMessageIdsForCurrentTurn({
@@ -1025,21 +1106,27 @@ export class ThreadSessionRuntime {
     if (!mainSessionId || candidateSessionId === mainSessionId) {
       return undefined
     }
+    if (
+      !isDerivedChildSession({
+        events: this.eventBuffer,
+        mainSessionId,
+        candidateSessionId,
+      })
+    ) {
+      return undefined
+    }
+
     const subtaskIndex = getDerivedSubtaskIndex({
       events: this.eventBuffer,
       mainSessionId,
       candidateSessionId,
     })
-    if (!subtaskIndex) {
-      return undefined
-    }
-
     const agentType = getDerivedSubtaskAgentType({
       events: this.eventBuffer,
       mainSessionId,
       candidateSessionId,
     })
-    const label = `${agentType || 'task'}-${subtaskIndex}`
+    const label = `${agentType || 'task'}-${subtaskIndex || 1}`
     const assistantMessageId = this.getLatestAssistantMessageIdForCurrentTurn({
       sessionId: candidateSessionId,
     })
@@ -1052,6 +1139,7 @@ export class ThreadSessionRuntime {
     this.disposed = true
     unregisterEventListener(this.threadId)
     void this.persistEventBufferDebounced.dispose()
+    this.deferredQuestionShow.clear()
     this.stopTyping()
 
     // Release large internal buffers so GC can reclaim memory immediately
@@ -1059,6 +1147,7 @@ export class ThreadSessionRuntime {
     this.eventBuffer = []
     this.nextEventIndex = 0
     this.partBuffer.clear()
+    this.shownQuestionRequestIds.clear()
     this.preprocessChain = Promise.resolve()
 
     // Don't clear actionQueue here — queued closures own resolve/reject for
@@ -1083,10 +1172,7 @@ export class ThreadSessionRuntime {
     return value !== undefined
   }
 
-  private pruneLargeStringsForEventBuffer(
-    value: unknown,
-    seen: WeakSet<object>,
-  ): void {
+  private pruneLargeStringsForEventBuffer(value: unknown, seen: WeakSet<object>): void {
     if (typeof value !== 'object' || value === null) {
       return
     }
@@ -1126,16 +1212,12 @@ export class ThreadSessionRuntime {
     }
   }
 
-  private finalizeCompactedEventForEventBuffer(
-    event: EventBufferEvent,
-  ): EventBufferEvent {
+  private finalizeCompactedEventForEventBuffer(event: EventBufferEvent): EventBufferEvent {
     this.pruneLargeStringsForEventBuffer(event, new WeakSet<object>())
     return event
   }
 
-  private compactEventForEventBuffer(
-    event: EventBufferEvent,
-  ): EventBufferEvent | undefined {
+  private compactEventForEventBuffer(event: EventBufferEvent): EventBufferEvent | undefined {
     if (event.type === 'queue.question-handoff-started') {
       return this.finalizeCompactedEventForEventBuffer(structuredClone(event))
     }
@@ -1159,17 +1241,13 @@ export class ThreadSessionRuntime {
               return [] as Array<{ id: string; type: string }>
             }
             const candidate = part as { id?: unknown; type?: unknown }
-            if (
-              typeof candidate.id !== 'string'
-              || typeof candidate.type !== 'string'
-            ) {
+            if (typeof candidate.id !== 'string' || typeof candidate.type !== 'string') {
               return [] as Array<{ id: string; type: string }>
             }
             return [{ id: candidate.id, type: candidate.type }]
           })
         : []
       delete info.system
-      delete info.summary
       delete info.tools
       delete info.parts
       if (partsSummary.length > 0) {
@@ -1211,8 +1289,7 @@ export class ThreadSessionRuntime {
     const state = part.state
     // Preserve subagent_type for task tools so derivation can build labels
     // like "explore-1" instead of generic "task-1" after compaction strips input
-    const taskSubagentType =
-      part.tool === 'task' ? state.input?.subagent_type : undefined
+    const taskSubagentType = part.tool === 'task' ? state.input?.subagent_type : undefined
     state.input = {}
     if (typeof taskSubagentType === 'string') {
       state.input.subagent_type = taskSubagentType
@@ -1324,9 +1401,7 @@ export class ThreadSessionRuntime {
       await delay(pollMs)
     }
 
-    logger.warn(
-      `[WAIT EVENT] Timeout after ${timeoutMs}ms for thread ${this.threadId}, proceeding`,
-    )
+    logger.warn(`[WAIT EVENT] Timeout after ${timeoutMs}ms for thread ${this.threadId}, proceeding`)
     return undefined
   }
 
@@ -1352,10 +1427,16 @@ export class ThreadSessionRuntime {
   // Subtask sessions also bypass — they're tracked in subtaskSessions.
 
   private async handleEvent(event: OpenCodeEvent): Promise<void> {
-    // session.diff can carry repeated full-file before/after snapshots and is
-    // not used by event-derived runtime state, queueing, typing, or UI routing.
-    // Drop it at ingress so large diff payloads never hit memory buffers.
-    if (event.type === 'session.diff') {
+    const sessionId = this.state?.sessionId
+    if (
+      !shouldBufferSessionEvent({
+        event,
+        mainSessionId: sessionId,
+        isKnownChildSession: (candidateSessionId) => {
+          return Boolean(this.getSubtaskInfoForSession(candidateSessionId))
+        },
+      })
+    ) {
       return
     }
 
@@ -1370,12 +1451,11 @@ export class ThreadSessionRuntime {
       this.appendEventToBuffer(event)
     }
 
-    const sessionId = this.state?.sessionId
-
     const eventSessionId = getOpencodeEventSessionId(event)
-    const toastSessionId = event.type === 'tui.toast.show'
-      ? extractToastSessionId({ message: event.properties.message })
-      : undefined
+    const toastSessionId =
+      event.type === 'tui.toast.show'
+        ? extractToastSessionId({ message: event.properties.message })
+        : undefined
 
     if (shouldLogSessionEvents) {
       const eventDetails = (() => {
@@ -1394,9 +1474,10 @@ export class ThreadSessionRuntime {
           const partType = event.properties.part.type
           const partId = event.properties.part.id
           const messageId = event.properties.part.messageID
-          const toolSuffix = partType === 'tool'
-            ? ` tool=${event.properties.part.tool} status=${event.properties.part.state.status}`
-            : ''
+          const toolSuffix =
+            partType === 'tool'
+              ? ` tool=${event.properties.part.tool} status=${event.properties.part.state.status}`
+              : ''
           return ` part=${partType} partID=${partId} messageID=${messageId}${toolSuffix}`
         }
         return ''
@@ -1429,10 +1510,7 @@ export class ThreadSessionRuntime {
         event,
       })
       if (eventLogResult instanceof Error) {
-        logger.error(
-          '[SESSION EVENT JSONL] Failed to write session event log:',
-          eventLogResult,
-        )
+        logger.error('[SESSION EVENT JSONL] Failed to write session event log:', eventLogResult)
       }
     }
 
@@ -1444,9 +1522,21 @@ export class ThreadSessionRuntime {
         await this.handlePartUpdated(event.properties.part)
         break
       case 'session.idle':
+        await completeScheduledTaskRunsForSession(event.properties.sessionID)
         await this.handleSessionIdle(event.properties.sessionID)
         break
       case 'session.error':
+        if (event.properties.sessionID) {
+          const sessionError = event.properties.error
+          const errorMessage =
+            sessionError && typeof sessionError === 'object'
+              ? String(sessionError.data?.message || sessionError.name || 'Session failed')
+              : 'Session failed'
+          await failScheduledTaskRunsForSession({
+            sessionId: event.properties.sessionID,
+            error: errorMessage,
+          })
+        }
         await this.handleSessionError(event.properties)
         break
       case 'permission.asked':
@@ -1488,7 +1578,9 @@ export class ThreadSessionRuntime {
           resolve()
           return
         }
-        const result = await action().catch((e) => new OpenCodeSdkError({ operation: 'dispatchAction', cause: e }))
+        const result = await action().catch(
+          (e) => new OpenCodeSdkError({ operation: 'dispatchAction', cause: e }),
+        )
         if (result instanceof Error) {
           reject(result)
           return
@@ -1516,7 +1608,9 @@ export class ThreadSessionRuntime {
         // Each queued action already wraps itself with .catch()
         // and calls resolve/reject, so this should not throw. But if it
         // does, the try/finally ensures we don't deadlock.
-        const result = await next().catch((e) => new OpenCodeSdkError({ operation: 'processAction', cause: e }))
+        const result = await next().catch(
+          (e) => new OpenCodeSdkError({ operation: 'processAction', cause: e }),
+        )
         if (result instanceof Error) {
           logger.error('[ACTION QUEUE] Unexpected action failure:', result)
         }
@@ -1538,19 +1632,15 @@ export class ThreadSessionRuntime {
     if (this.hasPendingQuestionUi()) {
       return true
     }
-    const hasPendingActionButtons = [...pendingActionButtonContexts.values()].some(
-      (ctx) => {
-        return ctx.thread.id === this.thread.id
-      },
-    )
+    const hasPendingActionButtons = [...pendingActionButtonContexts.values()].some((ctx) => {
+      return ctx.thread.id === this.thread.id
+    })
     if (hasPendingActionButtons) {
       return true
     }
-    const hasPendingFileUpload = [...pendingFileUploadContexts.values()].some(
-      (ctx) => {
-        return ctx.thread.id === this.thread.id
-      },
-    )
+    const hasPendingFileUpload = [...pendingFileUploadContexts.values()].some((ctx) => {
+      return ctx.thread.id === this.thread.id
+    })
     if (hasPendingFileUpload) {
       return true
     }
@@ -1579,7 +1669,8 @@ export class ThreadSessionRuntime {
   }
 
   private async sendTypingPulse(): Promise<void> {
-    const result = await this.thread.sendTyping()
+    const result = await this.thread
+      .sendTyping()
       .catch((e) => new DiscordOperationError({ operation: 'sendTyping', cause: e }))
     if (result instanceof Error) {
       discordLogger.log(`Failed to send typing: ${result}`)
@@ -1594,11 +1685,7 @@ export class ThreadSessionRuntime {
     this.typingKeepaliveTimeout = null
   }
 
-  private armTypingKeepalive({
-    delayMs,
-  }: {
-    delayMs: number
-  }): void {
+  private armTypingKeepalive({ delayMs }: { delayMs: number }): void {
     this.typingKeepaliveTimeout = setTimeout(() => {
       const activeTimer = this.typingKeepaliveTimeout
       if (!activeTimer) {
@@ -1622,11 +1709,7 @@ export class ThreadSessionRuntime {
     }, delayMs)
   }
 
-  private restartTypingKeepalive({
-    sendNow,
-  }: {
-    sendNow: boolean
-  }): void {
+  private restartTypingKeepalive({ sendNow }: { sendNow: boolean }): void {
     this.clearTypingKeepalive()
     this.armTypingKeepalive({ delayMs: sendNow ? 0 : 7000 })
   }
@@ -1677,8 +1760,7 @@ export class ThreadSessionRuntime {
   }
 
   private storePart(part: Part): void {
-    const messageParts =
-      this.partBuffer.get(part.messageID) || new Map<string, Part>()
+    const messageParts = this.partBuffer.get(part.messageID) || new Map<string, Part>()
     messageParts.set(part.id, part)
     this.partBuffer.set(part.messageID, messageParts)
   }
@@ -1700,12 +1782,12 @@ export class ThreadSessionRuntime {
     })
   }
 
-  private shouldSendPart({
+  private shouldSendPlannedPart({
     part,
-    force,
+    mode,
   }: {
     part: Part
-    force: boolean
+    mode: AssistantTurnFlushMode
   }): boolean {
     if (part.type === 'step-start' || part.type === 'step-finish') {
       return false
@@ -1713,21 +1795,69 @@ export class ThreadSessionRuntime {
     if (part.type === 'tool' && part.state.status === 'pending') {
       return false
     }
-    if (!force && part.type === 'text' && !part.time?.end) {
-      return false
-    }
-    if (!force && part.type === 'tool' && part.state.status === 'completed') {
+    if (part.type === 'text' && !part.time?.end && mode === 'progress') {
       return false
     }
     return true
   }
 
+  private getCurrentTurnParts(): Part[] {
+    const sessionId = this.state?.sessionId
+    const messageIds = sessionId
+      ? [...this.getAssistantMessageIdsForCurrentTurn({ sessionId })]
+      : []
+    if (messageIds.length > 0) {
+      return messageIds.flatMap((id) => this.getBufferedParts(id))
+    }
+    return [...this.partBuffer.keys()].flatMap((id) => this.getBufferedParts(id))
+  }
+
+  private async flushCurrentTurnParts({
+    mode,
+    throughPartId,
+    skipPartId,
+    repulseTyping = true,
+  }: {
+    mode: AssistantTurnFlushMode
+    throughPartId?: string
+    skipPartId?: string
+    repulseTyping?: boolean
+  }): Promise<void> {
+    const parts = this.getCurrentTurnParts().filter((part) => {
+      return !this.state?.sentPartIds.has(part.id)
+    })
+    const planned = planAssistantTurnFlush({
+      parts,
+      mode,
+      throughPartId,
+    })
+    for (const { part, quoteText } of planned.sendParts) {
+      if (skipPartId && part.id === skipPartId) {
+        continue
+      }
+      if (!this.shouldSendPlannedPart({ part, mode })) {
+        continue
+      }
+      if (part.type === 'tool' && part.tool === 'task') {
+        continue
+      }
+      const pulseTyping = part.type === 'text' && part.ignored === true ? false : repulseTyping
+      await this.sendPartMessage({
+        part,
+        quoteText,
+        repulseTyping: pulseTyping,
+      })
+    }
+  }
+
   private async sendPartMessage({
     part,
     repulseTyping = true,
+    quoteText = false,
   }: {
     part: Part
     repulseTyping?: boolean
+    quoteText?: boolean
   }): Promise<void> {
     const verbosity = await this.getVerbosity()
     if (verbosity === 'text_only' && part.type !== 'text') {
@@ -1739,7 +1869,14 @@ export class ThreadSessionRuntime {
       }
     }
 
-    const content = formatPart(part)
+    const formatted = formatPart(part)
+    const quote =
+      quoteText &&
+      shouldQuoteIntermediateTextPart({
+        part,
+        isLastInTurn: false,
+      })
+    const content = quote ? asDiscordQuote(formatted) : formatted
     if (!content.trim() || content.length === 0) {
       return
     }
@@ -1754,77 +1891,31 @@ export class ThreadSessionRuntime {
       return { ...t, sentPartIds: newIds }
     })
 
-    const sendResult = await sendThreadMessage(this.thread, content)
-      .catch((e) => new DiscordOperationError({ operation: 'sendMessage', cause: e }))
+    const kind = sessionPartKind(part)
+    const sendResult = await sendSessionPartMessage(this.thread, content, {
+      leadWithBlankLine: shouldLeadWithBlankLine({
+        previousKind: this.lastSentPartKind,
+        nextKind: kind,
+      }),
+    }).catch((e) => new DiscordOperationError({ operation: 'sendMessage', cause: e }))
     if (sendResult instanceof Error) {
       threadState.updateThread(this.threadId, (t) => {
         const newIds = new Set(t.sentPartIds)
         newIds.delete(part.id)
         return { ...t, sentPartIds: newIds }
       })
-      discordLogger.error(
-        `ERROR: Failed to send part ${part.id}:`,
-        sendResult,
-      )
+      discordLogger.error(`ERROR: Failed to send part ${part.id}:`, sendResult)
       return
     }
+    this.lastSentPartKind = kind
     await setPartMessage({ partId: part.id, messageId: sendResult.id, threadId: this.thread.id })
     if (repulseTyping) {
       this.requestTypingRepulse()
     }
   }
 
-  private async flushBufferedParts({
-    messageID,
-    force,
-    skipPartId,
-    repulseTyping = true,
-  }: {
-    messageID: string | undefined
-    force: boolean
-    skipPartId?: string
-    repulseTyping?: boolean
-  }): Promise<void> {
-    if (!messageID) {
-      return
-    }
-    const parts = this.getBufferedParts(messageID)
-    for (const part of parts) {
-      if (skipPartId && part.id === skipPartId) {
-        continue
-      }
-      if (!this.shouldSendPart({ part, force })) {
-        continue
-      }
-      await this.sendPartMessage({ part, repulseTyping })
-    }
-  }
-
-  private async flushBufferedPartsForMessages({
-    messageIDs,
-    force,
-    skipPartId,
-    repulseTyping = true,
-  }: {
-    messageIDs: ReadonlyArray<string>
-    force: boolean
-    skipPartId?: string
-    repulseTyping?: boolean
-  }): Promise<void> {
-    const uniqueMessageIDs = [...new Set(messageIDs)]
-    for (const messageID of uniqueMessageIDs) {
-      await this.flushBufferedParts({
-        messageID,
-        force,
-        skipPartId,
-        repulseTyping,
-      })
-    }
-  }
-
   private async showInteractiveUi({
     skipPartId,
-    flushMessageId,
     show,
   }: {
     skipPartId?: string
@@ -1832,32 +1923,11 @@ export class ThreadSessionRuntime {
     show: () => Promise<void>
   }): Promise<void> {
     this.stopTyping()
-    const sessionId = this.state?.sessionId
-    const targetMessageId = (() => {
-      if (flushMessageId) {
-        return flushMessageId
-      }
-      if (!sessionId) {
-        return undefined
-      }
-      return this.getLatestAssistantMessageIdForCurrentTurn({ sessionId })
-    })()
-    if (targetMessageId) {
-      await this.flushBufferedParts({
-        messageID: targetMessageId,
-        force: true,
-        skipPartId,
-      })
-    } else {
-      const assistantMessageIds = sessionId
-        ? [...this.getAssistantMessageIdsForCurrentTurn({ sessionId })]
-        : []
-      await this.flushBufferedPartsForMessages({
-        messageIDs: assistantMessageIds,
-        force: true,
-        skipPartId,
-      })
-    }
+    await this.flushCurrentTurnParts({
+      mode: 'interactive',
+      throughPartId: skipPartId,
+      skipPartId,
+    })
     await show()
   }
 
@@ -1876,24 +1946,22 @@ export class ThreadSessionRuntime {
     if (!client) {
       return
     }
-    const providersResponse = await client.provider.list({ directory: this.sdkDirectory })
+    const providersResponse = await client.provider
+      .list({ directory: this.sdkDirectory })
       .catch((e) => new OpenCodeSdkError({ operation: 'provider.list', cause: e }))
     if (providersResponse instanceof Error) {
-      logger.error(
-        'Failed to fetch provider info for context limit:',
-        providersResponse,
-      )
+      logger.error('Failed to fetch provider info for context limit:', providersResponse)
       return
     }
-    const provider = providersResponse.data?.all?.find(
-      (p) => {
-        return p.id === providerID
-      },
-    )
-    const model = provider?.models?.[modelID]
-    const contextLimit = model?.limit?.context || getFallbackContextLimit({
-      providerID,
+    const provider = providersResponse.data?.all?.find((p) => {
+      return p.id === providerID
     })
+    const model = provider?.models?.[modelID]
+    const contextLimit =
+      model?.limit?.context ||
+      getFallbackContextLimit({
+        providerID,
+      })
     if (!contextLimit) {
       return
     }
@@ -1908,21 +1976,37 @@ export class ThreadSessionRuntime {
   private async handleMessageUpdated(msg: OpenCodeMessage): Promise<void> {
     const sessionId = this.state?.sessionId
 
-    if (msg.sessionID !== sessionId) {
+    if (msg.role !== 'assistant') {
       return
     }
-    if (msg.role !== 'assistant') {
+    if (msg.summary === true) {
+      this.clearBufferedPartsForMessages([msg.id])
+      logger.info(`[SKIP] message.updated for compaction summary ${msg.id}`)
+      return
+    }
+    if (msg.sessionID !== sessionId) {
+      const subtaskInfo = this.getSubtaskInfoForSession(msg.sessionID)
+      if (subtaskInfo) {
+        for (const part of this.getBufferedParts(msg.id)) {
+          await this.handleSubtaskPart(part, subtaskInfo)
+        }
+      }
       return
     }
     if (!sessionId) {
       return
     }
-    if (!isAssistantMessageInLatestUserTurn({
-      events: this.eventBuffer,
-      sessionId,
-      messageId: msg.id,
-    })) {
-      logger.info(`[SKIP] message.updated for old assistant message ${msg.id}, not in latest user turn`)
+    if (
+      !isAssistantMessageInLatestUserTurn({
+        events: this.eventBuffer,
+        sessionId,
+        messageId: msg.id,
+      })
+    ) {
+      this.clearBufferedPartsForMessages([msg.id])
+      logger.info(
+        `[SKIP] message.updated for old assistant message ${msg.id}, not in latest user turn`,
+      )
       return
     }
 
@@ -1958,9 +2042,8 @@ export class ThreadSessionRuntime {
       })
     }
 
-    await this.flushBufferedParts({
-      messageID: msg.id,
-      force: false,
+    await this.flushCurrentTurnParts({
+      mode: 'progress',
     })
 
     const wasAlreadyCompleted = hasAssistantMessageCompletedBefore({
@@ -1971,9 +2054,9 @@ export class ThreadSessionRuntime {
     })
     const completedAt = msg.time.completed
     if (
-      !wasAlreadyCompleted
-      && typeof completedAt === 'number'
-      && isAssistantMessageNaturalCompletion({ message: msg })
+      !wasAlreadyCompleted &&
+      typeof completedAt === 'number' &&
+      isAssistantMessageNaturalCompletion({ message: msg })
     ) {
       await this.handleAssistantCompletion({
         completedMessageId: msg.id,
@@ -1994,11 +2077,7 @@ export class ThreadSessionRuntime {
       events: this.eventBuffer,
       sessionId,
     })
-    if (
-      latestRunInfo.tokensUsed === 0
-      || !latestRunInfo.providerID
-      || !latestRunInfo.model
-    ) {
+    if (latestRunInfo.tokensUsed === 0 || !latestRunInfo.providerID || !latestRunInfo.model) {
       return
     }
     await this.ensureModelContextLimit({
@@ -2008,19 +2087,15 @@ export class ThreadSessionRuntime {
     if (!this.modelContextLimit) {
       return
     }
-    const currentPercentage = Math.floor(
-      (latestRunInfo.tokensUsed / this.modelContextLimit) * 100,
-    )
+    const currentPercentage = Math.floor((latestRunInfo.tokensUsed / this.modelContextLimit) * 100)
     const thresholdCrossed = Math.floor(currentPercentage / 10) * 10
-    if (
-      thresholdCrossed <= this.lastDisplayedContextPercentage ||
-      thresholdCrossed < 10
-    ) {
+    if (thresholdCrossed <= this.lastDisplayedContextPercentage || thresholdCrossed < 10) {
       return
     }
     this.lastDisplayedContextPercentage = thresholdCrossed
-    const chunk = `⬦ context usage ${currentPercentage}%`
-    const sendResult = await this.thread.send({ content: chunk, flags: SILENT_MESSAGE_FLAGS })
+    const chunk = `${STATUS_PREFIX}context usage ${currentPercentage}%`
+    const sendResult = await this.thread
+      .send({ content: chunk, flags: SILENT_MESSAGE_FLAGS })
       .catch((e) => new DiscordOperationError({ operation: 'sendMessage', cause: e }))
     if (sendResult instanceof Error) {
       discordLogger.error('Failed to send context usage notice:', sendResult)
@@ -2028,8 +2103,24 @@ export class ThreadSessionRuntime {
   }
 
   private async handlePartUpdated(part: Part): Promise<void> {
-    this.storePart(part)
     const sessionId = this.state?.sessionId
+    const messageKind = getAssistantMessageKind({
+      events: this.eventBuffer,
+      sessionId: part.sessionID,
+      messageId: part.messageID,
+    })
+
+    if (messageKind === 'summary') {
+      this.clearBufferedPartsForMessages([part.messageID])
+      logger.info(`[SKIP] message.part.updated for compaction summary ${part.messageID}`)
+      return
+    }
+
+    this.storePart(part)
+
+    if (messageKind === 'unknown') {
+      return
+    }
 
     const subtaskInfo = this.getSubtaskInfoForSession(part.sessionID)
     const isSubtaskEvent = Boolean(subtaskInfo)
@@ -2055,51 +2146,52 @@ export class ThreadSessionRuntime {
     }
 
     if (part.type === 'tool' && part.state.status === 'running') {
-      await this.flushBufferedParts({
-        messageID: part.messageID,
-        force: true,
-        skipPartId: part.id,
+      await this.flushCurrentTurnParts({
+        mode: 'progress',
       })
-      await this.sendPartMessage({ part })
+      const unsent = this.getCurrentTurnParts().filter((candidate) => {
+        return !this.state?.sentPartIds.has(candidate.id)
+      })
+      const held = planAssistantTurnFlush({
+        parts: unsent,
+        mode: 'progress',
+      }).hold.some((entry) => entry.id === part.id)
+      if (held) {
+        return
+      }
+      if (!this.state?.sentPartIds.has(part.id) && part.tool !== 'task') {
+        await this.sendPartMessage({ part })
+      }
 
-      // Track task tool spawning subtask sessions
       if (part.tool === 'task' && !this.state?.sentPartIds.has(part.id)) {
-        const description =
-          typeof part.state.input?.description === 'string'
-            ? part.state.input.description
-            : ''
-        const agent =
-          typeof part.state.input?.subagent_type === 'string'
-            ? part.state.input.subagent_type
-            : 'task'
-        const childSessionId =
-          typeof part.state.metadata?.sessionId === 'string'
-            ? part.state.metadata.sessionId
-            : ''
-        if (description && childSessionId) {
-          if ((await this.getVerbosity()) !== 'text_only') {
-            const taskDisplay = `┣ ${agent} **${description}**`
+        const taskDisplay = formatTaskToolTitle(part)
+        if (taskDisplay && (await this.getVerbosity()) !== 'text_only') {
+          threadState.updateThread(this.threadId, (t) => {
+            const newIds = new Set(t.sentPartIds)
+            newIds.add(part.id)
+            return { ...t, sentPartIds: newIds }
+          })
+          const sendResult = await sendSessionPartMessage(this.thread, taskDisplay, {
+            leadWithBlankLine: shouldLeadWithBlankLine({
+              previousKind: this.lastSentPartKind,
+              nextKind: 'tool',
+            }),
+          }).catch((e) => new DiscordOperationError({ operation: 'sendMessage', cause: e }))
+          if (sendResult instanceof Error) {
             threadState.updateThread(this.threadId, (t) => {
               const newIds = new Set(t.sentPartIds)
-              newIds.add(part.id)
+              newIds.delete(part.id)
               return { ...t, sentPartIds: newIds }
             })
-            const sendResult = await sendThreadMessage(this.thread, taskDisplay + '\n\n')
-              .catch((e) => new DiscordOperationError({ operation: 'sendMessage', cause: e }))
-            if (sendResult instanceof Error) {
-              threadState.updateThread(this.threadId, (t) => {
-                const newIds = new Set(t.sentPartIds)
-                newIds.delete(part.id)
-                return { ...t, sentPartIds: newIds }
-              })
-              discordLogger.error(
-                `ERROR: Failed to send task part ${part.id}:`,
-                sendResult,
-              )
-              return
-            }
-            await setPartMessage({ partId: part.id, messageId: sendResult.id, threadId: this.thread.id })
+            discordLogger.error(`ERROR: Failed to send task part ${part.id}:`, sendResult)
+            return
           }
+          this.lastSentPartKind = 'tool'
+          await setPartMessage({
+            partId: part.id,
+            messageId: sendResult.id,
+            threadId: this.thread.id,
+          })
         }
       }
       return
@@ -2124,15 +2216,11 @@ export class ThreadSessionRuntime {
             timeoutMs: 1500,
           })
           if (!request) {
-            logger.warn(
-              `[ACTION] No queued action-buttons request found for session ${sessionId}`,
-            )
+            logger.warn(`[ACTION] No queued action-buttons request found for session ${sessionId}`)
             return
           }
           if (request.threadId !== this.thread.id) {
-            logger.warn(
-              `[ACTION] Ignoring queued action-buttons for different thread`,
-            )
+            logger.warn(`[ACTION] Ignoring queued action-buttons for different thread`)
             return
           }
           const showResult = await showActionButtons({
@@ -2143,10 +2231,7 @@ export class ThreadSessionRuntime {
             silent: this.getQueueLength() > 0,
           }).catch((e) => new DiscordOperationError({ operation: 'showActionButtons', cause: e }))
           if (showResult instanceof Error) {
-            logger.error(
-              '[ACTION] Failed to show action buttons:',
-              showResult,
-            )
+            logger.error('[ACTION] Failed to show action buttons:', showResult)
             await sendThreadMessage(
               this.thread,
               `Failed to show action buttons: ${showResult.message}`,
@@ -2168,7 +2253,9 @@ export class ThreadSessionRuntime {
           messageId: part.messageID,
         })
         if (!isCurrentRunMessage) {
-          logger.info(`[SKIP] tool part ${part.id} for old assistant message ${part.messageID}, not in latest user turn`)
+          logger.info(
+            `[SKIP] tool part ${part.id} for old assistant message ${part.messageID}, not in latest user turn`,
+          )
           return
         }
       }
@@ -2200,9 +2287,7 @@ export class ThreadSessionRuntime {
             }
           }
           const formattedTokens =
-            outputTokens >= 1000
-              ? `${(outputTokens / 1000).toFixed(1)}k`
-              : String(outputTokens)
+            outputTokens >= 1000 ? `${(outputTokens / 1000).toFixed(1)}k` : String(outputTokens)
           const percentageSuffix = (() => {
             if (!this.modelContextLimit) {
               return ''
@@ -2213,11 +2298,13 @@ export class ThreadSessionRuntime {
             }
             return ` (${pct.toFixed(1)}%)`
           })()
-          const chunk = `⬦ ${part.tool} returned ${formattedTokens} tokens${percentageSuffix}`
-          const largeOutputResult = await this.thread.send({
-            content: chunk,
-            flags: SILENT_MESSAGE_FLAGS,
-          }).catch((e) => new DiscordOperationError({ operation: 'sendMessage', cause: e }))
+          const chunk = `${STATUS_PREFIX}${part.tool} returned ${formattedTokens} tokens${percentageSuffix}`
+          const largeOutputResult = await this.thread
+            .send({
+              content: chunk,
+              flags: SILENT_MESSAGE_FLAGS,
+            })
+            .catch((e) => new DiscordOperationError({ operation: 'sendMessage', cause: e }))
           if (largeOutputResult instanceof Error) {
             discordLogger.error('Failed to send large output notice:', largeOutputResult)
           }
@@ -2226,20 +2313,19 @@ export class ThreadSessionRuntime {
     }
 
     if (part.type === 'reasoning') {
-      await this.sendPartMessage({ part })
+      await this.flushCurrentTurnParts({ mode: 'progress' })
       return
     }
 
-    if (part.type === 'text' && part.time?.end) {
-      await this.sendPartMessage({ part })
+    if (part.type === 'text') {
+      await this.flushCurrentTurnParts({ mode: 'progress' })
+      if (part.time?.end) {
+        await this.tryShowPendingQuestion()
+      }
       return
     }
 
     if (part.type === 'step-finish') {
-      await this.flushBufferedParts({
-        messageID: part.messageID,
-        force: true,
-      })
       this.ensureTypingKeepalive()
     }
   }
@@ -2266,10 +2352,7 @@ export class ThreadSessionRuntime {
     if (part.type === 'text') {
       return
     }
-    if (
-      !subtaskInfo.assistantMessageId ||
-      part.messageID !== subtaskInfo.assistantMessageId
-    ) {
+    if (!subtaskInfo.assistantMessageId || part.messageID !== subtaskInfo.assistantMessageId) {
       return
     }
 
@@ -2277,15 +2360,18 @@ export class ThreadSessionRuntime {
     if (!content.trim() || this.state?.sentPartIds.has(part.id)) {
       return
     }
-    const sendResult = await sendThreadMessage(this.thread, content + '\n\n')
-      .catch((e) => new DiscordOperationError({ operation: 'sendMessage', cause: e }))
+    const kind = sessionPartKind(part)
+    const sendResult = await sendSessionPartMessage(this.thread, content, {
+      leadWithBlankLine: shouldLeadWithBlankLine({
+        previousKind: this.lastSentPartKind,
+        nextKind: kind,
+      }),
+    }).catch((e) => new DiscordOperationError({ operation: 'sendMessage', cause: e }))
     if (sendResult instanceof Error) {
-      discordLogger.error(
-        `ERROR: Failed to send subtask part ${part.id}:`,
-        sendResult,
-      )
+      discordLogger.error(`ERROR: Failed to send subtask part ${part.id}:`, sendResult)
       return
     }
+    this.lastSentPartKind = kind
     threadState.updateThread(this.threadId, (t) => {
       const newIds = new Set(t.sentPartIds)
       newIds.add(part.id)
@@ -2295,15 +2381,80 @@ export class ThreadSessionRuntime {
     this.requestTypingRepulse()
   }
 
+  private trackIdleTokenUsage({
+    sessionId,
+    idleEventIndex,
+  }: {
+    sessionId: string
+    idleEventIndex: number
+  }): void {
+    const usage = getIdleTokenUsageDelta({
+      events: this.eventBuffer,
+      sessionId,
+      idleEventIndex,
+    })
+    if (!usage) {
+      return
+    }
+
+    const properties: AnalyticsProps = {
+      tokens_input: usage.input,
+      tokens_output: usage.output,
+      tokens_reasoning: usage.reasoning,
+      tokens_cache_read: usage.cacheRead,
+      tokens_cache_write: usage.cacheWrite,
+      tokens_total: usage.total,
+      cost: usage.cost,
+      assistant_message_count: usage.assistantMessageCount,
+      is_subagent: Boolean(this.getSubtaskInfoForSession(sessionId)),
+    }
+    if (usage.model) {
+      properties.model = usage.model
+    }
+    if (usage.providerID) {
+      properties.provider = usage.providerID
+    }
+    trackEvent('tokens_used', properties)
+  }
+
+  private trackIdleTokenUsageForSessionTree(idleSessionId: string): void {
+    let idleEventIndex: number | undefined
+    for (let i = this.eventBuffer.length - 1; i >= 0; i--) {
+      const event = this.eventBuffer[i]?.event
+      if (event?.type === 'session.idle' && event.properties.sessionID === idleSessionId) {
+        idleEventIndex = i
+        break
+      }
+    }
+    if (idleEventIndex === undefined) {
+      return
+    }
+    const mainSessionId = this.state?.sessionId
+    const sessionIds = mainSessionId
+      ? getTokenUsageSessionIdsForIdle({
+          events: this.eventBuffer,
+          mainSessionId,
+          idleSessionId,
+          upToIndex: idleEventIndex,
+        })
+      : [idleSessionId]
+    for (const sessionId of sessionIds) {
+      this.trackIdleTokenUsage({
+        sessionId,
+        idleEventIndex,
+      })
+    }
+  }
+
   private async handleSessionIdle(idleSessionId: string): Promise<void> {
+    this.trackIdleTokenUsageForSessionTree(idleSessionId)
+
     const sessionId = this.state?.sessionId
 
     // ── Subtask idle ──────────────────────────────────────────
     const subtask = this.getSubtaskInfoForSession(idleSessionId)
     if (subtask) {
-      logger.log(
-        `[SUBTASK IDLE] Subtask "${subtask?.label}" completed`,
-      )
+      logger.log(`[SUBTASK IDLE] Subtask "${subtask?.label}" completed`)
       return
     }
 
@@ -2355,16 +2506,13 @@ export class ThreadSessionRuntime {
       return
     }
 
-    const assistantMessageIds = [
-      ...this.getAssistantMessageIdsForCurrentTurn({ sessionId }),
-    ]
+    const assistantMessageIds = [...this.getAssistantMessageIdsForCurrentTurn({ sessionId })]
     if (assistantMessageIds.length === 0) {
       return
     }
 
-    await this.flushBufferedPartsForMessages({
-      messageIDs: assistantMessageIds,
-      force: true,
+    await this.flushCurrentTurnParts({
+      mode: 'final',
       repulseTyping: false,
     })
 
@@ -2373,9 +2521,7 @@ export class ThreadSessionRuntime {
     // decides not to respond.
     const hasVisibleOutput = assistantMessageIds.some((msgId) => {
       const parts = this.getBufferedParts(msgId)
-      return parts.some(
-        (part) => part.type !== 'step-start' && part.type !== 'step-finish',
-      )
+      return parts.some((part) => part.type !== 'step-start' && part.type !== 'step-finish')
     })
     if (!hasVisibleOutput) {
       this.stopTyping()
@@ -2396,10 +2542,7 @@ export class ThreadSessionRuntime {
     if (turnStartTime !== undefined) {
       // Track before Discord footer side effects so successful turns are
       // counted even when footer delivery fails.
-      const durationSec = Math.max(
-        0,
-        Math.round((completedAt - turnStartTime) / 1000),
-      )
+      const durationSec = Math.max(0, Math.round((completedAt - turnStartTime) / 1000))
       trackEvent('turn_completed', {
         duration_sec: durationSec,
       })
@@ -2446,15 +2589,11 @@ export class ThreadSessionRuntime {
       return
     }
 
-    const errorMessage = truncateSessionErrorMessage(
-      formatSessionErrorFromProps(properties.error),
-    )
+    const errorMessage = truncateSessionErrorMessage(formatSessionErrorFromProps(properties.error))
     logger.error(`Sending error to thread: ${errorMessage}`)
-    await sendThreadMessage(
-      this.thread,
-      `✗ opencode session error: ${errorMessage}`,
-      { flags: NOTIFY_MESSAGE_FLAGS },
-    )
+    await sendThreadMessage(this.thread, `✗ opencode session error: ${errorMessage}`, {
+      flags: NOTIFY_MESSAGE_FLAGS,
+    })
     await this.persistEventBufferDebounced.flush()
 
     // Inject synthetic idle so isSessionBusy() returns false and queued
@@ -2465,9 +2604,7 @@ export class ThreadSessionRuntime {
     await this.tryDrainQueue({ showIndicator: true })
   }
 
-  private async handlePermissionAsked(
-    permission: PermissionRequest,
-  ): Promise<void> {
+  private async handlePermissionAsked(permission: PermissionRequest): Promise<void> {
     const sessionId = this.state?.sessionId
     const subtaskInfo = this.getSubtaskInfoForSession(permission.sessionID)
     const isMainSession = permission.sessionID === sessionId
@@ -2525,9 +2662,7 @@ export class ThreadSessionRuntime {
         requestId: permission.id,
       })
       if (!added) {
-        logger.log(
-          `[PERMISSION] Failed to attach duplicate request ${permission.id} to context`,
-        )
+        logger.log(`[PERMISSION] Failed to attach duplicate request ${permission.id} to context`)
       }
       return
     }
@@ -2571,9 +2706,7 @@ export class ThreadSessionRuntime {
       return
     }
 
-    logger.log(
-      `Permission ${properties.requestID} replied with: ${properties.reply}`,
-    )
+    logger.log(`Permission ${properties.requestID} replied with: ${properties.reply}`)
 
     const threadPermissions = pendingPermissions.get(this.thread.id)
     if (!threadPermissions) {
@@ -2591,9 +2724,69 @@ export class ThreadSessionRuntime {
     this.onInteractiveUiStateChanged()
   }
 
-  private async handleQuestionAsked(
-    questionRequest: QuestionRequest,
-  ): Promise<void> {
+  private hasUnfinishedTextPart(messageID: string): boolean {
+    return this.getBufferedParts(messageID).some((part) => {
+      return part.type === 'text' && !part.time?.end
+    })
+  }
+
+  // OpenCode emits question.asked when the tool starts, often before the
+  // preceding text part gets time.end. Showing the dropdown on that event
+  // holds the action queue while Discord posts, so the later text-end cannot
+  // send and dumps after the queued » user: indicator. Wait for text-end.
+  private async tryShowPendingQuestion({ ignoreUnfinishedText = false } = {}): Promise<boolean> {
+    const sessionId = this.state?.sessionId
+    if (!sessionId) {
+      return false
+    }
+
+    const request = deriveLatestUnansweredQuestion({
+      events: this.eventBuffer,
+      sessionId,
+    })
+    if (!request) {
+      this.deferredQuestionShow.clear()
+      return false
+    }
+    if (
+      this.shownQuestionRequestIds.has(request.id) ||
+      findPendingQuestionContextForRequest({
+        threadId: this.thread.id,
+        requestId: request.id,
+      })
+    ) {
+      this.deferredQuestionShow.clear()
+      return true
+    }
+
+    const messageId = request.tool?.messageID
+    if (!ignoreUnfinishedText && messageId && this.hasUnfinishedTextPart(messageId)) {
+      return false
+    }
+
+    this.shownQuestionRequestIds.add(request.id)
+    await this.showInteractiveUi({
+      flushMessageId: messageId,
+      show: async () => {
+        await showAskUserQuestionDropdowns({
+          thread: this.thread,
+          sessionId,
+          directory: this.sdkDirectory,
+          requestId: request.id,
+          input: { questions: request.questions },
+          silent: this.getQueueLength() > 0,
+        })
+      },
+    })
+    this.deferredQuestionShow.clear()
+    this.maybeHandoffQueuedItemForPendingQuestion({
+      sessionId,
+      reason: 'question-shown',
+    })
+    return true
+  }
+
+  private async handleQuestionAsked(questionRequest: QuestionRequest): Promise<void> {
     const sessionId = this.state?.sessionId
     if (questionRequest.sessionID !== sessionId) {
       logger.log(
@@ -2606,26 +2799,10 @@ export class ThreadSessionRuntime {
       `Question requested: id=${questionRequest.id}, questions=${questionRequest.questions.length}`,
     )
 
-    await this.showInteractiveUi({
-      show: async () => {
-        if (!sessionId) {
-          return
-        }
-        await showAskUserQuestionDropdowns({
-          thread: this.thread,
-          sessionId,
-          directory: this.sdkDirectory,
-          requestId: questionRequest.id,
-          input: { questions: questionRequest.questions },
-          silent: this.getQueueLength() > 0,
-        })
-      },
-    })
-
-    this.maybeHandoffQueuedItemForPendingQuestion({
-      sessionId,
-      reason: 'question-shown',
-    })
+    const shown = await this.tryShowPendingQuestion()
+    if (!shown) {
+      this.deferredQuestionShow.trigger()
+    }
   }
 
   private handleQuestionReplied(properties: { sessionID: string }): void {
@@ -2633,6 +2810,7 @@ export class ThreadSessionRuntime {
     if (properties.sessionID !== sessionId) {
       return
     }
+    this.deferredQuestionShow.clear()
     this.onInteractiveUiStateChanged()
 
     // When a question is answered and the local queue has items, the model may
@@ -2661,10 +2839,12 @@ export class ThreadSessionRuntime {
     if (!sessionId) {
       return
     }
-    if (didQuestionQueueHandoffSinceLatestQuestionAsked({
-      events: this.eventBuffer,
-      sessionId,
-    })) {
+    if (
+      didQuestionQueueHandoffSinceLatestQuestionAsked({
+        events: this.eventBuffer,
+        sessionId,
+      })
+    ) {
       return
     }
     if (this.getQueueLength() === 0) {
@@ -2678,14 +2858,16 @@ export class ThreadSessionRuntime {
     )
     this.questionQueueHandoffPromise = this.handoffQueuedItemForPendingQuestion({
       sessionId,
-    }).catch((error) => {
-      logger.error('[QUESTION QUEUE HANDOFF] Failed to hand off queued message:', error)
-      if (error instanceof Error) {
-        void notifyError(error, 'Failed to hand off queued message during pending question')
-      }
-    }).finally(() => {
-      this.questionQueueHandoffPromise = null
     })
+      .catch((error) => {
+        logger.error('[QUESTION QUEUE HANDOFF] Failed to hand off queued message:', error)
+        if (error instanceof Error) {
+          void notifyError(error, 'Failed to hand off queued message during pending question')
+        }
+      })
+      .finally(() => {
+        this.questionQueueHandoffPromise = null
+      })
   }
 
   private async handoffQueuedItemForPendingQuestion({
@@ -2712,10 +2894,7 @@ export class ThreadSessionRuntime {
       ? `/${next.command.name}`
       : `${next.prompt.slice(0, 150)}${next.prompt.length > 150 ? '...' : ''}`
     if (displayText.trim()) {
-      await sendThreadMessage(
-        this.thread,
-        `» **${next.username}:** ${displayText}`,
-      )
+      await sendThreadMessage(this.thread, `${QUEUE_PREFIX}**${next.username}:** ${displayText}`)
     }
 
     this.markQuestionQueueHandoffStarted(sessionId)
@@ -2767,8 +2946,9 @@ export class ThreadSessionRuntime {
       return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
     })()
 
-    const chunk = `⬦ ${message} - retrying in ${duration} (attempt #${attempt})`
-    const retryResult = await this.thread.send({ content: chunk, flags: SILENT_MESSAGE_FLAGS })
+    const chunk = `${STATUS_PREFIX}${message} - retrying in ${duration} (attempt #${attempt})`
+    const retryResult = await this.thread
+      .send({ content: chunk, flags: SILENT_MESSAGE_FLAGS })
       .catch((e) => new DiscordOperationError({ operation: 'sendMessage', cause: e }))
     if (retryResult instanceof Error) {
       discordLogger.error('Failed to send retry notice:', retryResult)
@@ -2784,108 +2964,48 @@ export class ThreadSessionRuntime {
   // - race setName() against an AbortSignal.timeout() so a throttled call never
   //   blocks the event loop
   // - fail soft (log + continue) on timeout, 429, or any other error
-  private async handleSessionUpdated(info: {
-    id: string
-    title: string
-  }): Promise<void> {
+  private async handleSessionUpdated(info: { id: string; title: string }): Promise<void> {
     // Only act on the main session for this thread
     if (info.id !== this.state?.sessionId) {
       return
     }
-    if (this.lastSyncedThreadName === undefined) {
-      const persistedName = await this.loadLastSyncedThreadName().catch(
-        (e) =>
-          new Error('Failed to read persisted thread rename state', { cause: e }),
-      )
-      if (persistedName instanceof Error) {
-        logger.warn(`[TITLE] ${persistedName.message} for thread ${this.threadId}`)
-        return
-      }
-      this.lastSyncedThreadName = persistedName
-    }
-
-    const renameDecision = deriveThreadRenameFromSessionUpdate({
-      sessionTitle: info.title,
-      currentName: this.thread.name,
-      lastSyncedName: this.lastSyncedThreadName,
-    })
-    if (renameDecision.desiredName === null) {
-      if (
-        renameDecision.nextSyncedName !== null &&
-        renameDecision.nextSyncedName !== this.lastSyncedThreadName
-      ) {
-        await this.persistLastSyncedThreadName(renameDecision.nextSyncedName)
-      }
-      return
-    }
-    const { desiredName } = renameDecision
     const normalizedTitle = info.title.trim()
     if (this.appliedOpencodeTitle === normalizedTitle) {
       return
     }
-    // Mark before the call so concurrent session.updated events don't stack
-    // rename attempts. On failure we keep the mark — a retry won't help
-    // because the failure is almost always a rate limit.
+    const desiredName = deriveThreadNameFromSessionTitle({
+      sessionTitle: info.title,
+      currentName: this.thread.name,
+    })
+    // Mark before setName so concurrent session.updated events don't stack
+    // renames. Keep the mark on failure — retry is almost always a rate limit.
     this.appliedOpencodeTitle = normalizedTitle
+    if (!desiredName) {
+      return
+    }
 
-    const RENAME_TIMEOUT_MS = 3000
-    const timeoutSignal = AbortSignal.timeout(RENAME_TIMEOUT_MS)
-    const renameResult = await Promise.race([
-      this.thread.setName(desiredName)
-        .catch((e) =>
+    const renameResult = await raceDiscordRename({
+      rename: this.thread.setName(desiredName).catch(
+        (e) =>
           new Error('Failed to rename thread from OpenCode title', {
             cause: e,
           }),
-        ),
-      new Promise<'timeout'>((resolve) => {
-        timeoutSignal.addEventListener('abort', () => {
-          resolve('timeout')
-        })
-      }),
-    ])
+      ),
+    })
 
     if (renameResult === 'timeout') {
       logger.warn(
-        `[TITLE] setName timed out after ${RENAME_TIMEOUT_MS}ms for thread ${this.threadId} (likely rate-limited)`,
+        `[TITLE] setName timed out after ${DISCORD_THREAD_RENAME_TIMEOUT_MS}ms for thread ${this.threadId} (likely rate-limited)`,
       )
       return
     }
     if (renameResult instanceof Error) {
-      logger.warn(
-        `[TITLE] Could not rename thread ${this.threadId}: ${renameResult.message}`,
-      )
+      logger.warn(`[TITLE] Could not rename thread ${this.threadId}: ${renameResult.message}`)
       return
     }
-    await this.persistLastSyncedThreadName(desiredName)
     logger.log(
       `[TITLE] Renamed thread ${this.threadId} to "${desiredName}" from OpenCode session title`,
     )
-  }
-
-  private async loadLastSyncedThreadName() {
-    const db = await getDb()
-    const row = await db.query.thread_sessions.findFirst({
-      where: { thread_id: this.threadId },
-      columns: { last_synced_name: true },
-    })
-    return row?.last_synced_name ?? null
-  }
-
-  private async persistLastSyncedThreadName(name: string): Promise<void> {
-    this.lastSyncedThreadName = name
-    const db = await getDb()
-    const result = await db.update(schema.thread_sessions)
-      .set({ last_synced_name: name })
-      .where(orm.eq(schema.thread_sessions.thread_id, this.threadId))
-      .catch(
-        (e) =>
-          new Error('Failed to persist thread rename state', {
-            cause: e,
-          }),
-      )
-    if (result instanceof Error) {
-      logger.warn(`[TITLE] ${result.message} for thread ${this.threadId}`)
-    }
   }
 
   private async handleTuiToast(properties: {
@@ -2905,11 +3025,10 @@ export class ThreadSessionRuntime {
     if (!toastMessage) {
       return
     }
-    const titlePrefix = properties.title
-      ? `${properties.title.trim()}: `
-      : ''
-    const chunk = `⬦ ${properties.variant}: ${titlePrefix}${toastMessage}`
-    const toastResult = await this.thread.send({ content: chunk, flags: SILENT_MESSAGE_FLAGS })
+    const titlePrefix = properties.title ? `${properties.title.trim()}: ` : ''
+    const chunk = `${STATUS_PREFIX}${properties.variant}: ${titlePrefix}${toastMessage}`
+    const toastResult = await this.thread
+      .send({ content: chunk, flags: SILENT_MESSAGE_FLAGS })
       .catch((e) => new DiscordOperationError({ operation: 'sendMessage', cause: e }))
     if (toastResult instanceof Error) {
       discordLogger.error('Failed to send toast notice:', toastResult)
@@ -2927,13 +3046,11 @@ export class ThreadSessionRuntime {
    * fields that the local-queue path provides.
    */
   private async submitViaOpencodeQueue(input: IngressInput): Promise<EnqueueResult> {
+    await this.supersedePendingSleep(input)
     let skippedBySessionGuard = false
 
     await this.dispatchAction(async () => {
-      if (
-        input.expectedSessionId &&
-        this.state?.sessionId !== input.expectedSessionId
-      ) {
+      if (input.expectedSessionId && this.state?.sessionId !== input.expectedSessionId) {
         logger.log(
           `[ENQUEUE] Skipping stale promptAsync enqueue for thread ${this.threadId}: expected session ${input.expectedSessionId}, current session ${this.state?.sessionId || 'none'}`,
         )
@@ -2944,7 +3061,8 @@ export class ThreadSessionRuntime {
       // Context-only messages (noReply) should not create a new session.
       // If there is no existing session, silently skip.
       if (input.noReply) {
-        const existingSessionId = this.state?.sessionId || await getThreadSession(this.thread.id) || undefined
+        const existingSessionId =
+          this.state?.sessionId || (await getThreadSession(this.thread.id)) || undefined
         if (!existingSessionId) {
           logger.log(
             `[INGRESS] Skipping noReply message for thread ${this.threadId}: no existing session`,
@@ -2967,7 +3085,6 @@ export class ThreadSessionRuntime {
         prompt: input.prompt,
         agent: input.agent,
         permissions: input.permissions,
-        permissionRules: input.permissionRules,
         injectionGuardPatterns: input.injectionGuardPatterns,
         sessionStartScheduleKind: input.sessionStartSource?.scheduleKind,
         sessionStartScheduledTaskId: input.sessionStartSource?.scheduledTaskId,
@@ -2984,10 +3101,11 @@ export class ThreadSessionRuntime {
         sessionId: session.id,
         createdNewSession,
         permissions: input.permissions,
-        permissionRules: input.permissionRules,
       })
       if (updatePermissionsResult instanceof Error) {
-        await cleanupOnError(`Failed to update session permissions: ${updatePermissionsResult.message}`)
+        await cleanupOnError(
+          `Failed to update session permissions: ${updatePermissionsResult.message}`,
+        )
         return
       }
 
@@ -3001,6 +3119,18 @@ export class ThreadSessionRuntime {
       if (input.agent) {
         await setSessionAgent(session.id, input.agent)
         await clearSessionModel(session.id)
+      }
+
+      if (input.model) {
+        const validatedModel = await validateModelId({
+          model: input.model,
+          getClient,
+          directory: this.sdkDirectory,
+        })
+        if (validatedModel instanceof Error) {
+          await cleanupOnError(`Failed to resolve model: ${validatedModel.message}`)
+          return
+        }
       }
 
       await ensureSessionPreferencesSnapshot({
@@ -3027,15 +3157,25 @@ export class ThreadSessionRuntime {
       }
       const resolvedAgent = agentResult.agentPreference
       const availableAgents = agentResult.agents
+      releaseCurrentThreadIngress()
+
+      await this.persistIngressVariant({
+        sessionId: session.id,
+        channelId,
+        appId: resolvedAppId,
+        agentPreference: resolvedAgent,
+        getClient,
+        variant: input.variant,
+      })
 
       const [modelResult, preferredVariant] = await Promise.all([
         (async () => {
           if (input.model) {
-            const [providerID, ...modelParts] = input.model.split('/')
-            const modelID = modelParts.join('/')
-            if (providerID && modelID) {
-              return { providerID, modelID }
-            }
+            return validateModelId({
+              model: input.model,
+              getClient,
+              directory: this.sdkDirectory,
+            })
           }
           const modelInfo = await getCurrentModelInfo({
             sessionId: session.id,
@@ -3073,7 +3213,8 @@ export class ThreadSessionRuntime {
         if (!preferredVariant) {
           return undefined
         }
-        const providersResponse = await getClient().provider.list({ directory: this.sdkDirectory })
+        const providersResponse = await getClient()
+          .provider.list({ directory: this.sdkDirectory })
           .catch((e) => new OpenCodeSdkError({ operation: 'provider.list', cause: e }))
         if (providersResponse instanceof Error || !providersResponse.data) {
           return undefined
@@ -3086,15 +3227,15 @@ export class ThreadSessionRuntime {
         if (availableValues.length === 0) {
           return undefined
         }
-        return matchThinkingValue({
-          requestedValue: preferredVariant,
-          availableValues,
-        }) || undefined
+        return (
+          matchThinkingValue({
+            requestedValue: preferredVariant,
+            availableValues,
+          }) || undefined
+        )
       })()
 
-      const variantField = thinkingValue
-        ? { variant: thinkingValue }
-        : {}
+      const variantField = thinkingValue ? { variant: thinkingValue } : {}
 
       await this.sendNewSessionModelInfo({
         createdNewSession,
@@ -3134,7 +3275,8 @@ export class ThreadSessionRuntime {
         if (!channelId) {
           return undefined
         }
-        const fetched = await this.thread.guild.channels.fetch(channelId)
+        const fetched = await this.thread.guild.channels
+          .fetch(channelId)
           .catch((e) => new DiscordOperationError({ operation: 'fetchChannel', cause: e }))
         if (fetched instanceof Error || !fetched) {
           return undefined
@@ -3150,6 +3292,7 @@ export class ThreadSessionRuntime {
         userId: input.userId,
         sourceMessageId: input.sourceMessageId,
         sourceThreadId: input.sourceThreadId,
+        threadName: this.thread.name || undefined,
         repliedMessage: input.repliedMessage,
         worktree,
         currentAgent: resolvedAgent,
@@ -3175,6 +3318,7 @@ export class ThreadSessionRuntime {
           username: this.state?.sessionUsername || input.username,
           userId: this.state?.sessionUserId || input.userId,
           parentSessionId: this.state?.parentSessionId || input.parentSessionId,
+          scheduledTask: await this.resolveScheduledTaskContext(session.id),
         }),
         ...(resolvedAgent ? { agent: resolvedAgent } : {}),
         ...(modelField ? { model: modelField } : {}),
@@ -3182,18 +3326,26 @@ export class ThreadSessionRuntime {
         ...(input.noReply ? { noReply: true } : {}),
       }
       await waitForGlobalEventListener()
-      const promptResult = await getClient().session.promptAsync(request)
+      const promptResult = await getClient()
+        .session.promptAsync(request)
         .catch((e) => new OpenCodeSdkError({ operation: 'session.promptAsync', cause: e }))
       if (promptResult instanceof Error || promptResult.error) {
-        const errorMessage = promptResult instanceof Error
-          ? promptResult.message
-          : extractSdkErrorMessage(promptResult.error)
-        const errObj = promptResult instanceof Error
-          ? promptResult
-          : new Error(errorMessage)
+        const errorMessage =
+          promptResult instanceof Error
+            ? promptResult.message
+            : extractSdkErrorMessage(promptResult.error)
+        const errObj = promptResult instanceof Error ? promptResult : new Error(errorMessage)
         void notifyError(errObj, 'promptAsync failed in submitViaOpencodeQueue')
         await cleanupOnError(`✗ OpenCode API error: ${errorMessage}`)
         return
+      }
+
+      if (input.sessionStartSource?.scheduledTaskRunId) {
+        await startScheduledTaskRunSession({
+          runId: input.sessionStartSource.scheduledTaskRunId,
+          sessionId: session.id,
+          projectDirectory: this.sdkDirectory,
+        })
       }
 
       logger.log(
@@ -3225,7 +3377,26 @@ export class ThreadSessionRuntime {
    * Enqueue in kimaki's local per-thread queue.
    * Used for explicit queue workflows (/queue, queueMessage=true).
    */
+  /**
+   * A new turn supersedes a pending sleep.
+   *
+   * Called from the two terminal routers rather than from the top of
+   * enqueueIncoming: arrival order is only fixed once a message reaches the
+   * preprocessChain link, so awaiting anything before that lets two rapid
+   * messages swap places. By here the order is already committed.
+   *
+   * Awaited rather than fire-and-forget so it cannot race the task runner and
+   * let a stale wake land after the user took the conversation back.
+   */
+  private async supersedePendingSleep(input: IngressInput): Promise<void> {
+    if (input.isSleepWake) return
+    await cancelSessionSleepForThread({ threadId: this.threadId }).catch((error) => {
+      logger.error('[SLEEP] failed to cancel pending sleep:', error)
+    })
+  }
+
   private async enqueueViaLocalQueue(input: IngressInput): Promise<EnqueueResult> {
+    await this.supersedePendingSleep(input)
     const queueId = crypto.randomBytes(8).toString('hex')
     const queuedMessage: QueuedMessage = {
       queueId,
@@ -3237,8 +3408,8 @@ export class ThreadSessionRuntime {
       command: input.command,
       agent: input.agent,
       model: input.model,
+      variant: input.variant,
       permissions: input.permissions,
-      permissionRules: input.permissionRules,
       injectionGuardPatterns: input.injectionGuardPatterns,
       parentSessionId: input.parentSessionId,
       sourceMessageId: input.sourceMessageId,
@@ -3259,14 +3430,12 @@ export class ThreadSessionRuntime {
       const stateAfterEnqueue = threadState.getThreadState(this.threadId)
       const position = stateAfterEnqueue?.queueItems.length ?? 0
       const willDrainNow = stateAfterEnqueue
-        ? (
-          stateAfterEnqueue.queueItems.length > 0
-          && !this.isMainSessionBusy()
-        )
+        ? stateAfterEnqueue.queueItems.length > 0 && !this.isMainSessionBusy()
         : false
-      result = !willDrainNow && position > 0
-        ? { queued: true, position, queueId }
-        : { queued: false, queueId }
+      result =
+        !willDrainNow && position > 0
+          ? { queued: true, position, queueId }
+          : { queued: false, queueId }
 
       if (this.hasPendingQuestionUi()) {
         this.maybeHandoffQueuedItemForPendingQuestion({
@@ -3290,8 +3459,12 @@ export class ThreadSessionRuntime {
    * discord-bot.ts.
    */
   async enqueueIncoming(input: IngressInput): Promise<EnqueueResult> {
+    await waitForCurrentThreadIngress()
     threadState.setSessionUsername(this.threadId, input.username)
-    threadState.setSessionUserId(this.threadId, input.userId)
+    const botUserId = this.thread.client.user?.id
+    if (input.userId && input.userId !== botUserId) {
+      threadState.setSessionUserId(this.threadId, input.userId)
+    }
     await this.ensureParentSessionId({
       parentSessionId: input.parentSessionId,
     })
@@ -3322,11 +3495,7 @@ export class ThreadSessionRuntime {
    * Prefer in-memory state, then SQLite, then the ingress marker.
    * Persist once so multi-turn child sessions keep the parent after restart.
    */
-  private async ensureParentSessionId({
-    parentSessionId,
-  }: {
-    parentSessionId?: string
-  }) {
+  private async ensureParentSessionId({ parentSessionId }: { parentSessionId?: string }) {
     if (this.state?.parentSessionId) {
       return
     }
@@ -3395,19 +3564,13 @@ export class ThreadSessionRuntime {
           // no explicit agent was already set (CLI --agent flag wins).
           agent: input.agent || result.agent,
           repliedMessage: result.repliedMessage,
-          permissionRules: [
-            ...(input.permissionRules ?? []),
-            ...(result.permissionRules ?? []),
-          ],
           preprocess: undefined,
         })
 
         const hasPromptText = resolvedInput.prompt.trim().length > 0
         const hasImages = (resolvedInput.images?.length || 0) > 0
         if (!hasPromptText && !hasImages && !resolvedInput.command) {
-          logger.warn(
-            `[INGRESS] Skipping empty preprocessed input threadId=${this.threadId}`,
-          )
+          logger.warn(`[INGRESS] Skipping empty preprocessed input threadId=${this.threadId}`)
           resolveOuter({ queued: false })
           return
         }
@@ -3423,7 +3586,7 @@ export class ThreadSessionRuntime {
               mode: 'opencode',
               command: undefined,
             })
-          : (resolvedInput.mode === 'local-queue' || resolvedInput.command)
+          : resolvedInput.mode === 'local-queue' || resolvedInput.command
             ? await this.enqueueViaLocalQueue(resolvedInput)
             : await this.submitViaOpencodeQueue(resolvedInput)
         resolveOuter(enqueueResult)
@@ -3457,13 +3620,13 @@ export class ThreadSessionRuntime {
     }
 
     const startedAt = Date.now()
-    logger.log(
-      `[ABORT API] id=${abortId} reason=${reason} sessionId=${sessionId} start`,
-    )
-    const abortResult = await client.session.abort({
-      sessionID: sessionId,
-      directory: this.sdkDirectory,
-    }).catch((e) => new OpenCodeSdkError({ operation: 'session.abort', cause: e }))
+    logger.log(`[ABORT API] id=${abortId} reason=${reason} sessionId=${sessionId} start`)
+    const abortResult = await client.session
+      .abort({
+        sessionID: sessionId,
+        directory: this.sdkDirectory,
+      })
+      .catch((e) => new OpenCodeSdkError({ operation: 'session.abort', cause: e }))
     if (!(abortResult instanceof Error)) {
       logger.log(
         `[ABORT API] id=${abortId} reason=${reason} sessionId=${sessionId} success durationMs=${Date.now() - startedAt}`,
@@ -3475,11 +3638,7 @@ export class ThreadSessionRuntime {
     )
   }
 
-  private abortActiveRunInternal({
-    reason,
-  }: {
-    reason: string
-  }): AbortRunOutcome {
+  private abortActiveRunInternal({ reason }: { reason: string }): AbortRunOutcome {
     const abortId = this.nextAbortId(reason)
     const state = this.state
     if (!state) {
@@ -3501,6 +3660,11 @@ export class ThreadSessionRuntime {
     )
 
     this.stopTyping()
+    this.deferredQuestionShow.clear()
+
+    // The aborted run owns the question request, so the dropdown dies with it.
+    // Questions have no TTL, so this is the only thing that clears them here.
+    void cancelPendingQuestion(this.threadId)
 
     const apiAbortPromise = sessionId
       ? this.abortSessionViaApi({ abortId, reason, sessionId })
@@ -3561,8 +3725,10 @@ export class ThreadSessionRuntime {
     }
     await this.waitForEvent({
       predicate: (event) => {
-        return event.type === 'session.idle'
-          && (event.properties as { sessionID?: string }).sessionID === sessionId
+        return (
+          event.type === 'session.idle' &&
+          (event.properties as { sessionID?: string }).sessionID === sessionId
+        )
       },
       sinceTimestamp: waitSinceTimestamp,
       timeoutMs,
@@ -3572,14 +3738,6 @@ export class ThreadSessionRuntime {
   /** Number of messages waiting in the queue. */
   getQueueLength(): number {
     return this.state?.queueItems.length ?? 0
-  }
-
-  /** NOTIFY_MESSAGE_FLAGS unless queue has a next item, then SILENT.
-   * Permissions should NOT use this — they always notify. */
-  private getNotifyFlags(): number {
-    return this.getQueueLength() > 0
-      ? SILENT_MESSAGE_FLAGS
-      : NOTIFY_MESSAGE_FLAGS
   }
 
   /** Clear all queued messages. Returns the removed items. */
@@ -3622,14 +3780,8 @@ export class ThreadSessionRuntime {
   }
 
   /** Remove a queued message identified by its Discord source message ID. */
-  removeQueuedMessage(
-    sourceMessageId: string,
-  ): threadState.QueuedMessage | undefined {
-    return threadState.updateQueueItemBySourceMessageId(
-      this.threadId,
-      sourceMessageId,
-      () => null,
-    )
+  removeQueuedMessage(sourceMessageId: string): threadState.QueuedMessage | undefined {
+    return threadState.updateQueueItemBySourceMessageId(this.threadId, sourceMessageId, () => null)
   }
 
   // ── Queue Drain ─────────────────────────────────────────────
@@ -3669,9 +3821,7 @@ export class ThreadSessionRuntime {
       return
     }
 
-    logger.log(
-      `[QUEUE DRAIN] Processing queued message from ${next.username}`,
-    )
+    logger.log(`[QUEUE DRAIN] Processing queued message from ${next.username}`)
 
     // Show queued message indicator only for messages that actually waited
     // behind a running request — not for the first immediate dispatch.
@@ -3680,10 +3830,7 @@ export class ThreadSessionRuntime {
         ? `/${next.command.name}`
         : `${next.prompt.slice(0, 150)}${next.prompt.length > 150 ? '...' : ''}`
       if (displayText.trim()) {
-        await sendThreadMessage(
-          this.thread,
-          `» **${next.username}:** ${displayText}`,
-        )
+        await sendThreadMessage(this.thread, `${QUEUE_PREFIX}**${next.username}:** ${displayText}`)
       }
     }
 
@@ -3696,17 +3843,19 @@ export class ThreadSessionRuntime {
     if (dispatchSessionId) {
       this.markQueueDispatchBusy(dispatchSessionId)
     }
-    void this.dispatchPrompt(next).catch(async (err) => {
-      logger.error('[DISPATCH] Prompt dispatch failed:', err)
-      void notifyError(err, 'Runtime prompt dispatch failed')
-      if (dispatchSessionId) {
-        this.markQueueDispatchIdle(dispatchSessionId)
-      }
-    }).finally(() => {
-      void this.dispatchAction(() => {
-        return this.tryDrainQueue({ showIndicator: true })
+    void this.dispatchPrompt(next)
+      .catch(async (err) => {
+        logger.error('[DISPATCH] Prompt dispatch failed:', err)
+        void notifyError(err, 'Runtime prompt dispatch failed')
+        if (dispatchSessionId) {
+          this.markQueueDispatchIdle(dispatchSessionId)
+        }
       })
-    })
+      .finally(() => {
+        void this.dispatchAction(() => {
+          return this.tryDrainQueue({ showIndicator: true })
+        })
+      })
   }
 
   // ── Prompt Dispatch ─────────────────────────────────────────
@@ -3717,24 +3866,22 @@ export class ThreadSessionRuntime {
   private async dispatchPrompt(input: QueuedMessage): Promise<void> {
     this.lastDisplayedContextPercentage = 0
     this.lastRateLimitDisplayTime = 0
+    this.lastSentPartKind = undefined
 
     // ── Ensure session ────────────────────────────────────────
     const sessionResult = await this.ensureSession({
       prompt: input.prompt,
       agent: input.agent,
       permissions: input.permissions,
-      permissionRules: input.permissionRules,
       injectionGuardPatterns: input.injectionGuardPatterns,
       sessionStartScheduleKind: input.sessionStartScheduleKind,
       sessionStartScheduledTaskId: input.sessionStartScheduledTaskId,
     })
     if (sessionResult instanceof Error) {
       this.stopTyping()
-      await sendThreadMessage(
-        this.thread,
-        `✗ ${sessionResult.message}`,
-        { flags: NOTIFY_MESSAGE_FLAGS },
-      )
+      await sendThreadMessage(this.thread, `✗ ${sessionResult.message}`, {
+        flags: NOTIFY_MESSAGE_FLAGS,
+      })
       // Show indicator: this dispatch failed, so the next queued message
       // has been waiting — the user needs to see which one is starting.
       await this.tryDrainQueue({ showIndicator: true })
@@ -3747,7 +3894,6 @@ export class ThreadSessionRuntime {
       sessionId: session.id,
       createdNewSession,
       permissions: input.permissions,
-      permissionRules: input.permissionRules,
     })
     if (updatePermissionsResult instanceof Error) {
       this.stopTyping()
@@ -3772,6 +3918,22 @@ export class ThreadSessionRuntime {
       await clearSessionModel(session.id)
     }
 
+    if (input.model) {
+      const validatedModel = await validateModelId({
+        model: input.model,
+        getClient,
+        directory: this.sdkDirectory,
+      })
+      if (validatedModel instanceof Error) {
+        this.stopTyping()
+        await sendThreadMessage(this.thread, `Failed to resolve model: ${validatedModel.message}`, {
+          flags: NOTIFY_MESSAGE_FLAGS,
+        })
+        await this.tryDrainQueue({ showIndicator: true })
+        return
+      }
+    }
+
     await ensureSessionPreferencesSnapshot({
       sessionId: session.id,
       channelId,
@@ -3792,11 +3954,9 @@ export class ThreadSessionRuntime {
     }).catch((e) => new OpenCodeSdkError({ operation: 'resolveAgent', cause: e }))
     if (earlyAgentResult instanceof Error) {
       this.stopTyping()
-      await sendThreadMessage(
-        this.thread,
-        `Failed to resolve agent: ${earlyAgentResult.message}`,
-        { flags: NOTIFY_MESSAGE_FLAGS },
-      )
+      await sendThreadMessage(this.thread, `Failed to resolve agent: ${earlyAgentResult.message}`, {
+        flags: NOTIFY_MESSAGE_FLAGS,
+      })
       // Show indicator: dispatch failed mid-setup, next queued message was waiting.
       await this.tryDrainQueue({ showIndicator: true })
       return
@@ -3804,14 +3964,23 @@ export class ThreadSessionRuntime {
     const earlyAgentPreference = earlyAgentResult.agentPreference
     const earlyAvailableAgents = earlyAgentResult.agents
 
+    await this.persistIngressVariant({
+      sessionId: session.id,
+      channelId,
+      appId: resolvedAppId,
+      agentPreference: earlyAgentPreference,
+      getClient,
+      variant: input.variant,
+    })
+
     const [earlyModelResult, preferredVariant] = await Promise.all([
       (async () => {
         if (input.model) {
-          const [providerID, ...modelParts] = input.model.split('/')
-          const modelID = modelParts.join('/')
-          if (providerID && modelID) {
-            return { providerID, modelID }
-          }
+          return validateModelId({
+            model: input.model,
+            getClient,
+            directory: this.sdkDirectory,
+          })
         }
         const modelInfo = await getCurrentModelInfo({
           sessionId: session.id,
@@ -3834,11 +4003,9 @@ export class ThreadSessionRuntime {
     ])
     if (earlyModelResult instanceof Error) {
       this.stopTyping()
-      await sendThreadMessage(
-        this.thread,
-        `Failed to resolve model: ${earlyModelResult.message}`,
-        { flags: NOTIFY_MESSAGE_FLAGS },
-      )
+      await sendThreadMessage(this.thread, `Failed to resolve model: ${earlyModelResult.message}`, {
+        flags: NOTIFY_MESSAGE_FLAGS,
+      })
       // Show indicator: dispatch failed mid-setup, next queued message was waiting.
       await this.tryDrainQueue({ showIndicator: true })
       return
@@ -3860,7 +4027,8 @@ export class ThreadSessionRuntime {
       if (!preferredVariant) {
         return undefined
       }
-      const providersResponse = await getClient().provider.list({ directory: this.sdkDirectory })
+      const providersResponse = await getClient()
+        .provider.list({ directory: this.sdkDirectory })
         .catch((e) => new OpenCodeSdkError({ operation: 'provider.list', cause: e }))
       if (providersResponse instanceof Error || !providersResponse.data) {
         return undefined
@@ -3873,10 +4041,12 @@ export class ThreadSessionRuntime {
       if (availableValues.length === 0) {
         return undefined
       }
-      return matchThinkingValue({
-        requestedValue: preferredVariant,
-        availableValues,
-      }) || undefined
+      return (
+        matchThinkingValue({
+          requestedValue: preferredVariant,
+          availableValues,
+        }) || undefined
+      )
     })()
 
     await this.ensureModelContextLimit({
@@ -3922,7 +4092,8 @@ export class ThreadSessionRuntime {
       if (!channelId) {
         return undefined
       }
-      const fetched = await this.thread.guild.channels.fetch(channelId)
+      const fetched = await this.thread.guild.channels
+        .fetch(channelId)
         .catch((e) => new DiscordOperationError({ operation: 'fetchChannel', cause: e }))
       if (fetched instanceof Error || !fetched) {
         return undefined
@@ -3938,6 +4109,7 @@ export class ThreadSessionRuntime {
       userId: input.userId,
       sourceMessageId: input.sourceMessageId,
       sourceThreadId: input.sourceThreadId,
+      threadName: this.thread.name || undefined,
       repliedMessage: input.repliedMessage,
       worktree,
       currentAgent: earlyAgentPreference,
@@ -3949,25 +4121,14 @@ export class ThreadSessionRuntime {
       ...images,
     ]
 
-    const variantField = earlyThinkingValue
-      ? { variant: earlyThinkingValue }
-      : {}
+    const variantField = earlyThinkingValue ? { variant: earlyThinkingValue } : {}
 
     const parseOpenCodeErrorMessage = (err: unknown): string => {
       if (err && typeof err === 'object') {
-        if (
-          'data' in err &&
-          err.data &&
-          typeof err.data === 'object' &&
-          'message' in err.data
-        ) {
+        if ('data' in err && err.data && typeof err.data === 'object' && 'message' in err.data) {
           return String(err.data.message)
         }
-        if (
-          'errors' in err &&
-          Array.isArray(err.errors) &&
-          err.errors.length > 0
-        ) {
+        if ('errors' in err && Array.isArray(err.errors) && err.errors.length > 0) {
           return JSON.stringify(err.errors)
         }
         if ('message' in err && typeof err.message === 'string') {
@@ -3988,6 +4149,7 @@ export class ThreadSessionRuntime {
         userId: input.userId,
         sourceMessageId: input.sourceMessageId,
         sourceThreadId: input.sourceThreadId,
+        threadName: this.thread.name || undefined,
         repliedMessage: input.repliedMessage,
       })
       // OpenCode's session.command API has no `system` field. Persist the
@@ -4005,15 +4167,14 @@ export class ThreadSessionRuntime {
         username: this.state?.sessionUsername || input.username,
         userId: this.state?.sessionUserId || input.userId,
         parentSessionId: this.state?.parentSessionId || input.parentSessionId,
+        scheduledTask: await this.resolveScheduledTaskContext(session.id),
       })
       const systemWriteResult = await writeSessionSystemPrompt({
         sessionId: session.id,
         system: commandSystem,
         dataDir: getDataDir(),
       }).catch((e) => {
-        return e instanceof Error
-          ? e
-          : new Error(String(e), { cause: e })
+        return e instanceof Error ? e : new Error(String(e), { cause: e })
       })
       if (systemWriteResult instanceof Error) {
         logger.error(
@@ -4034,19 +4195,21 @@ export class ThreadSessionRuntime {
         })
         return
       }
-      const commandResponse = await getClient().session.command(
-        {
-          sessionID: session.id,
+      const commandResponse = await getClient()
+        .session.command(
+          {
+            sessionID: session.id,
 
-          directory: this.sdkDirectory,
-          command: queuedCommand.name,
-          arguments: queuedCommand.arguments + (discordTag ? `\n${discordTag}` : ''),
-          agent: earlyAgentPreference,
-          model: `${earlyModelParam.providerID}/${earlyModelParam.modelID}`,
-          ...variantField,
-        },
-        { signal: commandSignal },
-      ).catch((e) => new OpenCodeSdkError({ operation: 'session.command', cause: e }))
+            directory: this.sdkDirectory,
+            command: queuedCommand.name,
+            arguments: queuedCommand.arguments + (discordTag ? `\n${discordTag}` : ''),
+            agent: earlyAgentPreference,
+            model: `${earlyModelParam.providerID}/${earlyModelParam.modelID}`,
+            ...variantField,
+          },
+          { signal: commandSignal },
+        )
+        .catch((e) => new OpenCodeSdkError({ operation: 'session.command', cause: e }))
 
       if (commandResponse instanceof Error) {
         const timeoutReason = commandSignal.reason
@@ -4055,9 +4218,7 @@ export class ThreadSessionRuntime {
           timeoutReason instanceof Error &&
           timeoutReason.name === 'TimeoutError'
         if (timedOut) {
-          logger.warn(
-            `[DISPATCH] Command timed out after 30s sessionId=${session.id}`,
-          )
+          logger.warn(`[DISPATCH] Command timed out after 30s sessionId=${session.id}`)
           this.stopTyping()
           await sendThreadMessage(
             this.thread,
@@ -4072,23 +4233,17 @@ export class ThreadSessionRuntime {
 
         const commandErrorForAbortCheck: unknown = commandResponse
         if (isAbortError(commandErrorForAbortCheck)) {
-          logger.log(
-            `[DISPATCH] Command aborted (expected) sessionId=${session.id}`,
-          )
+          logger.log(`[DISPATCH] Command aborted (expected) sessionId=${session.id}`)
           this.stopTyping()
           return
         }
 
-        logger.error(
-          `[DISPATCH] Command SDK call failed: ${commandResponse.message}`,
-        )
+        logger.error(`[DISPATCH] Command SDK call failed: ${commandResponse.message}`)
         void notifyError(commandResponse, 'Failed to send command to OpenCode')
         this.stopTyping()
-        await sendThreadMessage(
-          this.thread,
-          `✗ Unexpected bot Error: ${commandResponse.message}`,
-          { flags: NOTIFY_MESSAGE_FLAGS },
-        )
+        await sendThreadMessage(this.thread, `✗ Unexpected bot Error: ${commandResponse.message}`, {
+          flags: NOTIFY_MESSAGE_FLAGS,
+        })
         await this.dispatchAction(() => {
           return this.tryDrainQueue({ showIndicator: true })
         })
@@ -4098,9 +4253,7 @@ export class ThreadSessionRuntime {
       if (commandResponse.error) {
         const errorMessage = parseOpenCodeErrorMessage(commandResponse.error)
         if (errorMessage.includes('aborted')) {
-          logger.log(
-            `[DISPATCH] Command aborted (expected) sessionId=${session.id}`,
-          )
+          logger.log(`[DISPATCH] Command aborted (expected) sessionId=${session.id}`)
           this.stopTyping()
           return
         }
@@ -4128,34 +4281,35 @@ export class ThreadSessionRuntime {
     }
 
     await waitForGlobalEventListener()
-    const promptResponse = await getClient().session.promptAsync({
-      sessionID: session.id,
-      directory: this.sdkDirectory,
-      parts,
-      system: getOpencodeSystemMessage({
-        sessionId: session.id,
-        channelId,
-        guildId: this.thread.guildId,
-        threadId: this.thread.id,
-        channelTopic,
-        agents: earlyAvailableAgents,
-        username: this.state?.sessionUsername || input.username,
-        userId: this.state?.sessionUserId || input.userId,
-        parentSessionId: this.state?.parentSessionId || input.parentSessionId,
-      }),
-      model: earlyModelParam,
-      agent: earlyAgentPreference,
-      ...variantField,
-    }).catch((e) => new OpenCodeSdkError({ operation: 'session.promptAsync', cause: e }))
+    const promptResponse = await getClient()
+      .session.promptAsync({
+        sessionID: session.id,
+        directory: this.sdkDirectory,
+        parts,
+        system: getOpencodeSystemMessage({
+          sessionId: session.id,
+          channelId,
+          guildId: this.thread.guildId,
+          threadId: this.thread.id,
+          channelTopic,
+          agents: earlyAvailableAgents,
+          username: this.state?.sessionUsername || input.username,
+          userId: this.state?.sessionUserId || input.userId,
+          parentSessionId: this.state?.parentSessionId || input.parentSessionId,
+          scheduledTask: await this.resolveScheduledTaskContext(session.id),
+        }),
+        model: earlyModelParam,
+        agent: earlyAgentPreference,
+        ...variantField,
+      })
+      .catch((e) => new OpenCodeSdkError({ operation: 'session.promptAsync', cause: e }))
 
     if (promptResponse instanceof Error || promptResponse.error) {
       const errorMessage = (() => {
         if (promptResponse instanceof Error) return promptResponse.message
         return parseOpenCodeErrorMessage(promptResponse.error)
       })()
-      const errorObject = promptResponse instanceof Error
-        ? promptResponse
-        : new Error(errorMessage)
+      const errorObject = promptResponse instanceof Error ? promptResponse : new Error(errorMessage)
       logger.error(`[DISPATCH] Prompt API call failed: ${errorMessage}`)
       void notifyError(errorObject, 'OpenCode API error during local queue prompt')
       this.stopTyping()
@@ -4182,35 +4336,73 @@ export class ThreadSessionRuntime {
   // ── Session Ensure ──────────────────────────────────────────
   // Creates or reuses the OpenCode session for this thread.
 
+  /** Cached per-session scheduled task info for the system message. */
+  private scheduledTaskContextCache = new Map<string, ScheduledTaskSystemContext | undefined>()
+
+  /**
+   * Resolve the scheduled-task context for the system message, once per
+   * session. The row in session_start_sources is immutable, so caching the
+   * result keeps the system prompt identical across turns (prompt-cache safe).
+   * One-shot 'at' tasks are deleted after their run, so only schedule_kind
+   * survives for them.
+   */
+  private async resolveScheduledTaskContext(
+    sessionId: string,
+  ): Promise<ScheduledTaskSystemContext | undefined> {
+    const cache = this.scheduledTaskContextCache
+    if (cache.has(sessionId)) {
+      return cache.get(sessionId)
+    }
+    const context = await (async (): Promise<ScheduledTaskSystemContext | undefined> => {
+      const source = await getSessionStartSource({ sessionId })
+      if (!source) {
+        return undefined
+      }
+      const task = source.scheduled_task_id
+        ? await getScheduledTask(source.scheduled_task_id)
+        : null
+      return {
+        taskId: source.scheduled_task_id ?? undefined,
+        scheduleKind: source.schedule_kind,
+        cronExpr: task?.cron_expr,
+        timezone: task?.timezone,
+      }
+    })().catch((error) => {
+      logger.warn(
+        `[SCHEDULED TASK CONTEXT] Failed to resolve for session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`,
+      )
+      return undefined
+    })
+    cache.set(sessionId, context)
+    return context
+  }
+
   private async updateExistingSessionPermissions({
     client,
     sessionId,
     createdNewSession,
     permissions,
-    permissionRules,
   }: {
     client: OpencodeClient
     sessionId: string
     createdNewSession: boolean
     permissions?: string[]
-    permissionRules?: PermissionRuleset
   }) {
     if (createdNewSession) {
       return null
     }
 
-    const rules = [
-      ...(permissionRules ?? []),
-      ...parsePermissionRules(permissions ?? []),
-    ]
+    const rules = parsePermissionRules(permissions ?? [])
     if (rules.length === 0) {
       return null
     }
 
-    const updateResult = await client.session.update({
-      sessionID: sessionId,
-      permission: rules,
-    }).catch((e) => new OpenCodeSdkError({ operation: 'session.update', cause: e }))
+    const updateResult = await client.session
+      .update({
+        sessionID: sessionId,
+        permission: rules,
+      })
+      .catch((e) => new OpenCodeSdkError({ operation: 'session.update', cause: e }))
     if (updateResult instanceof Error) return updateResult
     if (updateResult.error) {
       return new Error('OpenCode rejected permission update')
@@ -4222,7 +4414,6 @@ export class ThreadSessionRuntime {
     prompt,
     agent,
     permissions,
-    permissionRules,
     injectionGuardPatterns,
     sessionStartScheduleKind,
     sessionStartScheduledTaskId,
@@ -4231,7 +4422,6 @@ export class ThreadSessionRuntime {
     agent?: string
     /** Raw "tool:action" strings from --permission flag */
     permissions?: string[]
-    permissionRules?: PermissionRuleset
     injectionGuardPatterns?: string[]
     sessionStartScheduleKind?: 'at' | 'cron'
     sessionStartScheduledTaskId?: number
@@ -4251,9 +4441,7 @@ export class ThreadSessionRuntime {
       workspaceInfo?.status === 'ready' && workspaceInfo.workspace_directory
         ? workspaceInfo.workspace_directory
         : undefined
-    const originalRepoDirectory = worktreeDirectory
-      ? workspaceInfo?.project_directory
-      : undefined
+    const originalRepoDirectory = worktreeDirectory ? workspaceInfo?.project_directory : undefined
 
     const getClientResult = await initializeOpencodeForDirectory(directory, {
       originalRepoDirectory,
@@ -4266,17 +4454,19 @@ export class ThreadSessionRuntime {
     let sessionId = this.state?.sessionId
     if (!sessionId) {
       // Fallback to DB
-      sessionId = await getThreadSession(this.thread.id) || undefined
+      sessionId = (await getThreadSession(this.thread.id)) || undefined
     }
 
     let session: { id: string } | undefined
     let createdNewSession = false
 
     if (sessionId) {
-      const sessionResponse = await getClient().session.get({
-        sessionID: sessionId,
-        directory: this.sdkDirectory,
-      }).catch((e) => new OpenCodeSdkError({ operation: 'session.get', cause: e }))
+      const sessionResponse = await getClient()
+        .session.get({
+          sessionID: sessionId,
+          directory: this.sdkDirectory,
+        })
+        .catch((e) => new OpenCodeSdkError({ operation: 'session.get', cause: e }))
       if (sessionResponse instanceof Error) {
         logger.warn(
           `[ENSURE SESSION] Failed to get existing session ${sessionId}: ${sessionResponse.message}`,
@@ -4284,17 +4474,16 @@ export class ThreadSessionRuntime {
       } else if (sessionResponse.data) {
         session = sessionResponse.data
       } else {
+        const sdkMessage = extractSdkErrorMessage(sessionResponse.error)
         logger.warn(
-          `[ENSURE SESSION] session.get returned no data for ${sessionId}, response=${JSON.stringify(sessionResponse)}`,
+          `[ENSURE SESSION] session.get returned no data for ${sessionId}: ${sdkMessage}, response=${JSON.stringify(sessionResponse)}`,
         )
       }
     }
 
     if (!session) {
-      // Pass per-session external_directory permissions so this session can
-      // access its own project directory (and worktree origin if applicable)
-      // without prompts. These override the server-level 'ask' default via
-      // opencode's findLast() rule evaluation.
+      // Pass per-session external_directory permissions. By default this is a
+      // single allow-everything rule plus the worktree-origin deny rule.
       // CLI --permission rules are appended after base rules so they win
       // via opencode's findLast() evaluation.
       const sessionPermissions = [
@@ -4302,52 +4491,53 @@ export class ThreadSessionRuntime {
           directory: this.sdkDirectory,
           originalRepoDirectory,
         }),
-        ...(permissionRules ?? []),
         ...parsePermissionRules(permissions ?? []),
       ]
       // Omit title so OpenCode auto-generates a summary from the conversation
-      const createResult = await getClient().session.create({
-        directory: this.sdkDirectory,
-        permission: sessionPermissions,
-      }).catch((e) => new OpenCodeSdkError({ operation: 'session.create', cause: e }))
+      const createResult = await getClient()
+        .session.create({
+          directory: this.sdkDirectory,
+          permission: sessionPermissions,
+        })
+        .catch((e) => new OpenCodeSdkError({ operation: 'session.create', cause: e }))
       if (createResult instanceof Error) {
-        logger.error(
-          `[ENSURE SESSION] session.create failed: ${createResult.message}`,
-        )
+        logger.error(`[ENSURE SESSION] session.create failed: ${createResult.message}`)
         return new Error(
           `Failed to create session: ${createResult.message}, threadId=${this.thread.id}, directory=${this.sdkDirectory}`,
           { cause: createResult },
         )
       }
-      session = createResult.data
-      if (!session) {
-        logger.warn(
-          `[ENSURE SESSION] session.create returned no data, threadId=${this.thread.id}, directory=${this.sdkDirectory}, response=${JSON.stringify(createResult)}`,
+      if (createResult.error || !createResult.data) {
+        const errorMessage = extractSdkErrorMessage(createResult.error)
+        logger.error(
+          `[ENSURE SESSION] session.create failed: ${errorMessage}, threadId=${this.thread.id}, directory=${this.sdkDirectory}, response=${JSON.stringify(createResult)}`,
+        )
+        return new Error(
+          `Failed to create session: ${errorMessage}, threadId=${this.thread.id}, directory=${this.sdkDirectory}`,
         )
       }
+      session = createResult.data
       // Insert DB row immediately so the external-sync poller sees
       // source='kimaki' before the next poll tick and skips this session.
       // The upsert at the end of ensureSession is kept for the reuse path.
-      if (session) {
-        await setThreadSession(this.thread.id, session.id)
-        if (injectionGuardPatterns?.length) {
-          writeInjectionGuardConfig({
-            sessionId: session.id,
-            scanPatterns: injectionGuardPatterns,
-          })
-        }
-        const worktree = await getThreadWorktreeOrWorkspace(this.thread.id)
-        trackEvent('session_created', {
-          has_worktree: Boolean(worktree),
-          source: sessionStartScheduleKind ? 'scheduled' : 'discord',
+      await setThreadSession(this.thread.id, session.id)
+      if (injectionGuardPatterns?.length) {
+        writeInjectionGuardConfig({
+          sessionId: session.id,
+          scanPatterns: injectionGuardPatterns,
         })
       }
+      const worktree = await getThreadWorktreeOrWorkspace(this.thread.id)
+      trackEvent('session_created', {
+        has_worktree: Boolean(worktree),
+        source: sessionStartScheduleKind ? 'scheduled' : 'discord',
+      })
       createdNewSession = true
     }
 
     if (!session) {
       return new Error(
-        `Failed to create or get session: threadId=${this.thread.id}, channelId=${this.channelId}, directory=${directory}, sdkDirectory=${this.sdkDirectory}, existingSessionId=${sessionId ?? 'none'}, createdNewSession=${createdNewSession}. session.create returned empty data, check the [ENSURE SESSION] warn log above for the full response body`,
+        `Failed to create or get session: threadId=${this.thread.id}, channelId=${this.channelId}, directory=${directory}, sdkDirectory=${this.sdkDirectory}, existingSessionId=${sessionId ?? 'none'}, createdNewSession=${createdNewSession}`,
       )
     }
 
@@ -4375,13 +4565,9 @@ export class ThreadSessionRuntime {
         sessionId: session.id,
         scheduleKind: sessionStartScheduleKind,
         scheduledTaskId: sessionStartScheduledTaskId,
-      }).catch((e) =>
-        new OpenCodeSdkError({ operation: 'setSessionStartSource', cause: e }),
-      )
+      }).catch((e) => new OpenCodeSdkError({ operation: 'setSessionStartSource', cause: e }))
       if (sessionStartSourceResult instanceof Error) {
-        logger.warn(
-          `[SESSION START SOURCE] ${sessionStartSourceResult.message}`,
-        )
+        logger.warn(`[SESSION START SOURCE] ${sessionStartSourceResult.message}`)
       }
     }
 
@@ -4411,12 +4597,10 @@ export class ThreadSessionRuntime {
     }
 
     const modelLabel = `${model.providerID}/${model.modelID}`
-    const agentLabel = agent && agent.toLowerCase() !== 'build'
-      ? ` ⋅ ${agent}`
-      : ''
+    const agentLabel = agent && agent.toLowerCase() !== 'build' ? ` ⋅ ${agent}` : ''
     const result = await sendThreadMessage(
       this.thread,
-      `*using ${modelLabel}${agentLabel}*`,
+      asDiscordQuote(`*using ${modelLabel}${agentLabel}*`),
       { flags: SILENT_MESSAGE_FLAGS },
     ).catch((e) => new DiscordOperationError({ operation: 'sendMessage', cause: e }))
     if (result instanceof Error) {
@@ -4440,21 +4624,16 @@ export class ThreadSessionRuntime {
     const runInfo = sessionId
       ? getLatestRunInfo({ events: this.eventBuffer, sessionId })
       : {
-        model: undefined,
-        providerID: undefined,
-        agent: undefined,
-        tokensUsed: 0,
-      }
+          model: undefined,
+          providerID: undefined,
+          agent: undefined,
+          tokensUsed: 0,
+        }
     const elapsedMs = completedAt - runStartTime
     const sessionDuration =
-      elapsedMs < 1000
-        ? '<1s'
-        : prettyMilliseconds(elapsedMs, { secondsDecimalDigits: 0 })
-    const modelInfo = runInfo.model ? ` ⋅ ${runInfo.model}` : ''
+      elapsedMs < 1000 ? '<1s' : prettyMilliseconds(elapsedMs, { secondsDecimalDigits: 0 })
     const agentInfo =
-      runInfo.agent && runInfo.agent.toLowerCase() !== 'build'
-        ? ` ⋅ **${runInfo.agent}**`
-        : ''
+      runInfo.agent && runInfo.agent.toLowerCase() !== 'build' ? ` ⋅ **${runInfo.agent}**` : ''
     let contextInfo = ''
     const folderName = path.basename(this.sdkDirectory)
 
@@ -4467,35 +4646,37 @@ export class ThreadSessionRuntime {
       }).catch((e) => new FilesystemOperationError({ operation: 'gitBranch', cause: e })),
       (async () => {
         if (!client || !sessionId) {
-          return
+          return []
         }
         let tokensUsed = runInfo.tokensUsed
         // Fetch final token count from API
         const [messagesResult, providersResult] = await Promise.all([
           tokensUsed === 0
-            ? client.session.messages({
-                sessionID: sessionId,
-                directory: this.sdkDirectory,
-              }).catch((e) => new OpenCodeSdkError({ operation: 'session.messages', cause: e }))
+            ? client.session
+                .messages({
+                  sessionID: sessionId,
+                  directory: this.sdkDirectory,
+                })
+                .catch((e) => new OpenCodeSdkError({ operation: 'session.messages', cause: e }))
             : null,
-          client.provider.list({
-            directory: this.sdkDirectory,
-          }).catch((e) => new OpenCodeSdkError({ operation: 'provider.list', cause: e })),
+          client.provider
+            .list({
+              directory: this.sdkDirectory,
+            })
+            .catch((e) => new OpenCodeSdkError({ operation: 'provider.list', cause: e })),
         ])
 
         if (messagesResult && !(messagesResult instanceof Error)) {
           const messages = messagesResult.data || []
-          const lastAssistant = [...messages]
-            .reverse()
-            .find((m) => {
-              if (m.info.role !== 'assistant') {
-                return false
-              }
-              if (!m.info.tokens) {
-                return false
-              }
-              return getTokenTotal(m.info.tokens) > 0
-            })
+          const lastAssistant = [...messages].reverse().find((m) => {
+            if (m.info.role !== 'assistant') {
+              return false
+            }
+            if (!m.info.tokens) {
+              return false
+            }
+            return getTokenTotal(m.info.tokens) > 0
+          })
           if (lastAssistant && 'tokens' in lastAssistant.info) {
             tokensUsed = getTokenTotal(lastAssistant.info.tokens)
           }
@@ -4507,9 +4688,13 @@ export class ThreadSessionRuntime {
             })
           : undefined
 
+        const providers =
+          providersResult && !(providersResult instanceof Error)
+            ? (providersResult.data?.all ?? [])
+            : []
         let contextLimit = fallbackLimit
-        if (providersResult && !(providersResult instanceof Error)) {
-          const provider = providersResult.data?.all?.find((p) => {
+        if (providers.length > 0) {
+          const provider = providers.find((p) => {
             return p.id === runInfo.providerID
           })
           const model = provider?.models?.[runInfo.model || '']
@@ -4517,21 +4702,29 @@ export class ThreadSessionRuntime {
         }
 
         if (contextLimit) {
-          const percentage = Math.round(
-            (tokensUsed / contextLimit) * 100,
-          )
+          const percentage = Math.round((tokensUsed / contextLimit) * 100)
           contextInfo = ` ⋅ ${percentage}%`
         }
+        return providers
       })().catch((e) => new OpenCodeSdkError({ operation: 'resolveModelPreference', cause: e })),
     ])
-    const branchName =
-      branchResult instanceof Error ? '' : branchResult.stdout.trim()
+    const branchName = branchResult instanceof Error ? '' : branchResult.stdout.trim()
     if (contextResult instanceof Error) {
-      logger.error(
-        'Failed to fetch provider info for context percentage:',
-        contextResult,
-      )
+      logger.error('Failed to fetch provider info for context percentage:', contextResult)
     }
+    const providers = contextResult instanceof Error ? [] : (contextResult ?? [])
+    const modelLabel = runInfo.model
+      ? displayedModelLabel({
+          modelID: runInfo.model,
+          name: await resolveDisplayedModelName({
+            providers,
+            providerID: runInfo.providerID,
+            modelID: runInfo.model,
+            sessionID: sessionId,
+          }),
+        })
+      : undefined
+    const modelInfo = modelLabel ? ` ⋅ ${modelLabel}` : ''
 
     const truncate = (s: string, max: number) => {
       return s.length > max ? s.slice(0, max - 1) + '\u2026' : s
@@ -4541,13 +4734,26 @@ export class ThreadSessionRuntime {
     const projectInfo = truncatedBranch
       ? `${truncatedFolder} ⋅ ${truncatedBranch} ⋅ `
       : `${truncatedFolder} ⋅ `
-    const footerText = `*${projectInfo}${sessionDuration}${contextInfo}${modelInfo}${agentInfo}*`
+    const hasQueuedMessage = this.getQueueLength() > 0
+    const didUseSleepTool = sessionId
+      ? didLatestUserTurnUseSleepTool({ events: this.eventBuffer, sessionId })
+      : false
+    const shouldNotifyUser = !hasQueuedMessage && !didUseSleepTool
+    const mentionUserId =
+      store.getState().footerMentionsEnabled && shouldNotifyUser
+        ? await resolveThreadFooterMentionUserId({
+            sessionUserId: this.state?.sessionUserId,
+            thread: this.thread,
+          })
+        : undefined
+    const mention = mentionUserId ? ` <@${mentionUserId}>` : ''
+    const footerText = asDiscordQuote(
+      `*${projectInfo}${sessionDuration}${contextInfo}${modelInfo}${agentInfo}*${mention}`,
+    )
     this.stopTyping()
 
-    // Skip notification if there's a queued message next — the user only
-    // needs to be notified when the entire queue finishes.
     await sendThreadMessage(this.thread, footerText, {
-      flags: this.getNotifyFlags(),
+      flags: shouldNotifyUser ? NOTIFY_MESSAGE_FLAGS : SILENT_MESSAGE_FLAGS,
     })
     logger.log(
       `DURATION: Session completed in ${sessionDuration}, model ${runInfo.model}, tokens ${runInfo.tokensUsed}`,
@@ -4560,6 +4766,7 @@ export class ThreadSessionRuntime {
     this.modelContextLimitKey = undefined
     this.lastDisplayedContextPercentage = 0
     this.lastRateLimitDisplayTime = 0
+    this.lastSentPartKind = undefined
   }
 
   // ── Retry Last User Prompt (for model-change flow) ──────────
@@ -4600,8 +4807,10 @@ export class ThreadSessionRuntime {
     if (needsIdleWait) {
       await this.waitForEvent({
         predicate: (event) => {
-          return event.type === 'session.idle'
-            && (event.properties as { sessionID?: string }).sessionID === sessionId
+          return (
+            event.type === 'session.idle' &&
+            (event.properties as { sessionID?: string }).sessionID === sessionId
+          )
         },
         sinceTimestamp: waitSinceTimestamp,
         timeoutMs: 2000,
@@ -4614,15 +4823,11 @@ export class ThreadSessionRuntime {
     }
 
     if (this.state?.sessionId !== sessionId) {
-      logger.log(
-        `[RETRY] Session changed before retry for thread ${this.threadId}`,
-      )
+      logger.log(`[RETRY] Session changed before retry for thread ${this.threadId}`)
       return false
     }
 
-    logger.log(
-      `[RETRY] Re-submitting with empty prompt for session ${sessionId}`,
-    )
+    logger.log(`[RETRY] Re-submitting with empty prompt for session ${sessionId}`)
 
     // 2. Re-submit with empty prompt so opencode continues from session history.
     await this.enqueueIncoming({
@@ -4637,9 +4842,7 @@ export class ThreadSessionRuntime {
     })
 
     if (this.state?.sessionId !== sessionId) {
-      logger.log(
-        `[RETRY] Session changed while retry was enqueued for thread ${this.threadId}`,
-      )
+      logger.log(`[RETRY] Session changed while retry was enqueued for thread ${this.threadId}`)
       return false
     }
 
@@ -4662,11 +4865,7 @@ function buildPermissionDedupeKey({
   return `${directory}::${permission.permission}::${normalizedPatterns.join('|')}`
 }
 
-function getFallbackContextLimit({
-  providerID,
-}: {
-  providerID: string
-}): number | undefined {
+function getFallbackContextLimit({ providerID }: { providerID: string }): number | undefined {
   if (providerID === 'deterministic-provider') {
     return DETERMINISTIC_CONTEXT_LIMIT
   }

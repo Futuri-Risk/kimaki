@@ -25,6 +25,7 @@ export type RegisteredUserCommand = {
 export type DeterministicTranscriptionConfig = {
   transcription: string
   queueMessage: boolean
+  sessionAction?: 'btw' | 'new-session'
   /** Exercise the production API-key prompt before returning the canned result. */
   requireApiKey?: boolean
   /** Agent name extracted from voice message. Only set if user explicitly requested an agent. */
@@ -67,6 +68,11 @@ export type KimakiState = {
   // Read by: system-message.ts (conditionally appends critique instructions).
   critiqueEnabled: boolean
 
+  // Whether final session footers mention the thread creator.
+  // Changes: set once at startup from --skip-footer-mentions.
+  // Read by: ThreadSessionRuntime.emitFooter().
+  footerMentionsEnabled: boolean
+
   // User-specified skill whitelist. When non-empty, only these skill names
   // are injected into the model's system prompt (all others are hidden
   // behind an opencode permission.skill deny-all rule). Mutually exclusive
@@ -95,6 +101,28 @@ export type KimakiState = {
   // Changes: set once at startup from --allow-all-users CLI flag.
   // Read by: discord-utils.ts hasKimakiBotPermission().
   allowAllUsers: boolean
+
+  // Hostname passed to `opencode serve --hostname`. Null means OpenCode's
+  // default (127.0.0.1). Set from --opencode-hostname. Kimaki still talks
+  // to 127.0.0.1 even when the server binds 0.0.0.0. Does not bind the
+  // Kimaki hrana/lock server.
+  // Changes: set once at startup from --opencode-hostname CLI flag.
+  // Read by: opencode.ts startSingleServer().
+  opencodeHostname: string | null
+
+  // Port passed to `opencode serve --port`. Null means pick a free port.
+  // Changes: set once at startup from --opencode-port CLI flag.
+  // Read by: opencode.ts startSingleServer().
+  opencodePort: number | null
+
+  // When true, the agent may only touch the session working directory and a
+  // small set of known-safe paths; anything else triggers an external_directory
+  // permission prompt. When false (default), every directory is allowed and the
+  // user is expected to add their own `deny`/`ask` rules in opencode.json for
+  // folders they want to protect.
+  // Changes: set once at startup from --restrict-directories CLI flag.
+  // Read by: opencode.ts (server config default + buildSessionPermissions).
+  restrictExternalDirectories: boolean
 
   // Permission button TTL in milliseconds. When a permission prompt is shown
   // in Discord, buttons remain active for this duration before auto-rejecting.
@@ -176,10 +204,14 @@ export const store = createStore<KimakiState>(() => ({
   defaultVerbosity: 'text_and_essential_tools',
   defaultMentionMode: false,
   critiqueEnabled: true,
+  footerMentionsEnabled: true,
   enabledSkills: [],
   disabledSkills: [],
   allowedMentions: ['users'],
   allowAllUsers: false,
+  opencodeHostname: null,
+  opencodePort: null,
+  restrictExternalDirectories: false,
   permissionTimeoutMs: 10 * 60 * 1000,
   useWorktrees: false,
   autoUpgradeEnabled: true,

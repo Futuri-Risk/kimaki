@@ -1,16 +1,76 @@
 // Regression tests for Windows OpenCode command resolution and spawn args.
 
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import {
   ensureKimakiCommandShim,
+  getIncompatibleOpencodeVersionError,
   getSpawnCommandAndArgs,
+  INCOMPATIBLE_OPENCODE_MAJOR_VERSION,
+  isIncompatibleOpencodeMajor,
+  parseOpencodeVersion,
   sanitizeShimExecArgv,
   selectResolvedCommand,
   splitCommandLookupOutput,
 } from './opencode-command.js'
+import { OpencodeIncompatibleVersionError } from './errors.js'
+
+describe('parseOpencodeVersion', () => {
+  test('extracts major.minor.patch from opencode --version output', () => {
+    expect(parseOpencodeVersion('1.2.3')).toEqual({
+      major: 1,
+      minor: 2,
+      patch: 3,
+      raw: '1.2.3',
+    })
+    expect(parseOpencodeVersion('opencode 2.0.0\n')).toEqual({
+      major: 2,
+      minor: 0,
+      patch: 0,
+      raw: '2.0.0',
+    })
+    expect(parseOpencodeVersion('v2.1.0-beta.1')).toEqual({
+      major: 2,
+      minor: 1,
+      patch: 0,
+      raw: '2.1.0',
+    })
+  })
+
+  test('returns null when output has no three-part version', () => {
+    expect(parseOpencodeVersion('')).toBeNull()
+    expect(parseOpencodeVersion('opencode')).toBeNull()
+    expect(parseOpencodeVersion('2.0')).toBeNull()
+  })
+})
+
+describe('isIncompatibleOpencodeMajor', () => {
+  test('rejects the incompatible major and allows every other major', () => {
+    expect(INCOMPATIBLE_OPENCODE_MAJOR_VERSION).toBe(2)
+    expect(isIncompatibleOpencodeMajor({ major: 2 })).toBe(true)
+    expect(isIncompatibleOpencodeMajor({ major: 1 })).toBe(false)
+    expect(isIncompatibleOpencodeMajor({ major: 0 })).toBe(false)
+    expect(isIncompatibleOpencodeMajor({ major: 3 })).toBe(false)
+  })
+})
+
+describe('getIncompatibleOpencodeVersionError', () => {
+  test('returns a tagged error for OpenCode 2.x', () => {
+    const error = getIncompatibleOpencodeVersionError('2.0.0')
+    expect(error).toBeInstanceOf(OpencodeIncompatibleVersionError)
+    expect(error?.message).toMatchInlineSnapshot(
+      `"Kimaki is not compatible with OpenCode version 2.0.0. Install an OpenCode 1.x release."`,
+    )
+  })
+
+  test('allows 1.x and unparseable output', () => {
+    expect(getIncompatibleOpencodeVersionError('1.4.0')).toBeNull()
+    expect(getIncompatibleOpencodeVersionError('opencode')).toBeNull()
+  })
+})
 
 describe('splitCommandLookupOutput', () => {
   test('splits windows command lookup output into trimmed lines', () => {
@@ -42,6 +102,86 @@ describe('selectResolvedCommand', () => {
         isWindows: false,
       }),
     ).toBe('/usr/local/bin/opencode')
+  })
+})
+
+describe('buildOpencodeServeArgs', () => {
+  test('always passes --hostname so opencode.json cannot bind 0.0.0.0', async () => {
+    const { buildOpencodeServeArgs } = await import('./opencode.js')
+    expect(buildOpencodeServeArgs({ port: 4096 })).toEqual([
+      'serve',
+      '--port',
+      '4096',
+      '--hostname',
+      '127.0.0.1',
+      '--print-logs',
+      '--log-level',
+      'WARN',
+    ])
+  })
+
+  test('passes --hostname when set', async () => {
+    const { buildOpencodeServeArgs } = await import('./opencode.js')
+    expect(
+      buildOpencodeServeArgs({ port: 4096, hostname: '0.0.0.0' }),
+    ).toEqual([
+      'serve',
+      '--port',
+      '4096',
+      '--hostname',
+      '0.0.0.0',
+      '--print-logs',
+      '--log-level',
+      'WARN',
+    ])
+  })
+})
+
+describe('published runtime artifacts', () => {
+  test('lists @subrouter/opencode as a runtime dependency', () => {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(import.meta.dirname, '../package.json'), 'utf8'),
+    ) as { dependencies?: Record<string, string> }
+    expect(pkg.dependencies?.['@subrouter/opencode']).toMatch(/^(workspace:\^|\^)/)
+  })
+})
+
+describe('resolveSubrouterPluginSpec', () => {
+  test('uses npm package identity in production for OpenCode deduplication', async () => {
+    const { resolveSubrouterPluginSpec } = await import('./opencode.js')
+    const require = createRequire(import.meta.url)
+    const packageJsonPath = require.resolve('@subrouter/opencode/package.json')
+    const version = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')).version
+    expect(resolveSubrouterPluginSpec({ isDev: false })).toBe(
+      `@subrouter/opencode@${version}`,
+    )
+  })
+
+  test('loads workspace source directly in development', async () => {
+    const { resolveSubrouterPluginSpec } = await import('./opencode.js')
+    expect(resolveSubrouterPluginSpec({ isDev: true })).toMatch(
+      /^file:.*\/subrouter\/opencode\/dist\/index\.js$/,
+    )
+  })
+})
+
+describe('publicOpencodeBindRequiresPassword', () => {
+  test('allows loopback without a password', async () => {
+    const { publicOpencodeBindRequiresPassword } = await import('./opencode.js')
+    expect(publicOpencodeBindRequiresPassword({ hostname: null })).toBe(false)
+    expect(publicOpencodeBindRequiresPassword({ hostname: '127.0.0.1' })).toBe(
+      false,
+    )
+    expect(publicOpencodeBindRequiresPassword({ hostname: 'localhost' })).toBe(
+      false,
+    )
+  })
+
+  test('requires a password for 0.0.0.0', async () => {
+    const { publicOpencodeBindRequiresPassword } = await import('./opencode.js')
+    expect(publicOpencodeBindRequiresPassword({ hostname: '0.0.0.0' })).toBe(
+      true,
+    )
   })
 })
 

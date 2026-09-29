@@ -32,6 +32,8 @@ import {
   setChannelWorktreesEnabled,
   getThreadSession,
   getThreadWorktreeOrWorkspace,
+  getSessionModel,
+  setSessionModel,
   type VerbosityLevel,
 } from './database.js'
 import { startHranaServer, stopHranaServer } from './hrana-server.js'
@@ -55,6 +57,7 @@ const WORKTREE_SUFFIX = Date.now().toString(36).slice(-6)
 const WORKTREE_NAME = `wt-e2e-${WORKTREE_SUFFIX}`
 const CHANNEL_WORKTREE_NAME = `wt-chan-${WORKTREE_SUFFIX}`
 const AUTO_WORKTREE_SUFFIX = `wt-auto-${WORKTREE_SUFFIX}`
+const SOURCE_MODEL = 'source-model-v2'
 
 function normalizeWorktreeLifecycleText(text: string): string {
   return text
@@ -224,6 +227,9 @@ describe('worktree lifecycle', () => {
         matchers: createDeterministicMatchers(),
       },
     })
+    const providerConfig = opencodeConfig.provider['deterministic-provider']
+    if (!providerConfig) throw new Error('Missing deterministic provider config')
+    providerConfig.models[SOURCE_MODEL] = { name: SOURCE_MODEL }
     fs.writeFileSync(
       path.join(directories.projectDirectory, 'opencode.json'),
       JSON.stringify(opencodeConfig, null, 2),
@@ -386,7 +392,7 @@ describe('worktree lifecycle', () => {
         discord,
         threadId: thread.id,
         userId: TEST_USER_ID,
-        text: '⬥ ok',
+        text: 'ok',
         afterUserMessageIncludes: 'before-worktree',
         timeout: 10_000,
       })
@@ -397,6 +403,11 @@ describe('worktree lifecycle', () => {
       expect(runtimeBefore!.sdkDirectory).toBe(directories.projectDirectory)
       const sessionBefore = await getThreadSession(thread.id)
       expect(sessionBefore).toBeTruthy()
+      if (!sessionBefore) throw new Error('Source session was not persisted')
+      await setSessionModel({
+        sessionId: sessionBefore,
+        modelId: `deterministic-provider/${SOURCE_MODEL}`,
+      })
 
       // 2. Run /new-worktree inside the source thread.
       // This should create a new worktree thread instead of switching this one.
@@ -436,6 +447,12 @@ describe('worktree lifecycle', () => {
         timeout: 10_000,
       })
 
+      // Messages sent as soon as the checkout is ready must wait for the
+      // source session fork and keep its model.
+      await worktreeTh.user(TEST_USER_ID).sendMessage({
+        content: 'Reply with exactly: after-worktree-thread',
+      })
+
       await waitForBotMessageContaining({
         discord,
         threadId: worktreeThread.id,
@@ -450,6 +467,12 @@ describe('worktree lifecycle', () => {
       expect(worktreeSession).toBeTruthy()
       if (!worktreeSession) throw new Error('Worktree session was not persisted')
       expect(worktreeSession).not.toBe(sessionBefore)
+      await expect(getSessionModel(worktreeSession)).resolves.toMatchInlineSnapshot(`
+        {
+          "modelId": "deterministic-provider/source-model-v2",
+          "variant": null,
+        }
+      `)
       await expect(getThreadWorktreeOrWorkspace(thread.id)).resolves.toBeUndefined()
       const worktreeInfo = await getThreadWorktreeOrWorkspace(worktreeThread.id)
       expect(worktreeInfo?.status).toBe('ready')
@@ -478,9 +501,6 @@ describe('worktree lifecycle', () => {
 
       // 4. Send messages to both threads. The source continues in the base
       // checkout, and the new thread runs in the worktree checkout.
-      await worktreeTh.user(TEST_USER_ID).sendMessage({
-        content: 'Reply with exactly: after-worktree-thread',
-      })
       await th.user(TEST_USER_ID).sendMessage({
         content: 'Reply with exactly: after-source-thread',
       })
@@ -489,7 +509,7 @@ describe('worktree lifecycle', () => {
         discord,
         threadId: worktreeThread.id,
         userId: TEST_USER_ID,
-        text: '⬥ ok',
+        text: 'ok',
         afterUserMessageIncludes: 'after-worktree-thread',
         timeout: 4_000,
       })
@@ -497,7 +517,7 @@ describe('worktree lifecycle', () => {
         discord,
         threadId: thread.id,
         userId: TEST_USER_ID,
-        text: '⬥ ok',
+        text: 'ok',
         afterUserMessageIncludes: 'after-source-thread',
         timeout: 4_000,
       })
@@ -507,7 +527,7 @@ describe('worktree lifecycle', () => {
         discord,
         threadId: worktreeThread.id,
         userId: TEST_USER_ID,
-        text: 'deterministic-v2',
+        text: SOURCE_MODEL,
         afterUserMessageIncludes: 'after-worktree-thread',
         timeout: 4_000,
       })
@@ -515,7 +535,7 @@ describe('worktree lifecycle', () => {
         discord,
         threadId: thread.id,
         userId: TEST_USER_ID,
-        text: 'deterministic-v2',
+        text: SOURCE_MODEL,
         afterUserMessageIncludes: 'after-source-thread',
         timeout: 4_000,
       })
@@ -525,20 +545,20 @@ describe('worktree lifecycle', () => {
         "--- from: user (worktree-tester)
         Reply with exactly: before-worktree
         --- from: assistant (TestBot)
-        *using deterministic-provider/deterministic-v2*
-        ⬥ ok
+        > *using deterministic-provider/deterministic-v2*
+        > ok
         Creating worktree in <#THREAD_ID>
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@200000000000000901>
         --- from: user (worktree-tester)
         Reply with exactly: after-source-thread
         --- from: assistant (TestBot)
-        ⬥ ok
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*"
+        > ok
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ source-model-v2* <@200000000000000901>"
       `)
       expect(sourceText).toContain('Reply with exactly: before-worktree')
       expect(sourceText).toContain('Reply with exactly: after-source-thread')
       expect(sourceText).not.toContain('Worktree:')
-      expect((sourceText.match(/⬥ ok/g) || []).length).toBe(2)
+      expect((sourceText.match(/ok/g) || []).length).toBe(2)
 
       const worktreeText = await worktreeTh.text()
       expect(normalizeWorktreeLifecycleText(worktreeText)).toMatchInlineSnapshot(`
@@ -550,14 +570,14 @@ describe('worktree lifecycle', () => {
         --- from: user (worktree-tester)
         Reply with exactly: after-worktree-thread
         --- from: assistant (TestBot)
-        ⬥ ok
-        *WORKTREE_NAME ⋅ opencode/kimaki-WORKTREE_NAME ⋅ Ns ⋅ N% ⋅ deterministic-v2*"
+        > ok
+        > *WORKTREE_NAME ⋅ opencode/kimaki-WORKTREE_NAME ⋅ <1s ⋅ 0% ⋅ source-model-v2* <@200000000000000901>"
       `)
       expect(worktreeText).toContain('Worktree:')
       expect(worktreeText).toContain('Branch:')
       expect(worktreeText).toContain('Reusing context from')
       expect(worktreeText).toContain('Reply with exactly: after-worktree-thread')
-      expect(worktreeText).toContain('⬥ ok')
+      expect(worktreeText).toContain('ok')
     },
     30_000,
   )
@@ -615,7 +635,7 @@ describe('worktree lifecycle', () => {
         discord,
         threadId: worktreeThread.id,
         userId: TEST_USER_ID,
-        text: '⬥ ok',
+        text: 'ok',
         afterUserMessageIncludes: 'channel-worktree-msg',
         timeout: 10_000,
       })
@@ -646,11 +666,11 @@ describe('worktree lifecycle', () => {
         --- from: user (worktree-tester)
         Reply with exactly: channel-worktree-msg
         --- from: assistant (TestBot)
-        *using deterministic-provider/deterministic-v2*
-        ⬥ ok"
+        > *using deterministic-provider/deterministic-v2*
+        > ok"
       `)
       expect(worktreeText).toContain('Branch:')
-      expect(worktreeText).toContain('⬥ ok')
+      expect(worktreeText).toContain('ok')
       expect(worktreeText).toContain('Reply with exactly: channel-worktree-msg')
     },
     30_000,
@@ -684,7 +704,7 @@ describe('worktree lifecycle', () => {
         discord,
         threadId: thread.id,
         userId: TEST_USER_ID,
-        text: '⬥ ok',
+        text: 'ok',
         afterUserMessageIncludes: AUTO_WORKTREE_SUFFIX,
         timeout: 25_000,
       })
@@ -709,17 +729,17 @@ describe('worktree lifecycle', () => {
         discord,
         threadId: thread.id,
         userId: TEST_USER_ID,
-        text: '⬥ ok',
+        text: 'ok',
         afterUserMessageIncludes: 'auto-followup',
         timeout: 4_000,
       })
 
       const text = await th.text()
-      expect(text).toContain('⬥ ok')
+      expect(text).toContain('ok')
       expect(text).toContain(AUTO_WORKTREE_SUFFIX)
       expect(text).toContain('Reply with exactly: auto-followup')
       // Should have at least 2 ok replies
-      expect((text.match(/⬥ ok/g) || []).length).toBeGreaterThanOrEqual(2)
+      expect((text.match(/ok/g) || []).length).toBeGreaterThanOrEqual(2)
     },
     35_000,
   )
@@ -744,7 +764,7 @@ describe('worktree lifecycle', () => {
         discord,
         threadId: thread.id,
         userId: TEST_USER_ID,
-        text: '⬥ ok',
+        text: 'ok',
         afterUserMessageIncludes: 'non-git-first',
         timeout: 4_000,
       })
@@ -757,7 +777,7 @@ describe('worktree lifecycle', () => {
         discord,
         threadId: thread.id,
         userId: TEST_USER_ID,
-        text: '⬥ ok',
+        text: 'ok',
         afterUserMessageIncludes: 'non-git-second',
         timeout: 4_000,
       })
@@ -777,18 +797,18 @@ describe('worktree lifecycle', () => {
         "--- from: user (worktree-tester)
         Reply with exactly: non-git-first
         --- from: assistant (TestBot)
-        *using deterministic-provider/deterministic-v2*
-        ⬥ ok
+        > *using deterministic-provider/deterministic-v2*
+        > ok
         --- from: user (worktree-tester)
         Reply with exactly: non-git-second
         --- from: assistant (TestBot)
-        *non-git-project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*
-        ⬥ ok"
+        > *non-git-project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@200000000000000901>
+        > ok"
       `)
       expect(text).toContain('Reply with exactly: non-git-first')
       expect(text).toContain('Reply with exactly: non-git-second')
       expect(text).not.toContain('Worktree creation failed')
-      const okCount = (text.match(/⬥ ok/g) || []).length
+      const okCount = (text.match(/ok/g) || []).length
       expect(okCount).toBe(2)
     },
     20_000,
@@ -844,7 +864,7 @@ describe('worktree lifecycle', () => {
         discord,
         threadId: threadData.id,
         userId: discord.botUserId,
-        text: '⬥ ok',
+        text: 'ok',
         timeout: 10_000,
       })
 
@@ -860,8 +880,8 @@ describe('worktree lifecycle', () => {
         🌳 **Worktree: AUTO_WORKTREE_BRANCH**
         📁 \`/tmp/worktrees/WORKTREE_NAME\`
         🌿 Branch: \`AUTO_WORKTREE_BRANCH\`
-        *using deterministic-provider/deterministic-v2*
-        ⬥ ok"
+        > *using deterministic-provider/deterministic-v2*
+        > ok"
       `)
 
       // Verify DB has worktree info

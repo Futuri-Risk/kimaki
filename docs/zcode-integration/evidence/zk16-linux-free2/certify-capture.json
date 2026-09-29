@@ -1,0 +1,529 @@
+{
+  "startedAt": "2026-09-18T14:48:26.055Z",
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "/home/cody/zk-cert/node-v24.15.0-linux-x64/bin/node",
+    "executableSha256": "d1de76d8edf2fededf6f8b30d244e2c0529ac607923a018283b77e9c74bd932c",
+    "entryPath": "/mnt/c/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+    "entrySha256": "da61b0663336a65f7cce3dec223678794ccaa58158e304fc0d97b695434a8f01",
+    "args": [
+      "/mnt/c/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "/home/cody",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "/mnt/c/Users/Cody/AppData/Local/Programs/ZCode/resources/config/provider/zcode-builtin.json"
+    },
+    "cwd": "/tmp/zk16-free-linux"
+  },
+  "rows": {
+    "N18": {
+      "description": "v4/conversation/unsubscribe + graceful/abrupt owned-process shutdown (no inference)",
+      "subscribe": {
+        "at": "2026-09-18T14:48:37.572Z",
+        "method": "v4/conversation/subscribe",
+        "params": {
+          "topic": "conversation/sess_c72485e0-899d-4747-8b0a-91171f512e9e",
+          "connectionId": "0e795518-83d8-43e6-9239-e25023f0af6a",
+          "clientMode": "desktop-continuous"
+        },
+        "ms": 7,
+        "result": {
+          "ack": {
+            "subscriptionId": "sub-mu72q1fl-7omhzdp9-1",
+            "mode": "snapshot",
+            "logEpoch": "mu72q1fl-7omhzdp9",
+            "openTiming": {
+              "version": 1,
+              "initialFrameEncodeMs": 0,
+              "sessionRuntimeState": "warm",
+              "snapshotRowCount": 0
+            }
+          }
+        }
+      },
+      "unsubscribe": {
+        "at": "2026-09-18T14:48:37.975Z",
+        "method": "v4/conversation/unsubscribe",
+        "params": {
+          "topic": "conversation/sess_c72485e0-899d-4747-8b0a-91171f512e9e",
+          "connectionId": "0e795518-83d8-43e6-9239-e25023f0af6a",
+          "subscriptionId": "sub-mu72q1fl-7omhzdp9-1"
+        },
+        "ms": 2,
+        "result": {}
+      },
+      "staleDeliveries": {
+        "framesAfterUnsubscribe": 1,
+        "frames": [
+          {
+            "at": 1789742917572,
+            "method": "v4/conversation/frame",
+            "params": {
+              "wireVersion": 3,
+              "kind": "complete",
+              "deliveryKind": "initial",
+              "logicalFrameId": "sub-mu72q1fl-7omhzdp9-1-lf-1",
+              "logicalFrameOrdinal": 1,
+              "topic": "conversation/sess_c72485e0-899d-4747-8b0a-91171f512e9e",
+              "subscriptionId": "sub-mu72q1fl-7omhzdp9-1",
+              "frame": {
+                "topic": "conversation/sess_c72485e0-899d-4747-8b0a-91171f512e9e",
+                "subscriptionId": "sub-mu72q1fl-7omhzdp9-1",
+                "sentAt": 1789742917571,
+                "fromSeq": 0,
+                "toSeq": 0,
+                "payload": {
+                  "kind": "snapshot",
+                  "snapshot": {
+                    "protocolVersion": 1,
+                    "sessionId": "sess_c72485e0-899d-4747-8b0a-91171f512e9e",
+                    "logEpoch": "mu72q1fl-7omhzdp9",
+                    "seq": 0,
+                    "revision": 0,
+                    "control": {
+                      "phase": "draft",
+                      "sessionEnded": false,
+                      "canStop": false,
+                      "stopState": "idle",
+                      "stopTargetKind": "unknown",
+                      "activeWorks": [],
+                      "lastError": null,
+                      "apiRetry": null
+                    },
+                    "availability": {
+                      "fork": {
+                        "allowed": false,
+                        "reasonCode": "forkTargetNotStable"
+                      },
+                      "compact": {
+                        "allowed": false,
+                        "reasonCode": "idleCannotCompact"
+                      },
+                      "switchModelConfig": {
+                        "allowed": true
+                      },
+                      "setFollowupMode": {
+                        "allowed": true
+                      },
+                      "queueEdit": {
+                        "allowed": true
+                      },
+                      "sendQueuedNow": {
+                        "allowed": false,
+                        "reasonCode": "sendQueuedNowRequiresRunning"
+                      },
+                      "pauseGoal": {
+                        "allowed": false,
+                        "reasonCode": "noGoalToPause"
+                      },
+                      "resumeGoal": {
+                        "allowed": false,
+                        "reasonCode": "noGoalToResume"
+                      }
+                    },
+                    "inputRouting": {
+                      "mode": "startNow"
+                    },
+                    "meta": {
+                      "title": "",
+                      "titleSource": "default"
+                    },
+                    "config": {
+                      "provider": "",
+                      "model": "",
+                      "thought": "",
+                      "thoughtLevels": [],
+                      "followupMode": "queue",
+                      "mode": "build",
+                      "planEnabled": false
+                    },
+                    "modelTransition": null,
+                    "usage": {
+                      "contextWindow": null,
+                      "cumulative": {
+                        "inputTokens": 0,
+                        "outputTokens": 0,
+                        "cacheReadTokens": 0,
+                        "cacheWriteTokens": 0
+                      }
+                    },
+                    "queue": {
+                      "items": [],
+                      "autoDrain": true
+                    },
+                    "pendingInteractions": [],
+                    "pendingCommands": [],
+                    "backgroundWorks": [],
+                    "subagents": {
+                      "revision": 0,
+                      "childSessionIds": [],
+                      "running": [],
+                      "endedTotal": 0
+                    },
+                    "goal": null,
+                    "plan": null,
+                    "workspaceHookAdmission": null,
+                    "rows": {
+                      "window": [],
+                      "totalCount": 0,
+                      "firstRowId": null
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "abrupt": {
+        "approach": "kill supervisor (no stop message); keeper stdin EOF -> TerminateJobObject / group kill",
+        "nativePid": 59372,
+        "supervisorPid": 59365,
+        "treeDown": false,
+        "treeDownWithinMs": 10000,
+        "exitObserved": true,
+        "orphanedNativeTree": true,
+        "orphanCleanup": {
+          "attempted": true,
+          "dead": true
+        },
+        "reap": {
+          "code": "CANCEL_UNCONFIRMED"
+        }
+      }
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/create"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "v4/conversation/subscribe"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/conversation/frame"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "v4/conversation/unsubscribe"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [
+    {
+      "at": 1789742907301,
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_c72485e0-899d-4747-8b0a-91171f512e9e",
+        "scope": "runtime-materialization"
+      }
+    }
+  ],
+  "notifications": [
+    {
+      "at": 1789742907237,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "09296aba-697c-48d0-940f-d5edf37b5605",
+        "sequence": 1,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789742907237,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "09296aba-697c-48d0-940f-d5edf37b5605",
+        "sequence": 2,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789742907242,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "09296aba-697c-48d0-940f-d5edf37b5605",
+        "sequence": 3,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 4
+      }
+    },
+    {
+      "at": 1789742907242,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "09296aba-697c-48d0-940f-d5edf37b5605",
+        "sequence": 4,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 5
+      }
+    },
+    {
+      "at": 1789742907242,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "09296aba-697c-48d0-940f-d5edf37b5605",
+        "sequence": 5,
+        "databaseId": "c70fe3bde67ad657ac965d6be1463585e6be218dc84bcabdf387e86f8c7d707c",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 5
+      }
+    },
+    {
+      "at": 1789742917572,
+      "method": "v4/conversation/frame",
+      "params": {
+        "wireVersion": 3,
+        "kind": "complete",
+        "deliveryKind": "initial",
+        "logicalFrameId": "sub-mu72q1fl-7omhzdp9-1-lf-1",
+        "logicalFrameOrdinal": 1,
+        "topic": "conversation/sess_c72485e0-899d-4747-8b0a-91171f512e9e",
+        "subscriptionId": "sub-mu72q1fl-7omhzdp9-1",
+        "frame": {
+          "topic": "conversation/sess_c72485e0-899d-4747-8b0a-91171f512e9e",
+          "subscriptionId": "sub-mu72q1fl-7omhzdp9-1",
+          "sentAt": 1789742917571,
+          "fromSeq": 0,
+          "toSeq": 0,
+          "payload": {
+            "kind": "snapshot",
+            "snapshot": {
+              "protocolVersion": 1,
+              "sessionId": "sess_c72485e0-899d-4747-8b0a-91171f512e9e",
+              "logEpoch": "mu72q1fl-7omhzdp9",
+              "seq": 0,
+              "revision": 0,
+              "control": {
+                "phase": "draft",
+                "sessionEnded": false,
+                "canStop": false,
+                "stopState": "idle",
+                "stopTargetKind": "unknown",
+                "activeWorks": [],
+                "lastError": null,
+                "apiRetry": null
+              },
+              "availability": {
+                "fork": {
+                  "allowed": false,
+                  "reasonCode": "forkTargetNotStable"
+                },
+                "compact": {
+                  "allowed": false,
+                  "reasonCode": "idleCannotCompact"
+                },
+                "switchModelConfig": {
+                  "allowed": true
+                },
+                "setFollowupMode": {
+                  "allowed": true
+                },
+                "queueEdit": {
+                  "allowed": true
+                },
+                "sendQueuedNow": {
+                  "allowed": false,
+                  "reasonCode": "sendQueuedNowRequiresRunning"
+                },
+                "pauseGoal": {
+                  "allowed": false,
+                  "reasonCode": "noGoalToPause"
+                },
+                "resumeGoal": {
+                  "allowed": false,
+                  "reasonCode": "noGoalToResume"
+                }
+              },
+              "inputRouting": {
+                "mode": "startNow"
+              },
+              "meta": {
+                "title": "",
+                "titleSource": "default"
+              },
+              "config": {
+                "provider": "",
+                "model": "",
+                "thought": "",
+                "thoughtLevels": [],
+                "followupMode": "queue",
+                "mode": "build",
+                "planEnabled": false
+              },
+              "modelTransition": null,
+              "usage": {
+                "contextWindow": null,
+                "cumulative": {
+                  "inputTokens": 0,
+                  "outputTokens": 0,
+                  "cacheReadTokens": 0,
+                  "cacheWriteTokens": 0
+                }
+              },
+              "queue": {
+                "items": [],
+                "autoDrain": true
+              },
+              "pendingInteractions": [],
+              "pendingCommands": [],
+              "backgroundWorks": [],
+              "subagents": {
+                "revision": 0,
+                "childSessionIds": [],
+                "running": [],
+                "endedTotal": 0
+              },
+              "goal": null,
+              "plan": null,
+              "workspaceHookAdmission": null,
+              "rows": {
+                "window": [],
+                "totalCount": 0,
+                "firstRowId": null
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1789742919062,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "kind": "process_start",
+        "mcpId": "builtin:node_repl",
+        "mcpInstanceId": "c63b8217-8a19-4286-b81a-09c79e2b9918",
+        "mcpIsolation": "workspace",
+        "mcpSource": "builtin",
+        "occurredAt": 1789742919062,
+        "platform": "linux"
+      }
+    },
+    {
+      "at": 1789742919063,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "configuredCount": 1,
+        "connectedCount": 1,
+        "failedCount": 0,
+        "kind": "session_startup",
+        "occurredAt": 1789742919062,
+        "platform": "linux",
+        "processCount": 1,
+        "sessionId": "sess_c72485e0-899d-4747-8b0a-91171f512e9e"
+      }
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 59320
+  },
+  "client": {
+    "generation": "0e795518-83d8-43e6-9239-e25023f0af6a"
+  },
+  "sessionIdSource": "session/create (row-owned sentinel session)",
+  "stop": {
+    "ok": true,
+    "nativePid": 59320,
+    "nativePidLivenessAfterStop": "dead"
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}

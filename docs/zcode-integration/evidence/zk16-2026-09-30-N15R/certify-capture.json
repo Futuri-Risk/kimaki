@@ -1,0 +1,1292 @@
+{
+  "startedAt": "2026-09-29T22:28:36.496Z",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "C:/Program Files/nodejs/node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+    "entrySha256": "fad4c35c4c36ec210d8a06d3fa0e77de23c8545e2eb6ff90aea1eb38d1e6275f",
+    "args": [
+      "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "C:/Users/Cody",
+      "ZCODE_DATA_BASE_DIR": "D:/Filen/Reference/Tech/AI/Claude/ZCode Data",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/config/provider/zcode-builtin.json"
+    },
+    "cwd": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-20260929-n15-ws"
+  },
+  "rows": {
+    "N15R": {
+      "description": "post-resume image visual recall (operator re-gate 2026-09-30: artifact-ref retention contract; requires --session of the N15 session)",
+      "operatorRuling": "2026-09-30: byte-identity is not the protocol retention contract; the artifact-ref echo + post-resume visual recall is. Combined with the 2026-09-29 N15 capture (image accepted, first-turn visual round-trip sentinel \"dot\", clean restart, same-SID resume, ref echo pre+post restart), this row completes the re-gated N15 evidence.",
+      "resumedSession": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+      "retentionEcho": {
+        "found": true,
+        "attachments": [
+          {
+            "ref": "zcode-artifact://sess_278a16fe-5735-45a0-8d8a-77c27479dc94/tool-result-1175edae-42eb-4a93-90ed-dcf447791f3d",
+            "fileName": "tool-result-1175edae-42eb-4a93-90ed-dcf447791f3d",
+            "mime": "image/png",
+            "bytes": 118
+          }
+        ],
+        "refMatch": true
+      },
+      "send": {
+        "at": "2026-09-29T22:28:38.555Z",
+        "method": "session/send",
+        "params": {
+          "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+          "content": "Earlier in this conversation you were shown a tiny attached image. Reply with exactly one word naming what that image showed. Do nothing else."
+        },
+        "ms": 4,
+        "result": {
+          "accepted": true,
+          "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+          "stateRevision": 1
+        }
+      },
+      "turnCounted": true,
+      "settle": {
+        "sawRunning": true,
+        "runningAtMs": 152,
+        "sawTerminal": true,
+        "withinMs": 24575,
+        "baseline": {
+          "turnCount": 0,
+          "stateRevision": 0
+        }
+      },
+      "followUpAssistantText": "dot",
+      "visualRecall": true,
+      "pass": true
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-2",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "v4/conversation/rowsRange"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/send"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "state.updated"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "computer-use/operation-event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "computer-use/operation-event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/telemetry/event"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "state.updated"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "v4/conversation/rowsRange"
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [
+    {
+      "at": 1790720917864,
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "scope": "runtime-materialization"
+      }
+    },
+    {
+      "at": 1790720918015,
+      "id": "server-2",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "scope": "user-execution"
+      }
+    }
+  ],
+  "notifications": [
+    {
+      "at": 1790720917799,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "9f96b40d-29aa-4feb-b7c3-8ff430191f85",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1790720917800,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "9f96b40d-29aa-4feb-b7c3-8ff430191f85",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1790720917804,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "9f96b40d-29aa-4feb-b7c3-8ff430191f85",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 3
+      }
+    },
+    {
+      "at": 1790720917805,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "9f96b40d-29aa-4feb-b7c3-8ff430191f85",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 4
+      }
+    },
+    {
+      "at": 1790720917805,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "9f96b40d-29aa-4feb-b7c3-8ff430191f85",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 5
+      }
+    },
+    {
+      "at": 1790720918554,
+      "method": "state.updated",
+      "params": {
+        "patch": {
+          "status": "running"
+        },
+        "reason": "prompt_started",
+        "revision": 1,
+        "scope": "session",
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "type": "state.updated",
+        "workspace": {
+          "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-20260929-n15-ws",
+          "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-20260929-n15-ws"
+        }
+      }
+    },
+    {
+      "at": 1790720918570,
+      "method": "computer-use/operation-event",
+      "params": {
+        "eventId": "899013d2-3ed4-4ef1-8b4c-0eb608d1d163",
+        "sequenceNumber": 718,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "timestamp": 1790720918569,
+        "kind": "turn-started",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534"
+      }
+    },
+    {
+      "at": 1790720918572,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "899013d2-3ed4-4ef1-8b4c-0eb608d1d163",
+        "eventSeq": 718,
+        "occurredAt": 1790720918569,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "turn.started"
+      }
+    },
+    {
+      "at": 1790720919555,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "kind": "process_start",
+        "mcpId": "builtin:node_repl",
+        "mcpInstanceId": "9b1a5f6e-673c-450c-b322-d9436f05b657",
+        "mcpIsolation": "workspace",
+        "mcpSource": "builtin",
+        "occurredAt": 1790720919555,
+        "platform": "win32"
+      }
+    },
+    {
+      "at": 1790720929962,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "kind": "process_start",
+        "mcpId": "custom:eaa3f51656b0",
+        "mcpInstanceId": "739a2890-6b4f-4c60-a0dc-2351d781420a",
+        "mcpIsolation": "session",
+        "mcpSource": "custom",
+        "occurredAt": 1790720929962,
+        "platform": "win32"
+      }
+    },
+    {
+      "at": 1790720929963,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "configuredCount": 2,
+        "connectedCount": 2,
+        "failedCount": 0,
+        "kind": "session_startup",
+        "occurredAt": 1790720929963,
+        "platform": "win32",
+        "processCount": 2,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94"
+      }
+    },
+    {
+      "at": 1790720929992,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "4014f45a-3ad7-4dae-888d-0e83c8382e90",
+        "eventSeq": 720,
+        "occurredAt": 1790720929990,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "model.request.status",
+        "requestId": "7a4dd9a1-5692-4e9d-b7af-54a16b96b7b7",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_78c6265d-dec8-40bf-8803-cbfa60223f93",
+        "attempt": 1,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790720934482,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "bce090e2-95f6-4fc5-82fd-8e3763307881",
+        "eventSeq": 721,
+        "occurredAt": 1790720934481,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "model.request.status",
+        "requestId": "7a4dd9a1-5692-4e9d-b7af-54a16b96b7b7",
+        "status": "model_request_failed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_78c6265d-dec8-40bf-8803-cbfa60223f93",
+        "attempt": 1,
+        "maxAttempts": 11,
+        "durationMs": 4493,
+        "reason": "rate_limited",
+        "retryable": true,
+        "statusCode": 429
+      }
+    },
+    {
+      "at": 1790720934484,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "34b86dac-a410-4eab-ad09-31ed3a36bd55",
+        "eventSeq": 722,
+        "occurredAt": 1790720934484,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "model.request.status",
+        "requestId": "7a4dd9a1-5692-4e9d-b7af-54a16b96b7b7",
+        "status": "model_retry_scheduled",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_78c6265d-dec8-40bf-8803-cbfa60223f93",
+        "attempt": 1,
+        "maxAttempts": 11,
+        "reason": "rate_limited",
+        "statusCode": 429,
+        "delayMs": 3000,
+        "nextAttempt": 2
+      }
+    },
+    {
+      "at": 1790720937497,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "9b556092-0411-4ecb-85b8-a86119529277",
+        "eventSeq": 723,
+        "occurredAt": 1790720937497,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "model.request.status",
+        "requestId": "692d2893-67c3-4177-8949-5c31f9074dd1",
+        "status": "model_request_started",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_78c6265d-dec8-40bf-8803-cbfa60223f93",
+        "attempt": 2,
+        "maxAttempts": 11
+      }
+    },
+    {
+      "at": 1790720942160,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "26e81cdd-baec-4f87-b19d-86552c00fba7",
+        "eventSeq": 726,
+        "occurredAt": 1790720942159,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 3,
+        "firstChunk": true,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942161,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "cfbc2dd3-0c2a-4e13-b532-2235c8ff71c7",
+        "eventSeq": 727,
+        "occurredAt": 1790720942161,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942162,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "8d2b3a32-d1ad-45fa-80e8-d8cb1a096305",
+        "eventSeq": 728,
+        "occurredAt": 1790720942162,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 6,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942162,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "fd3527ae-d137-4219-b4f1-ff6420d4ab0d",
+        "eventSeq": 729,
+        "occurredAt": 1790720942162,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 3,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942163,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "db00f9ad-fa1e-4380-b4d3-aac3ae83f4cc",
+        "eventSeq": 730,
+        "occurredAt": 1790720942163,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 3,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942164,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "0a055c03-6485-4978-89fb-28af86fa74cd",
+        "eventSeq": 731,
+        "occurredAt": 1790720942164,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 6,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942164,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "01c0d2c5-4113-4de3-a80b-cedf01d145d6",
+        "eventSeq": 732,
+        "occurredAt": 1790720942164,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942164,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "2a82b313-5488-41ef-87f3-798e1a9d5679",
+        "eventSeq": 733,
+        "occurredAt": 1790720942165,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942165,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "fdbcddb3-de51-401e-97ca-5071aa2ab114",
+        "eventSeq": 734,
+        "occurredAt": 1790720942165,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942165,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "68cfd54e-59be-419e-9093-73fc51f5dcfb",
+        "eventSeq": 735,
+        "occurredAt": 1790720942165,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942165,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "ce948244-a97d-4737-8e7d-ac92a6a9d302",
+        "eventSeq": 736,
+        "occurredAt": 1790720942165,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 7,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942166,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "90544eac-cb86-479e-b8ff-ee7df9ec3ce2",
+        "eventSeq": 737,
+        "occurredAt": 1790720942166,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942166,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "55e32af7-30ba-4169-86a3-7f5828bd994c",
+        "eventSeq": 738,
+        "occurredAt": 1790720942166,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942166,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "2577212a-ec38-462f-8466-990883fa7647",
+        "eventSeq": 739,
+        "occurredAt": 1790720942166,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 6,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942167,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "3341621f-d43c-4570-a6bc-84ff774184fa",
+        "eventSeq": 740,
+        "occurredAt": 1790720942167,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 7,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942167,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "d0f2670f-4c34-4a46-8c2c-a2e6d4ce53dd",
+        "eventSeq": 741,
+        "occurredAt": 1790720942167,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 1,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942168,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "31846d6f-fa6c-489f-b4cc-3d4354f5665b",
+        "eventSeq": 742,
+        "occurredAt": 1790720942168,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 8,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942168,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "bbe1c72f-1be7-451c-a0bc-133f0f9d8ef4",
+        "eventSeq": 743,
+        "occurredAt": 1790720942168,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942168,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "cc9bba14-58cf-4a6e-adb6-47ae561f1c7f",
+        "eventSeq": 744,
+        "occurredAt": 1790720942168,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 11,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942169,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "c62d717e-cd17-479c-8243-40a34eff3286",
+        "eventSeq": 745,
+        "occurredAt": 1790720942169,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 3,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942169,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "65256141-7a51-4eaa-afed-0e7ce6d3b21d",
+        "eventSeq": 746,
+        "occurredAt": 1790720942169,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 4,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942170,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "6bc42061-1fd3-4928-8ec0-edcce654a9b0",
+        "eventSeq": 747,
+        "occurredAt": 1790720942170,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 2,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942170,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "06d0ad24-e963-4294-bd5c-d50211d0c5e4",
+        "eventSeq": 748,
+        "occurredAt": 1790720942170,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 5,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942171,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "3e2260bb-437e-431e-a8af-0948b0995d49",
+        "eventSeq": 749,
+        "occurredAt": 1790720942171,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "thought",
+        "chunkLength": 0,
+        "firstChunk": false,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942172,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "beb9c18c-18a9-4c1a-9e9f-fd88677c050d",
+        "eventSeq": 752,
+        "occurredAt": 1790720942172,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "stream.chunk",
+        "channel": "text",
+        "chunkLength": 3,
+        "firstChunk": true,
+        "assistantMessageId": "msg_mun908mm_75245cc6-8989-47bb-a7b5-bf77e138432b"
+      }
+    },
+    {
+      "at": 1790720942179,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "1ef9c59d-b071-4ecd-98a3-e7cb14b39332",
+        "eventSeq": 755,
+        "occurredAt": 1790720942178,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "model.request.status",
+        "requestId": "692d2893-67c3-4177-8949-5c31f9074dd1",
+        "status": "model_request_completed",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "transport": "sse",
+        "querySource": "main_turn",
+        "queryId": "query_78c6265d-dec8-40bf-8803-cbfa60223f93",
+        "attempt": 2,
+        "maxAttempts": 11,
+        "durationMs": 4682
+      }
+    },
+    {
+      "at": 1790720942198,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "85f587b2-cfa1-420b-8507-7028742e0aa1",
+        "eventSeq": 756,
+        "occurredAt": 1790720942196,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "usage.delta",
+        "requestId": "692d2893-67c3-4177-8949-5c31f9074dd1",
+        "providerId": "zai-api",
+        "modelId": "GLM-5.3",
+        "providerKind": "anthropic",
+        "providerHostname": "api.z.ai",
+        "inputTokens": 35298,
+        "outputTokens": 27,
+        "totalTokens": 35325,
+        "reasoningTokens": 0,
+        "cacheReadTokens": 35264,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "at": 1790720942217,
+      "method": "computer-use/operation-event",
+      "params": {
+        "eventId": "bc6dcbeb-139b-4c55-8dee-aa7374090b97",
+        "sequenceNumber": 757,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "timestamp": 1790720942216,
+        "kind": "turn-completed",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534"
+      }
+    },
+    {
+      "at": 1790720942218,
+      "method": "v4/telemetry/event",
+      "params": {
+        "memoryEnabled": false,
+        "version": 1,
+        "eventId": "bc6dcbeb-139b-4c55-8dee-aa7374090b97",
+        "eventSeq": 757,
+        "occurredAt": 1790720942216,
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "turnId": "turn_08f414b7-b982-4408-9af1-78150c810534",
+        "kind": "turn.terminal",
+        "status": "success",
+        "resultType": "success",
+        "durationMs": 23660,
+        "tokenCount": 35325,
+        "toolCallCount": 0
+      }
+    },
+    {
+      "at": 1790720942343,
+      "method": "state.updated",
+      "params": {
+        "patch": {
+          "mode": {
+            "current": "build"
+          },
+          "model": {
+            "available": [
+              {
+                "ref": {
+                  "providerId": "zai-api",
+                  "modelId": "GLM-5.3"
+                },
+                "label": "GLM-5.3",
+                "providerLabel": "zai-api",
+                "contextWindow": 200000,
+                "maxOutputTokens": 128000,
+                "reasoning": {
+                  "levels": [
+                    {
+                      "value": "low",
+                      "label": "low"
+                    },
+                    {
+                      "value": "high",
+                      "label": "high"
+                    },
+                    {
+                      "value": "max",
+                      "label": "max"
+                    }
+                  ],
+                  "defaultLevel": "max"
+                },
+                "properties": {
+                  "inputFormat": {
+                    "supportsText": true,
+                    "supportsImage": true,
+                    "supportsVideo": true,
+                    "supportsAudio": false,
+                    "supportsPdf": false
+                  },
+                  "outputFormat": {
+                    "supportsText": true
+                  }
+                }
+              }
+            ],
+            "current": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3",
+              "options": {
+                "reasoningLevel": "max"
+              }
+            },
+            "lastUsed": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            }
+          },
+          "permission": {
+            "mode": "build"
+          },
+          "thoughtLevel": {
+            "available": [
+              {
+                "label": "low",
+                "value": "low"
+              },
+              {
+                "label": "high",
+                "value": "high"
+              },
+              {
+                "label": "max",
+                "value": "max"
+              }
+            ],
+            "current": "max",
+            "enabled": true
+          }
+        },
+        "reason": "prompt_completed",
+        "revision": 2,
+        "scope": "session",
+        "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+        "type": "state.updated",
+        "workspace": {
+          "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-20260929-n15-ws",
+          "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-20260929-n15-ws"
+        }
+      }
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 46456
+  },
+  "client": {
+    "generation": "7716911e-7e69-4232-a219-b54db5dae41a"
+  },
+  "sessionArgResume": {
+    "ok": true,
+    "keys": [
+      "messages",
+      "projection",
+      "protocol",
+      "runtime",
+      "session",
+      "settings",
+      "slashCommands",
+      "todos",
+      "todoGroups"
+    ]
+  },
+  "sessionId": "sess_278a16fe-5735-45a0-8d8a-77c27479dc94",
+  "sessionIdSource": "--session argument (operator-supplied, turn-bearing reuse)",
+  "sessionArgWorkspace": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-20260929-n15-ws",
+  "sessionArgWorkspaceMatchesWorkspace": true,
+  "secondRuntimeStops": [],
+  "stop": {
+    "ok": true,
+    "nativePid": 46456,
+    "nativePidLivenessAfterStop": "dead"
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}

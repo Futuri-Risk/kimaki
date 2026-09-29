@@ -1,0 +1,371 @@
+{
+  "startedAt": "2026-09-18T14:32:38.752Z",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "C:/Program Files/nodejs/node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+    "entrySha256": "da61b0663336a65f7cce3dec223678794ccaa58158e304fc0d97b695434a8f01",
+    "args": [
+      "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "C:\\Users\\Cody",
+      "ZCODE_DATA_BASE_DIR": "C:\\Filen\\Reference\\Tech\\AI\\Claude\\ZCode Data\\.zcode",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "C:\\Users\\Cody\\AppData\\Local\\Programs\\ZCode\\resources\\config\\provider\\zcode-builtin.json"
+    },
+    "cwd": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-n05-auth-0113"
+  },
+  "rows": {
+    "N02": {
+      "description": "session/create + identity readback",
+      "create": {
+        "at": "2026-09-18T14:32:40.480Z",
+        "method": "session/create",
+        "params": {
+          "workspace": {
+            "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-n05-auth-0113",
+            "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-n05-auth-0113"
+          },
+          "mode": "build"
+        },
+        "ms": 477,
+        "result": {
+          "messages": [],
+          "projection": {
+            "activeToolCalls": [],
+            "backgroundJobs": [],
+            "contextUsed": 0,
+            "contextWindow": 200000,
+            "mode": "build",
+            "pendingPermissions": [],
+            "sessionId": "unknown",
+            "status": "idle",
+            "target": null,
+            "totalTokenCount": 0,
+            "turnCount": 0
+          },
+          "protocol": {
+            "name": "ZCode Protocol",
+            "version": 1
+          },
+          "runtime": {
+            "eventSeq": 0,
+            "pendingRequestIds": [],
+            "goalVerifications": [],
+            "goalVerificationTimeline": [],
+            "stateRevision": 0
+          },
+          "session": {
+            "createdAt": 1789741960356,
+            "mode": "build",
+            "traceId": "e069cddd-4ab4-441c-95b8-3139d300716f",
+            "sessionId": "sess_c3f26c07-50cf-403c-b91f-b67ff8462e1f",
+            "sessionKind": "interactive",
+            "status": "idle",
+            "target": null,
+            "title": "",
+            "updatedAt": 1789741960356,
+            "workspace": {
+              "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-n05-auth-0113",
+              "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-n05-auth-0113"
+            }
+          },
+          "settings": {
+            "mode": {
+              "current": "build"
+            },
+            "model": {
+              "available": []
+            },
+            "permission": {
+              "mode": "build"
+            },
+            "thoughtLevel": {
+              "available": [],
+              "enabled": false
+            }
+          },
+          "slashCommands": [
+            {
+              "description": "Show or set the current session goal.",
+              "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+              "name": "goal",
+              "source": "builtin"
+            },
+            {
+              "description": "Compact the current conversation with optional instructions.",
+              "inputHint": "/compact [instructions]",
+              "name": "compact",
+              "source": "builtin"
+            },
+            {
+              "description": "Create or update workspace AGENTS.md instructions.",
+              "inputHint": "/init [notes]",
+              "name": "init",
+              "source": "builtin"
+            },
+            {
+              "description": "Switch to Plan mode and optionally send a task.",
+              "inputHint": "/plan [task]",
+              "name": "plan",
+              "source": "builtin"
+            }
+          ],
+          "todos": [],
+          "todoGroups": []
+        }
+      },
+      "mode": "build"
+    },
+    "N05": {
+      "description": "session/setModel + readback (config only, no inference)",
+      "skipped": "no advertised model in session/read readback after 12s poll",
+      "pollTimeline": [
+        {
+          "atMs": 96,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 1186,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 2275,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 3365,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 4454,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 5564,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 6643,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 7715,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 8810,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 9902,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 10983,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 12060,
+          "available": 0,
+          "hasCurrent": false
+        }
+      ],
+      "settingsModel": {
+        "available": []
+      }
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/create"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [
+    {
+      "at": 1789741960216,
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_c3f26c07-50cf-403c-b91f-b67ff8462e1f",
+        "scope": "runtime-materialization"
+      }
+    }
+  ],
+  "notifications": [
+    {
+      "at": 1789741960139,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "2508ccdb-7b22-4b71-a61b-f7877ecf4f13",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789741960140,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "2508ccdb-7b22-4b71-a61b-f7877ecf4f13",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789741960144,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "2508ccdb-7b22-4b71-a61b-f7877ecf4f13",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 4
+      }
+    },
+    {
+      "at": 1789741960145,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "2508ccdb-7b22-4b71-a61b-f7877ecf4f13",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 6
+      }
+    },
+    {
+      "at": 1789741960146,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "2508ccdb-7b22-4b71-a61b-f7877ecf4f13",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 7
+      }
+    },
+    {
+      "at": 1789741963009,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "kind": "process_start",
+        "mcpId": "builtin:node_repl",
+        "mcpInstanceId": "9d4edf08-947d-4eb5-ae3b-734d1dd18cd4",
+        "mcpIsolation": "workspace",
+        "mcpSource": "builtin",
+        "occurredAt": 1789741963007,
+        "platform": "win32"
+      }
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 46620
+  },
+  "client": {
+    "generation": "c23aab84-1a3e-4b4d-8760-bd327105dbf1"
+  },
+  "sessionId": "sess_c3f26c07-50cf-403c-b91f-b67ff8462e1f",
+  "stop": {
+    "ok": true,
+    "nativePid": 46620,
+    "nativePidLivenessAfterStop": "dead"
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}

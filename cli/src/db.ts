@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url'
 import { getDataDir } from './config.js'
 import { createLogger, formatErrorWithStack, LogPrefix } from './logger.js'
 import * as schema from './schema.js'
+import { finalizeAgentSchema, preBootstrapAgentSchemaGate } from './agent/schema-gate.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -111,6 +112,23 @@ async function initializeDb(): Promise<KimakiDb> {
   return db
 }
 
+// CREATE TABLE IF NOT EXISTS cannot drop columns. The first two session_sleeps
+// shapes kept thread_id NOT NULL and posted_at. Inserts now omit thread_id, so
+// existing DBs fail with SQLITE_CONSTRAINT_NOTNULL until those columns go away.
+async function dropLegacySessionSleepsColumns(client: Client) {
+  const info = await client.execute('PRAGMA table_info(session_sleeps)')
+  const columns = new Set(info.rows.map((row) => String(row.name)))
+  if (columns.has('thread_id')) {
+    await client.execute('ALTER TABLE session_sleeps DROP COLUMN thread_id')
+  }
+  if (columns.has('posted_at')) {
+    await client.execute('ALTER TABLE session_sleeps DROP COLUMN posted_at')
+  }
+  await client.execute(
+    "UPDATE session_sleeps SET status = 'planned' WHERE status = 'posted'",
+  )
+}
+
 async function migrateSchema({
   db,
   client,
@@ -118,6 +136,11 @@ async function migrateSchema({
   db: KimakiDb
   client: Client
 }): Promise<void> {
+  // Agent sidecar integrity gate BEFORE generic DDL: existing agent tables must carry a
+  // supported version and declared shape; CREATE IF NOT EXISTS must never silently
+  // recreate a missing journal (ZK-004).
+  await preBootstrapAgentSchemaGate(client)
+
   const schemaPath = path.join(__dirname, '../src/schema.sql')
   const sql = fs.readFileSync(schemaPath, 'utf-8')
   const statements = sql
@@ -146,6 +169,9 @@ async function migrateSchema({
     await client.execute(statement)
   }
 
+  // Stamp/validate the agent sidecar after bootstrap created any missing tables.
+  await finalizeAgentSchema(client)
+
   const alterStatements = [
     'ALTER TABLE channel_models ADD COLUMN variant TEXT',
     'ALTER TABLE session_models ADD COLUMN variant TEXT',
@@ -159,7 +185,12 @@ async function migrateSchema({
     "ALTER TABLE thread_sessions ADD COLUMN source TEXT DEFAULT 'kimaki'",
     'ALTER TABLE thread_sessions ADD COLUMN last_synced_name TEXT',
     'ALTER TABLE thread_sessions ADD COLUMN parent_session_id TEXT',
+    'ALTER TABLE thread_sessions ADD COLUMN updated_at DATETIME',
     'ALTER TABLE channel_directories ADD COLUMN guild_id TEXT',
+    // First session_sleeps shape had thread_id only. Later ticks query these.
+    'ALTER TABLE session_sleeps ADD COLUMN delivery_id TEXT',
+    'ALTER TABLE session_sleeps ADD COLUMN attempts INTEGER DEFAULT 0',
+    'ALTER TABLE session_sleeps ADD COLUMN last_attempt_at DATETIME',
   ]
   for (const stmt of alterStatements) {
     await client.execute(stmt).catch(() => undefined)
@@ -180,10 +211,26 @@ async function migrateSchema({
     "UPDATE bot_tokens SET bot_mode = 'self_hosted' WHERE bot_mode = 'self-hosted'",
     "UPDATE bot_tokens SET proxy_url = REPLACE(proxy_url, 'discord-gateway.kimaki.xyz', 'discord-gateway.kimaki.dev') WHERE bot_mode = 'gateway' AND proxy_url LIKE '%discord-gateway.kimaki.xyz%'",
     "UPDATE thread_worktrees SET status = 'pending' WHERE status IS NULL",
+    "UPDATE session_sleeps SET delivery_id = lower(hex(randomblob(16))) WHERE delivery_id IS NULL",
+    'UPDATE session_sleeps SET attempts = 0 WHERE attempts IS NULL',
   ]
   for (const stmt of migrationStatements) {
     await client.execute(stmt).catch(() => undefined)
   }
+
+  // Existing part_messages tables never get a rewritten FK. Drop orphans.
+  // NOT EXISTS, not NOT IN: a NULL thread_sessions.thread_id would make
+  // NOT IN unknown for every row and skip the whole cleanup.
+  await client.execute(`
+    DELETE FROM part_messages
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM thread_sessions
+      WHERE thread_sessions.thread_id = part_messages.thread_id
+    )
+  `)
+
+  await dropLegacySessionSleepsColumns(client)
 
   // Migrate legacy thread_worktrees rows into thread_workspaces.
   // Rows that already exist in thread_workspaces (by thread_id) are skipped.
@@ -218,6 +265,13 @@ async function migrateSchema({
       .where(orm.eq(schema.bot_tokens.app_id, botRow.app_id))
       .catch(() => undefined)
   }
+}
+
+/** Raw libSQL client for components that need transactional SQL outside Drizzle
+ * (the agent sidecar store — never wrap the Drizzle object as a raw client). */
+export async function getRawDbClient(): Promise<Client> {
+  await getDb()
+  return clientInstance!
 }
 
 export async function closeDb(): Promise<void> {

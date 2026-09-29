@@ -19,18 +19,19 @@ import {
   setPartMessagesBatch,
   upsertThreadSession,
 } from './database.js'
-import { sendThreadMessage } from './discord-utils.js'
+import { sendSessionPartBatches } from './discord-utils.js'
 import { createLogger, LogPrefix } from './logger.js'
 import {
   formatPart,
   collectSessionChunks,
   batchChunksForDiscord,
+  QUEUE_PREFIX,
   type SessionChunk,
 } from './message-formatting.js'
 import {
   initializeOpencodeForDirectory,
 } from './opencode.js'
-import { isEssentialToolPart } from './session-handler/thread-session-runtime.js'
+import { getRuntime, isEssentialToolPart } from './session-handler/thread-session-runtime.js'
 import { notifyError } from './sentry.js'
 import { store } from './store.js'
 import { extractNonXmlContent } from './xml.js'
@@ -56,9 +57,12 @@ type SessionMessagesResponse = Awaited<
   ReturnType<OpencodeClient['session']['messages']>
 >
 type SessionMessage = NonNullable<SessionMessagesResponse['data']>[number]
-type SessionMessageLike = {
+export type SessionMessageLike = {
   info: {
     role: string
+    summary?: unknown
+    mode?: string
+    agent?: string
   }
   parts: Part[]
 }
@@ -80,10 +84,7 @@ type DirectorySyncTarget = {
 let externalSyncInterval: ReturnType<typeof setInterval> | null = null
 
 function isSyntheticTextPart(part: Extract<Part, { type: 'text' }>): boolean {
-  const candidate = part as Extract<Part, { type: 'text' }> & {
-    synthetic?: unknown
-  }
-  return candidate.synthetic === true
+  return part.synthetic === true
 }
 
 function parseDiscordOriginMetadata(text: string): DiscordOriginMetadata | null {
@@ -136,7 +137,7 @@ function getDiscordOriginMetadataFromMessage({
   return null
 }
 
-function getRenderableUserTextParts({
+export function getRenderableUserTextParts({
   message,
 }: {
   message: SessionMessageLike
@@ -149,7 +150,7 @@ function getRenderableUserTextParts({
     if (part.type !== 'text') {
       return [] as RenderableUserTextPart[]
     }
-    if (isSyntheticTextPart(part)) {
+    if (isSyntheticTextPart(part) || part.ignored === true) {
       return [] as RenderableUserTextPart[]
     }
     const cleanedText = extractNonXmlContent(part.text || '').trim()
@@ -160,6 +161,64 @@ function getRenderableUserTextParts({
   })
 }
 
+function hasCompactionContinueMetadata(part: Extract<Part, { type: 'text' }>): boolean {
+  return part.metadata?.compaction_continue === true
+}
+
+export function isInternalOpenCodeUserMessage({
+  message,
+}: {
+  message: SessionMessageLike
+}): boolean {
+  if (message.info.role !== 'user') {
+    return false
+  }
+  return message.parts.some((part) => {
+    if (part.type === 'compaction') {
+      return true
+    }
+    if (part.type !== 'text') {
+      return false
+    }
+    return isSyntheticTextPart(part) && hasCompactionContinueMetadata(part)
+  })
+}
+
+export function shouldSkipExternalAssistantMessage({
+  message,
+}: {
+  message: SessionMessageLike
+}): boolean {
+  if (message.info.role !== 'assistant') {
+    return false
+  }
+  return message.info.summary === true
+}
+
+export function getIgnoredNoticeTextParts({
+  message,
+}: {
+  message: SessionMessageLike
+}): RenderableUserTextPart[] {
+  if (message.info.role !== 'user') {
+    return []
+  }
+
+  return message.parts.flatMap((part) => {
+    if (part.type !== 'text') {
+      return [] as RenderableUserTextPart[]
+    }
+    if (part.ignored !== true || isSyntheticTextPart(part)) {
+      return [] as RenderableUserTextPart[]
+    }
+    const text = part.text?.trim()
+    if (!text) {
+      return [] as RenderableUserTextPart[]
+    }
+    return [{ id: part.id, text }]
+  })
+}
+
 function getExternalUserMirrorText({
   username,
   prompt,
@@ -167,7 +226,7 @@ function getExternalUserMirrorText({
   username: string
   prompt: string
 }): string {
-  return `» **${username}:** ${prompt.slice(0, 1000)}${prompt.length > 1000 ? '...' : ''}`
+  return `${QUEUE_PREFIX}**${username}:** ${prompt.slice(0, 1000)}${prompt.length > 1000 ? '...' : ''}`
 }
 
 // Pure derivation: is the latest user turn from Discord?
@@ -176,7 +235,7 @@ function getExternalUserMirrorText({
 // (kimaki manages it) and external sync should skip it. If absent (CLI/TUI),
 // external sync should mirror it — this naturally handles the "reclaim" case
 // (external → discord → external) without any DB source toggling.
-function isLatestUserTurnFromDiscord({
+export function isLatestUserTurnFromDiscord({
   messages,
 }: {
   messages: SessionMessageLike[]
@@ -184,6 +243,9 @@ function isLatestUserTurnFromDiscord({
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i]!
     if (message.info.role !== 'user') {
+      continue
+    }
+    if (isInternalOpenCodeUserMessage({ message })) {
       continue
     }
     const renderableParts = getRenderableUserTextParts({ message })
@@ -373,6 +435,23 @@ function collectUnsyncedChunks({
 
   for (const message of messages) {
     if (message.info.role === 'user') {
+      if (isInternalOpenCodeUserMessage({ message })) {
+        continue
+      }
+      const ignoredNoticeParts = getIgnoredNoticeTextParts({ message }).filter((part) => {
+        return !syncedPartIds.has(part.id)
+      })
+      if (ignoredNoticeParts.length > 0) {
+        chunks.push({
+          partIds: ignoredNoticeParts.map((part) => {
+            return part.id
+          }),
+          content: ignoredNoticeParts.map((part) => {
+            return part.text
+          }).join('\n\n'),
+          kind: 'text',
+        })
+      }
       const renderableParts = getRenderableUserTextParts({ message })
       const unsyncedParts = renderableParts.filter((p) => {
         return !syncedPartIds.has(p.id)
@@ -404,11 +483,15 @@ function collectUnsyncedChunks({
           return p.id
         }),
         content: getExternalUserMirrorText({ username: 'user', prompt: promptText }),
+        kind: 'text',
       })
       continue
     }
 
     if (message.info.role !== 'assistant') {
+      continue
+    }
+    if (shouldSkipExternalAssistantMessage({ message })) {
       continue
     }
     // Filter assistant parts by verbosity before passing to shared collector
@@ -473,6 +556,11 @@ async function syncSessionToThread({
     return
   }
 
+  const existingThreadId = await getThreadIdBySessionId(sessionId)
+  if (existingThreadId && getRuntime(existingThreadId)) {
+    return
+  }
+
   const thread = await ensureExternalSessionThread({
     discordClient,
     channelId,
@@ -502,13 +590,14 @@ async function syncSessionToThread({
   }
 
   const batched = batchChunksForDiscord(chunks)
-  for (const batch of batched) {
+  if (signal.aborted) return
+  const sent = await sendSessionPartBatches({ thread, batches: batched })
+  for (const batch of sent) {
     if (signal.aborted) return
-    const sentMessage = await sendThreadMessage(thread, batch.content)
     await setPartMessagesBatch(
       batch.partIds.map((partId) => ({
         partId,
-        messageId: sentMessage.id,
+        messageId: batch.message.id,
         threadId: thread.id,
       })),
     )
@@ -548,6 +637,22 @@ async function pulseTypingForBusySessions({
 }
 
 const EXTERNAL_SYNC_MAX_SESSIONS = 50
+
+export function isExternalSyncRootSession({
+  title,
+  parentID,
+}: {
+  title?: string | null
+  parentID?: string
+}): boolean {
+  if (parentID) {
+    return false
+  }
+  if (/^new session\s*-/i.test(title || '')) {
+    return false
+  }
+  return !/subagent\)\s*$/i.test(title || '')
+}
 
 // Tracks directories with an in-flight sync. When a directory times out,
 // its AbortController is aborted so the inner work stops producing side
@@ -646,11 +751,7 @@ async function syncDirectoryInner({
   if (signal.aborted) return
 
   const sessions = (sessionsResponse.data || []).filter((session) => {
-    const title = session.title || ''
-    if (/^new session\s*-/i.test(title)) {
-      return false
-    }
-    return !/subagent\)\s*$/i.test(title)
+    return isExternalSyncRootSession(session)
   })
   const sorted = sortSessionsByRecency(sessions)
 
@@ -761,4 +862,6 @@ export const externalOpencodeSyncInternals = {
   parseDiscordOriginMetadata,
   getDiscordOriginMetadataFromMessage,
   isLatestUserTurnFromDiscord,
+  isInternalOpenCodeUserMessage,
+  shouldSkipExternalAssistantMessage,
 }

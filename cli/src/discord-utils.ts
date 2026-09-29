@@ -21,6 +21,11 @@ import type { OpencodeClient } from '@opencode-ai/sdk/v2'
 import { discordApiUrl } from './discord-urls.js'
 import { Lexer } from 'marked'
 import { splitTablesFromMarkdown } from './format-tables.js'
+import {
+  sessionPartContent,
+  shouldLeadWithBlankLine,
+  type SessionChunk,
+} from './message-formatting.js'
 import { getChannelDirectory, getThreadWorktreeOrWorkspace } from './database.js'
 import { DiscordOperationError } from './errors.js'
 import { limitHeadingDepth } from './limit-heading-depth.js'
@@ -96,9 +101,7 @@ export function hasKimakiAdminPermission(
   return isOwner || isAdmin || canManageServer || hasKimakiRole
 }
 
-export async function resolveGuildMessageMember(
-  message: Message,
-): Promise<GuildMemberType | null> {
+export async function resolveGuildMessageMember(message: Message): Promise<GuildMemberType | null> {
   if (!message.guild) return null
   if (message.member) return message.member
 
@@ -106,9 +109,7 @@ export async function resolveGuildMessageMember(
     .fetch(message.author.id)
     .catch((e) => new Error('Failed to fetch guild member', { cause: e }))
   if (fetchedMember instanceof Error) {
-    discordLogger.warn(
-      `[PERMISSION] Denying message ${message.id}: ${fetchedMember.message}`,
-    )
+    discordLogger.warn(`[PERMISSION] Denying message ${message.id}: ${fetchedMember.message}`)
     return null
   }
 
@@ -148,9 +149,7 @@ export function hasNoKimakiRole(member: GuildMemberType | null): boolean {
   if (!member?.roles?.cache) {
     return false
   }
-  return member.roles.cache.some(
-    (role) => role.name.toLowerCase() === 'no-kimaki',
-  )
+  return member.roles.cache.some((role) => role.name.toLowerCase() === 'no-kimaki')
 }
 
 /**
@@ -175,40 +174,30 @@ export async function reactToThread({
       return channelId
     }
     // Fetch the thread to get its parent channel ID
-    const threadResult = await (rest.get(Routes.channel(threadId)) as Promise<{
+    const threadResult = await (
+      rest.get(Routes.channel(threadId)) as Promise<{
         parent_id?: string
-      }>).catch((e) => new DiscordOperationError({ operation: 'fetchThreadStarter', cause: e }))
+      }>
+    ).catch((e) => new DiscordOperationError({ operation: 'fetchThreadStarter', cause: e }))
     if (threadResult instanceof Error) {
-      discordLogger.warn(
-        `Failed to fetch thread ${threadId}:`,
-        threadResult.message,
-      )
+      discordLogger.warn(`Failed to fetch thread ${threadId}:`, threadResult.message)
       return null
     }
     return threadResult.parent_id || null
   })()
 
   if (!parentChannelId) {
-    discordLogger.warn(
-      `Could not resolve parent channel for thread ${threadId}`,
-    )
+    discordLogger.warn(`Could not resolve parent channel for thread ${threadId}`)
     return
   }
 
   // React to the thread starter message in the parent channel.
   // Thread ID equals the starter message ID for threads created from messages.
-  const result = await rest.put(
-    Routes.channelMessageOwnReaction(
-      parentChannelId,
-      threadId,
-      encodeURIComponent(emoji),
-    ),
-  ).catch((e) => new DiscordOperationError({ operation: 'addReaction', cause: e }))
+  const result = await rest
+    .put(Routes.channelMessageOwnReaction(parentChannelId, threadId, encodeURIComponent(emoji)))
+    .catch((e) => new DiscordOperationError({ operation: 'addReaction', cause: e }))
   if (result instanceof Error) {
-    discordLogger.warn(
-      `Failed to react to thread ${threadId} with ${emoji}:`,
-      result.message,
-    )
+    discordLogger.warn(`Failed to react to thread ${threadId} with ${emoji}:`, result.message)
   }
 }
 
@@ -236,29 +225,21 @@ export async function archiveThread({
 
   if (client && sessionId) {
     const updateResult = await (async () => {
-        const sessionResponse = await client.session.get({
-          sessionID: sessionId,
-        })
-        if (!sessionResponse.data) {
-          return
-        }
-        const currentTitle = sessionResponse.data.title || ''
-        const newTitle = currentTitle.startsWith('📁')
-          ? currentTitle
-          : `📁 ${currentTitle}`.trim()
-        await client.session.update({
-          sessionID: sessionId,
-          title: newTitle,
-        })
+      const sessionResponse = await client.session.get({
+        sessionID: sessionId,
+      })
+      if (!sessionResponse.data) {
+        return
+      }
+      const currentTitle = sessionResponse.data.title || ''
+      const newTitle = currentTitle.startsWith('📁') ? currentTitle : `📁 ${currentTitle}`.trim()
+      await client.session.update({
+        sessionID: sessionId,
+        title: newTitle,
+      })
     })().catch((e) => new Error('Failed to update session title', { cause: e }))
     if (updateResult instanceof Error) {
       discordLogger.warn(`[archive-thread] ${updateResult.message}`)
-    }
-
-    const abortResult = await client.session.abort({ sessionID: sessionId })
-      .catch((e) => new Error('Failed to abort session', { cause: e }))
-    if (abortResult instanceof Error) {
-      discordLogger.warn(`[archive-thread] ${abortResult.message}`)
     }
   }
 
@@ -272,6 +253,147 @@ export async function archiveThread({
 
   await rest.patch(Routes.channel(threadId), {
     body: { archived: true },
+  })
+}
+
+export const DISCORD_THREAD_RENAME_TIMEOUT_MS = 3000
+
+// Discord rename can hang on the 3rd call (~2 per 10 min). Race so it never blocks.
+export async function raceDiscordRename<T>({
+  rename,
+  timeoutMs = DISCORD_THREAD_RENAME_TIMEOUT_MS,
+}: {
+  rename: Promise<T>
+  timeoutMs?: number
+}): Promise<T | 'timeout'> {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs)
+  return Promise.race([
+    rename,
+    new Promise<'timeout'>((resolve) => {
+      timeoutSignal.addEventListener('abort', () => {
+        resolve('timeout')
+      })
+    }),
+  ])
+}
+
+/**
+ * Add a user as a thread member so the thread shows up in their Discord left
+ * sidebar. Discord only lists threads you are a member of, so a scheduled
+ * reminder posted into a thread the user never joined (or already left) can
+ * fire completely unnoticed.
+ *
+ * Do NOT add unarchive logic here. The Discord docs imply archived threads
+ * reject member changes with `50083: Thread is archived`, but that was verified
+ * against the real API and it is wrong for unlocked threads:
+ *   - PUT thread-members on an archived unlocked thread succeeds
+ *   - POST message to an archived unlocked thread succeeds and auto-unarchives
+ * So callers that add the member and then post get an active thread for free.
+ * Locked threads fail either way without MANAGE_THREADS, and unarchiving them
+ * needs that same permission, so a pre-emptive PATCH buys nothing but latency.
+ *
+ * PUT returns 204 both when the user is newly added and when they were already
+ * a member, so calling this repeatedly is safe.
+ */
+export async function ensureThreadMember({
+  rest,
+  threadId,
+  userId,
+}: {
+  rest: RESTType
+  threadId: string
+  userId: string
+}): Promise<void | Error> {
+  const addMemberResult = await rest.put(Routes.threadMembers(threadId, userId)).catch((error) => {
+    return new Error(`Failed to add user ${userId} to thread ${threadId}`, {
+      cause: error,
+    })
+  })
+  if (addMemberResult instanceof Error) return addMemberResult
+}
+
+export type FooterMentionMember = {
+  id: string
+  bot?: boolean
+  joinedTimestamp?: number | null
+}
+
+export function resolveFooterMentionUserId({
+  sessionUserId,
+  botUserId,
+  threadOwnerId,
+  members,
+}: {
+  sessionUserId: string | undefined
+  botUserId: string | undefined
+  threadOwnerId: string | undefined
+  members: FooterMentionMember[]
+}): string | undefined {
+  if (sessionUserId && sessionUserId !== botUserId) return sessionUserId
+  if (!botUserId || threadOwnerId !== botUserId) return undefined
+  const humans = members
+    .filter((member) => member.id && member.id !== botUserId && member.bot === false)
+    .sort((a, b) => {
+      const aJoined = a.joinedTimestamp ?? Number.POSITIVE_INFINITY
+      const bJoined = b.joinedTimestamp ?? Number.POSITIVE_INFINITY
+      if (aJoined !== bJoined) return aJoined - bJoined
+      return a.id.localeCompare(b.id)
+    })
+  return humans[0]?.id
+}
+
+function footerMentionMembersFromCache(thread: ThreadChannel): FooterMentionMember[] {
+  return [...thread.members.cache.values()].map((member) => ({
+    id: member.id,
+    bot: member.user?.bot,
+    joinedTimestamp: member.joinedTimestamp ?? null,
+  }))
+}
+
+export async function resolveThreadFooterMentionUserId({
+  sessionUserId,
+  thread,
+}: {
+  sessionUserId: string | undefined
+  thread: ThreadChannel
+}): Promise<string | undefined> {
+  const botUserId = thread.client.user?.id
+  if (sessionUserId && sessionUserId !== botUserId) return sessionUserId
+  if (!botUserId || thread.ownerId !== botUserId) return undefined
+
+  const cached = footerMentionMembersFromCache(thread)
+  if (cached.some((member) => member.bot === false && member.id !== botUserId)) {
+    return resolveFooterMentionUserId({
+      sessionUserId,
+      botUserId,
+      threadOwnerId: thread.ownerId ?? undefined,
+      members: cached,
+    })
+  }
+
+  const fetched = await thread.members.fetch().catch((e) => {
+    return new DiscordOperationError({ operation: 'fetchThreadMembers', cause: e })
+  })
+  if (fetched instanceof Error) {
+    discordLogger.warn(`[FOOTER] Failed to fetch thread members: ${fetched.message}`)
+    return resolveFooterMentionUserId({
+      sessionUserId,
+      botUserId,
+      threadOwnerId: thread.ownerId ?? undefined,
+      members: cached,
+    })
+  }
+
+  const members = [...fetched.values()].map((member) => ({
+    id: member.id,
+    bot: member.user?.bot,
+    joinedTimestamp: member.joinedTimestamp ?? null,
+  }))
+  return resolveFooterMentionUserId({
+    sessionUserId,
+    botUserId,
+    threadOwnerId: thread.ownerId ?? undefined,
+    members,
   })
 }
 
@@ -397,11 +519,7 @@ export function splitMarkdownForDiscord({
   let currentLang: string | null = null
 
   // helper to split a long line into smaller pieces at word boundaries or hard breaks
-  const splitLongLine = (
-    text: string,
-    available: number,
-    inCode: boolean,
-  ): string[] => {
+  const splitLongLine = (text: string, available: number, inCode: boolean): string[] => {
     const pieces: string[] = []
     let remaining = text
 
@@ -433,16 +551,11 @@ export function splitMarkdownForDiscord({
         : 0
     // When opening fence starts a fresh chunk, its size is in openingFenceSize.
     // Otherwise count it normally so the overflow check doesn't miss the fence text.
-    const lineLength =
-      line.isOpeningFence && currentChunk.length === 0 ? 0 : line.text.length
+    const lineLength = line.isOpeningFence && currentChunk.length === 0 ? 0 : line.text.length
     const activeFenceOverhead =
       currentLang !== null || openingFenceSize > 0 ? closingFence.length : 0
     const wouldExceed =
-      currentChunk.length +
-        openingFenceSize +
-        lineLength +
-        activeFenceOverhead >
-      maxLength
+      currentChunk.length + openingFenceSize + lineLength + activeFenceOverhead > maxLength
 
     if (wouldExceed) {
       // handle case where single line is longer than maxLength
@@ -461,16 +574,9 @@ export function splitMarkdownForDiscord({
           ? ('```' + line.lang + '\n').length + '```\n'.length
           : 0
         // ensure at least 10 chars available, even if maxLength is very small
-        const availablePerChunk = Math.max(
-          10,
-          maxLength - codeBlockOverhead - 50,
-        )
+        const availablePerChunk = Math.max(10, maxLength - codeBlockOverhead - 50)
 
-        const pieces = splitLongLine(
-          line.text,
-          availablePerChunk,
-          line.inCodeBlock,
-        )
+        const pieces = splitLongLine(line.text, availablePerChunk, line.inCodeBlock)
 
         for (let i = 0; i < pieces.length; i++) {
           const piece = pieces[i]!
@@ -512,25 +618,13 @@ export function splitMarkdownForDiscord({
       } else {
         // currentChunk is empty but line still exceeds - shouldn't happen after above check
         const openingFence = line.inCodeBlock || line.isOpeningFence
-        const openingFenceSize = openingFence
-          ? ('```' + line.lang + '\n').length
-          : 0
-        if (
-          line.text.length + openingFenceSize + activeFenceOverhead >
-          maxLength
-        ) {
+        const openingFenceSize = openingFence ? ('```' + line.lang + '\n').length : 0
+        if (line.text.length + openingFenceSize + activeFenceOverhead > maxLength) {
           const fencedOverhead = openingFence
             ? ('```' + line.lang + '\n').length + closingFence.length
             : 0
-          const availablePerChunk = Math.max(
-            10,
-            maxLength - fencedOverhead - 50,
-          )
-          const pieces = splitLongLine(
-            line.text,
-            availablePerChunk,
-            line.inCodeBlock,
-          )
+          const availablePerChunk = Math.max(10, maxLength - fencedOverhead - 50)
+          const pieces = splitLongLine(line.text, availablePerChunk, line.inCodeBlock)
           for (const piece of pieces) {
             if (openingFence) {
               chunks.push('```' + line.lang + '\n' + piece + closingFence)
@@ -573,12 +667,52 @@ export function splitMarkdownForDiscord({
   return chunks
 }
 
+export const DISCORD_MESSAGE_MAX_LENGTH = 2000
+
+/**
+ * Final text chunks that sendThreadMessage emits for a markdown payload — the
+ * exact strings (post-transform, post-split, hard-truncated) that go to Discord.
+ * Shared with the native outbox renderer (agent/renderer.ts) so its delivery
+ * verification can compare byte-exact content instead of re-deriving a
+ * parallel split. — ZCode ZK-008
+ */
+export function prepareThreadMessageChunks(
+  content: string,
+  maxLength: number = DISCORD_MESSAGE_MAX_LENGTH,
+): string[] {
+  let text = unnestCodeBlocksFromLists(content)
+  text = limitHeadingDepth(text)
+  text = escapeBackticksInCodeBlocks(text)
+
+  if (!text.trim()) {
+    return []
+  }
+
+  const chunks = splitMarkdownForDiscord({
+    content: text,
+    maxLength,
+  })
+
+  const prepared: string[] = []
+  for (let chunk of chunks) {
+    if (!chunk) {
+      continue
+    }
+    // Safety net: hard-truncate if splitting still produced an oversized chunk
+    if (chunk.length > maxLength) {
+      chunk = chunk.slice(0, maxLength - 4) + '...'
+    }
+    prepared.push(chunk)
+  }
+  return prepared
+}
+
 export async function sendThreadMessage(
-  thread: ThreadChannel,
+  thread: ThreadChannel | TextChannel,
   content: string,
   options?: { flags?: number },
 ): Promise<Message> {
-  const MAX_LENGTH = 2000
+  const MAX_LENGTH = DISCORD_MESSAGE_MAX_LENGTH
 
   // Split content into text and CV2 component segments (tables → Container components)
   const segments = splitTablesFromMarkdown(content)
@@ -598,36 +732,16 @@ export async function sendThreadMessage(
       continue
     }
 
-    // Apply text transformations to text segments
-    let text = segment.text
-    text = unnestCodeBlocksFromLists(text)
-    text = limitHeadingDepth(text)
-    text = escapeBackticksInCodeBlocks(text)
-
-    if (!text.trim()) {
-      continue
-    }
-
-    const sendFlags = options?.flags ?? SILENT_MESSAGE_FLAGS
-    const chunks = splitMarkdownForDiscord({
-      content: text,
-      maxLength: MAX_LENGTH,
-    })
+    const chunks = prepareThreadMessageChunks(segment.text, MAX_LENGTH)
 
     if (chunks.length > 1) {
       discordLogger.log(
-        `MESSAGE: Splitting ${text.length} chars into ${chunks.length} messages`,
+        `MESSAGE: Splitting ${segment.text.length} chars into ${chunks.length} messages`,
       )
     }
 
-    for (let chunk of chunks) {
-      if (!chunk) {
-        continue
-      }
-      // Safety net: hard-truncate if splitting still produced an oversized chunk
-      if (chunk.length > MAX_LENGTH) {
-        chunk = chunk.slice(0, MAX_LENGTH - 4) + '...'
-      }
+    const sendFlags = options?.flags ?? SILENT_MESSAGE_FLAGS
+    for (const chunk of chunks) {
       const message = await thread.send({ content: chunk, flags: sendFlags })
       if (!firstMessage) {
         firstMessage = message
@@ -636,6 +750,60 @@ export async function sendThreadMessage(
   }
 
   return firstMessage!
+}
+
+export async function sendSessionPartMessage(
+  thread: ThreadChannel,
+  content: string,
+  options?: {
+    leadWithBlankLine?: boolean
+    flags?: number
+  },
+): Promise<Message> {
+  return sendThreadMessage(
+    thread,
+    sessionPartContent({
+      content,
+      leadWithBlankLine: options?.leadWithBlankLine === true,
+    }),
+    { flags: options?.flags },
+  )
+}
+
+export async function sendSessionPartBatches({
+  thread,
+  batches,
+}: {
+  thread: ThreadChannel
+  batches: SessionChunk[]
+}) {
+  const sent: Array<{ partIds: string[]; message: Message }> = []
+  let previousKind: SessionChunk['kind'] | undefined
+  for (const batch of batches) {
+    const message = await sendSessionPartMessage(thread, batch.content, {
+      leadWithBlankLine: shouldLeadWithBlankLine({
+        previousKind,
+        nextKind: batch.kind,
+      }),
+    })
+    previousKind = batch.kind
+    sent.push({ partIds: batch.partIds, message })
+  }
+  return sent
+}
+
+export function isThreadChannelType(type: number): boolean {
+  return [
+    ChannelType.PublicThread,
+    ChannelType.PrivateThread,
+    ChannelType.AnnouncementThread,
+  ].includes(type)
+}
+
+/** True for guild text channels and for threads inside them. Commands that
+ * only need a guild context should accept both so they also work from threads. */
+export function isTextChannelOrThread(type: number): boolean {
+  return type === ChannelType.GuildText || isThreadChannelType(type)
 }
 
 export async function resolveTextChannel(
@@ -670,9 +838,7 @@ export function escapeDiscordFormatting(text: string): string {
   return text.replace(/```/g, '\\`\\`\\`').replace(/````/g, '\\`\\`\\`\\`')
 }
 
-export async function getKimakiMetadata(
-  textChannel: TextChannel | null,
-): Promise<{
+export async function getKimakiMetadata(textChannel: TextChannel | null): Promise<{
   projectDirectory?: string
 }> {
   if (!textChannel) {
@@ -727,7 +893,8 @@ export async function resolveProjectDirectoryFromAutocomplete(
   // Last resort: fetch the channel from Discord API to get parentId for threads
   // when the channel isn't cached at all (common with gateway-proxy).
   if (!cachedParentId) {
-    const fetched = await interaction.client.channels.fetch(channelId)
+    const fetched = await interaction.client.channels
+      .fetch(channelId)
       .catch((e) => new DiscordOperationError({ operation: 'fetchChannel', cause: e }))
     if (!(fetched instanceof Error) && fetched?.isThread() && fetched.parentId) {
       const parentConfig = await getChannelDirectory(fetched.parentId)
@@ -842,23 +1009,16 @@ export async function uploadFilesToDiscord({
   files.forEach((file, index) => {
     const buffer = fs.readFileSync(file)
     const mimeType = mime.getType(file) || 'application/octet-stream'
-    formData.append(
-      `files[${index}]`,
-      new Blob([buffer], { type: mimeType }),
-      path.basename(file),
-    )
+    formData.append(`files[${index}]`, new Blob([buffer], { type: mimeType }), path.basename(file))
   })
 
-  const response = await fetch(
-    discordApiUrl(`/channels/${threadId}/messages`),
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bot ${botToken}`,
-      },
-      body: formData,
+  const response = await fetch(discordApiUrl(`/channels/${threadId}/messages`), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bot ${botToken}`,
     },
-  )
+    body: formData,
+  })
 
   if (!response.ok) {
     const error = await response.text()

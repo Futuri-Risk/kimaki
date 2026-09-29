@@ -1,0 +1,272 @@
+{
+  "$comment": "Pinned CAPTURED shapes from ZK-016 free-row certification (N01-N04), real ZCode app-server over owned stdio. Classification: captured. Do not edit shapes by hand - regenerate from docs/zcode-integration/evidence/zk16-{win32,linux}/certify-capture.json. Changing a captured field here invalidates the affected codec attestation (checklist evidence manifest rule). - ZCode 2026-09-18",
+  "meta": {
+    "classification": "captured",
+    "capturedAt": "2026-09-18",
+    "sources": [
+      "docs/zcode-integration/evidence/zk16-win32/certify-capture.json",
+      "docs/zcode-integration/evidence/zk16-linux/certify-capture.json"
+    ],
+    "runtime": "ZCode desktop bundle zcode.cjs 0.16.5, subcommand app-server, node v24.15.0",
+    "redaction": "allowlisted home paths -> ~ ; strings >512b truncated (tools/certify.mjs redact)",
+    "notes": [
+      "session/create result body is field-identical to the session/read result body on this profile (asserted at fixture generation time).",
+      "projection.sessionId is the cosmetic value 'unknown' in every captured frame; true identity lives at result.session.sessionId (captured divergence #2).",
+      "the real server sends one reverse request session/requestRuntimePreferences after create (captured divergence #1).",
+      "2026-09-19: authenticated catalog captured after zcode login (effective config home ZCode Data/.zcode via setting.json dataBaseDir override; runner passes ZCODE_DATA_BASE_DIR). Advertised: zai-api GLM-5.3 (supportsImage true, reasoning levels low/high/max, default max)."
+    ]
+  },
+  "sessionReadResult": {
+    "messages": [],
+    "projection": {
+      "activeToolCalls": [],
+      "backgroundJobs": [],
+      "contextUsed": 0,
+      "contextWindow": 200000,
+      "mode": "build",
+      "pendingPermissions": [],
+      "sessionId": "unknown",
+      "status": "idle",
+      "target": null,
+      "totalTokenCount": 0,
+      "turnCount": 0
+    },
+    "protocol": {
+      "name": "ZCode Protocol",
+      "version": 1
+    },
+    "runtime": {
+      "eventSeq": 0,
+      "pendingRequestIds": [],
+      "goalVerifications": [],
+      "goalVerificationTimeline": [],
+      "stateRevision": 0
+    },
+    "session": {
+      "createdAt": 1789732848157,
+      "mode": "build",
+      "traceId": "02e60e12-57f1-4c9a-9088-1f0fcf3112b4",
+      "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+      "sessionKind": "interactive",
+      "status": "idle",
+      "target": null,
+      "title": "",
+      "updatedAt": 1789732848157,
+      "workspace": {
+        "workspacePath": "C:\\Dev\\zk-n00-disposable",
+        "workspaceKey": "C:\\Dev\\zk-n00-disposable"
+      }
+    },
+    "settings": {
+      "mode": {
+        "current": "build"
+      },
+      "model": {
+        "available": []
+      },
+      "permission": {
+        "mode": "build"
+      },
+      "thoughtLevel": {
+        "available": [],
+        "enabled": false
+      }
+    },
+    "slashCommands": [
+      {
+        "description": "Show or set the current session goal.",
+        "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+        "name": "goal",
+        "source": "builtin"
+      },
+      {
+        "description": "Compact the current conversation with optional instructions.",
+        "inputHint": "/compact [instructions]",
+        "name": "compact",
+        "source": "builtin"
+      },
+      {
+        "description": "Create or update workspace AGENTS.md instructions.",
+        "inputHint": "/init [notes]",
+        "name": "init",
+        "source": "builtin"
+      },
+      {
+        "description": "Switch to Plan mode and optionally send a task.",
+        "inputHint": "/plan [task]",
+        "name": "plan",
+        "source": "builtin"
+      }
+    ],
+    "todos": [],
+    "todoGroups": []
+  },
+  "reverseRequestFrame": {
+    "id": "server-1",
+    "method": "session/requestRuntimePreferences",
+    "params": {
+      "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+      "scope": "runtime-materialization"
+    }
+  },
+  "v4SubscribeResult": {
+    "ack": {
+      "subscriptionId": "sub-mu6wq880-fw5kilky-1",
+      "mode": "snapshot",
+      "logEpoch": "mu6wq880-fw5kilky",
+      "openTiming": {
+        "version": 1,
+        "initialFrameEncodeMs": 0,
+        "sessionRuntimeState": "warm",
+        "snapshotRowCount": 0
+      }
+    }
+  },
+  "legacySubscribeResult": {
+    "eventSeq": 0,
+    "events": [],
+    "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+    "snapshot": {
+      "messages": [],
+      "projection": {
+        "activeToolCalls": [],
+        "backgroundJobs": [],
+        "contextUsed": 0,
+        "contextWindow": 200000,
+        "mode": "build",
+        "pendingPermissions": [],
+        "sessionId": "unknown",
+        "status": "idle",
+        "target": null,
+        "totalTokenCount": 0,
+        "turnCount": 0
+      },
+      "protocol": {
+        "name": "ZCode Protocol",
+        "version": 1
+      },
+      "runtime": {
+        "deliveryKind": "desktop-continuous",
+        "eventSeq": 0,
+        "pendingRequestIds": [],
+        "goalVerifications": [],
+        "goalVerificationTimeline": [],
+        "stateRevision": 0
+      },
+      "session": {
+        "createdAt": 1789732848157,
+        "mode": "build",
+        "traceId": "02e60e12-57f1-4c9a-9088-1f0fcf3112b4",
+        "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+        "sessionKind": "interactive",
+        "status": "idle",
+        "target": null,
+        "title": "",
+        "updatedAt": 1789732848157,
+        "workspace": {
+          "workspacePath": "C:\\Dev\\zk-n00-disposable",
+          "workspaceKey": "C:\\Dev\\zk-n00-disposable"
+        }
+      },
+      "settings": {
+        "mode": {
+          "current": "build"
+        },
+        "model": {
+          "available": []
+        },
+        "permission": {
+          "mode": "build"
+        },
+        "thoughtLevel": {
+          "available": [],
+          "enabled": false
+        }
+      },
+      "slashCommands": [
+        {
+          "description": "Show or set the current session goal.",
+          "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+          "name": "goal",
+          "source": "builtin"
+        },
+        {
+          "description": "Compact the current conversation with optional instructions.",
+          "inputHint": "/compact [instructions]",
+          "name": "compact",
+          "source": "builtin"
+        },
+        {
+          "description": "Create or update workspace AGENTS.md instructions.",
+          "inputHint": "/init [notes]",
+          "name": "init",
+          "source": "builtin"
+        },
+        {
+          "description": "Switch to Plan mode and optionally send a task.",
+          "inputHint": "/plan [task]",
+          "name": "plan",
+          "source": "builtin"
+        }
+      ],
+      "todos": [],
+      "todoGroups": []
+    }
+  },
+  "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+  "workspace": "C:\\Dev\\zk-n00-disposable",
+  "authenticatedModelSettings": {
+    "available": [
+      {
+        "ref": {
+          "providerId": "zai-api",
+          "modelId": "GLM-5.3"
+        },
+        "label": "GLM-5.3",
+        "providerLabel": "zai-api",
+        "contextWindow": 200000,
+        "maxOutputTokens": 128000,
+        "reasoning": {
+          "levels": [
+            {
+              "value": "low",
+              "label": "low"
+            },
+            {
+              "value": "high",
+              "label": "high"
+            },
+            {
+              "value": "max",
+              "label": "max"
+            }
+          ],
+          "defaultLevel": "max"
+        },
+        "properties": {
+          "inputFormat": {
+            "supportsText": true,
+            "supportsImage": true,
+            "supportsVideo": true,
+            "supportsAudio": false,
+            "supportsPdf": false
+          },
+          "outputFormat": {
+            "supportsText": true
+          }
+        }
+      }
+    ],
+    "current": {
+      "providerId": "zai-api",
+      "modelId": "GLM-5.3",
+      "options": {
+        "reasoningLevel": "max"
+      }
+    },
+    "lastUsed": {
+      "providerId": "zai-api",
+      "modelId": "GLM-5.3"
+    }
+  }
+}

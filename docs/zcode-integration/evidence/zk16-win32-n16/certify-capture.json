@@ -1,0 +1,388 @@
+{
+  "startedAt": "2026-09-19T02:02:42.606Z",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "C:/Program Files/nodejs/node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+    "entrySha256": "da61b0663336a65f7cce3dec223678794ccaa58158e304fc0d97b695434a8f01",
+    "args": [
+      "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "C:\\Users\\Cody",
+      "ZCODE_DATA_BASE_DIR": "C:\\Filen\\Reference\\Tech\\AI\\Claude\\ZCode Data",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "C:\\Users\\Cody\\AppData\\Local\\Programs\\ZCode\\resources\\config\\provider\\zcode-builtin.json"
+    },
+    "cwd": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-n16-1405"
+  },
+  "rows": {
+    "N16": {
+      "stage": "pre-restart",
+      "sessionId": "sess_f760a8dd-f611-4c1d-8544-6a13248961f0",
+      "cursor": 0,
+      "model": {
+        "available": [
+          {
+            "ref": {
+              "providerId": "zai-api",
+              "modelId": "GLM-5.3"
+            },
+            "label": "GLM-5.3",
+            "providerLabel": "zai-api",
+            "contextWindow": 200000,
+            "maxOutputTokens": 128000,
+            "reasoning": {
+              "levels": [
+                {
+                  "value": "low",
+                  "label": "low"
+                },
+                {
+                  "value": "high",
+                  "label": "high"
+                },
+                {
+                  "value": "max",
+                  "label": "max"
+                }
+              ],
+              "defaultLevel": "max"
+            },
+            "properties": {
+              "inputFormat": {
+                "supportsText": true,
+                "supportsImage": true,
+                "supportsVideo": true,
+                "supportsAudio": false,
+                "supportsPdf": false
+              },
+              "outputFormat": {
+                "supportsText": true
+              }
+            }
+          }
+        ],
+        "current": {
+          "providerId": "zai-api",
+          "modelId": "GLM-5.3",
+          "options": {
+            "reasoningLevel": "max"
+          }
+        },
+        "lastUsed": {
+          "providerId": "zai-api",
+          "modelId": "GLM-5.3"
+        }
+      },
+      "stage2": {
+        "stop": {
+          "ok": true
+        },
+        "resume": {
+          "code": "NATIVE_-32004",
+          "safeMessage": "Native RPC rejected the request.",
+          "phase": "control",
+          "effects": "possible",
+          "automaticTaskReplayAllowed": false
+        },
+        "sameSidResumed": false,
+        "readbackModelMatches": false,
+        "resubscribeWithSavedCursor": {
+          "code": "NATIVE_-32004",
+          "safeMessage": "Native RPC rejected the request.",
+          "phase": "control",
+          "effects": "possible",
+          "automaticTaskReplayAllowed": false
+        },
+        "listContainsSession": {
+          "sessions": []
+        },
+        "newGeneration": "88c33356-bdce-4530-9b6b-6fee09312875",
+        "oldGeneration": "0bf63e94-125a-48ca-a190-6086be933aa0",
+        "stop2": {
+          "ok": true
+        },
+        "newPidLivenessAfterStop": "dead"
+      }
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/create"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState",
+      "gen": 2
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState",
+      "gen": 2
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState",
+      "gen": 2
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState",
+      "gen": 2
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState",
+      "gen": 2
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [
+    {
+      "at": 1789783364117,
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_f760a8dd-f611-4c1d-8544-6a13248961f0",
+        "scope": "runtime-materialization"
+      }
+    }
+  ],
+  "notifications": [
+    {
+      "at": 1789783364014,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b0254ff3-0b3b-4e66-8ec3-27a0ba2d9d3e",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789783364015,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b0254ff3-0b3b-4e66-8ec3-27a0ba2d9d3e",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789783364021,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b0254ff3-0b3b-4e66-8ec3-27a0ba2d9d3e",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 5
+      }
+    },
+    {
+      "at": 1789783364022,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b0254ff3-0b3b-4e66-8ec3-27a0ba2d9d3e",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 7
+      }
+    },
+    {
+      "at": 1789783364023,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "b0254ff3-0b3b-4e66-8ec3-27a0ba2d9d3e",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 8
+      }
+    },
+    {
+      "at": 1789783366563,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "3bf04549-369f-4add-aee7-fa7488a8fb78",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      },
+      "gen": 2
+    },
+    {
+      "at": 1789783366565,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "3bf04549-369f-4add-aee7-fa7488a8fb78",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      },
+      "gen": 2
+    },
+    {
+      "at": 1789783366571,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "3bf04549-369f-4add-aee7-fa7488a8fb78",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 6
+      },
+      "gen": 2
+    },
+    {
+      "at": 1789783366572,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "3bf04549-369f-4add-aee7-fa7488a8fb78",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 8
+      },
+      "gen": 2
+    },
+    {
+      "at": 1789783366572,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "3bf04549-369f-4add-aee7-fa7488a8fb78",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 8
+      },
+      "gen": 2
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 62044
+  },
+  "client": {
+    "generation": "0bf63e94-125a-48ca-a190-6086be933aa0"
+  },
+  "sessionIdSource": "session/create (row-owned sentinel session)",
+  "stop": {
+    "ok": true,
+    "nativePid": 62044,
+    "nativePidLivenessAfterStop": "dead"
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}

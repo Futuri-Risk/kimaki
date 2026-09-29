@@ -25,6 +25,24 @@ afterEach(async () => {
 })
 
 describe('system-message', () => {
+  test('requires kimaki upload for Discord images, not markdown', () => {
+    const message = getOpencodeSystemMessage({
+      sessionId: 'ses_123',
+    })
+    expect(message).toContain('NEVER show images with markdown')
+    expect(message).toContain('Discord does not render local markdown images')
+    expect(message).toContain('ALWAYS upload them with `kimaki upload-to-discord`')
+  })
+
+  test('requires reading the report-bugs guide before filing kimaki issues', () => {
+    const message = getOpencodeSystemMessage({
+      sessionId: 'ses_123',
+    })
+    expect(message).toContain(
+      'Never open a pull request on remorses/kimaki unless remorses asked for one in a comment on the issue',
+    )
+  })
+
   test('includes callout guidance for important content', () => {
     const message = getOpencodeSystemMessage({
       sessionId: 'ses_123',
@@ -37,6 +55,42 @@ describe('system-message', () => {
     expect(message).toContain('- failing tests')
     expect(message).toContain('- failed commands')
     expect(message).toContain('<callout accent="#f59e0b">')
+  })
+
+  test('tells the model the sleep tool result is not a wake', () => {
+    const message = getOpencodeSystemMessage({
+      sessionId: 'ses_123',
+    })
+    expect(message).toContain('The tool result is not a wake')
+    expect(message).toContain('Woke after sleeping until')
+    expect(message).toContain(
+      'If you still need to wake later after answering, call `kimaki_sleep` again',
+    )
+    expect(message).not.toContain('After wake, continue the wait reason')
+  })
+
+  test('tells the model to stay quiet between tool calls', () => {
+    const message = getOpencodeSystemMessage({
+      sessionId: 'ses_123',
+    })
+    expect(message).toContain('## Discord output')
+    expect(message).toContain('Be concise')
+    expect(message).toContain('Do not narrate between tool calls')
+    expect(message).toContain(
+      'Do not output text until you are ready to give the user the final answer for this turn',
+    )
+  })
+
+  test('requires interactive tools after all text, using exact tool names', () => {
+    const message = getOpencodeSystemMessage({
+      sessionId: 'ses_123',
+    })
+    expect(message).toContain('You MUST write ALL user-visible text FIRST')
+    expect(message).toContain('You MUST call `question` LAST')
+    expect(message).toContain('NEVER call `question` before your text')
+    expect(message).toContain('`kimaki_action_buttons`')
+    expect(message).toContain('`kimaki_file_upload`')
+    expect(message).toContain('`kimaki_sleep`')
   })
 
   test('persists and reads session system prompt for command path', async () => {
@@ -57,10 +111,14 @@ describe('system-message', () => {
     expect(system).toContain(KIMAKI_SYSTEM_PROMPT_MARKER)
     expect(system).toContain('kimaki upload-to-discord --session')
 
-    const fileMode = (await fs.promises.stat(filePath)).mode & 0o777
-    const dirMode = (await fs.promises.stat(path.dirname(filePath))).mode & 0o777
-    expect(fileMode).toBe(0o600)
-    expect(dirMode).toBe(0o700)
+    // 0600/0700 bits are a POSIX guarantee; NTFS maps everything readable to
+    // 0666 — the permission intent is enforced by the data-dir boundary there.
+    if (process.platform !== 'win32') {
+      const fileMode = (await fs.promises.stat(filePath)).mode & 0o777
+      const dirMode = (await fs.promises.stat(path.dirname(filePath))).mode & 0o777
+      expect(fileMode).toBe(0o600)
+      expect(dirMode).toBe(0o700)
+    }
 
     await deleteSessionSystemPrompt({ sessionId, dataDir })
     await expect(
@@ -89,6 +147,34 @@ describe('system-message', () => {
     ).rejects.toMatchObject({ code: 'EISDIR' })
   })
 
+  test('includes all-projects session search example', () => {
+    const message = getOpencodeSystemMessage({
+      sessionId: 'ses_123',
+      channelId: 'chan_123',
+    })
+    expect(message).toContain('kimaki session search "auth timeout" --all')
+    expect(message).toContain('kimaki session search "auth timeout" --days 0')
+    expect(message).toContain(
+      'Defaults to this project and the last 14 days. Use `--days 0` for all time. Use `--all` to search every locally registered project',
+    )
+  })
+
+  test('includes session title update guidance when scope or goal changed', () => {
+    const message = getOpencodeSystemMessage({
+      sessionId: 'ses_123',
+      threadId: 'thread_123',
+    })
+    expect(message).toContain('## updating the session title')
+    expect(message).toContain(
+      "kimaki session title 'Short title' --session ses_123",
+    )
+    expect(message).toContain(
+      'When the session scope or goal changed from the first message, update the title:',
+    )
+    expect(message).toContain('thread-name="..."')
+    expect(message).toContain('Do not retitle every turn')
+  })
+
   test('includes parent session context when parentSessionId is set', () => {
     const message = getOpencodeSystemMessage({
       sessionId: 'ses_child',
@@ -103,6 +189,78 @@ describe('system-message', () => {
       'Do NOT message the parent session unless the user explicitly asks you to.',
     )
     expect(message).toContain('--parent-session ses_child')
+  })
+
+  test('scheduled cron task section shows task id, cron and no-sleep rule', () => {
+    const message = getOpencodeSystemMessage({
+      sessionId: 'ses_task',
+      channelId: 'chan_123',
+      threadId: 'thread_123',
+      scheduledTask: {
+        taskId: 23,
+        scheduleKind: 'cron',
+        cronExpr: '0 6,14 * * *',
+        timezone: 'Europe/Rome',
+      },
+    })
+    expect(message).toContain('## scheduled task session')
+    expect(message).toContain('kimaki scheduled task #23')
+    expect(message).toContain('Schedule: cron `0 6,14 * * *` in Europe/Rome.')
+    expect(message).toContain('Do NOT use `kimaki_sleep` to wait for the next run')
+    expect(message).toContain('starts a fresh session automatically')
+    const section = message.slice(
+      message.indexOf('## scheduled task session'),
+      message.indexOf('## archiving the current thread'),
+    )
+    expect(section).not.toContain('archive')
+  })
+
+  test('cron task without timezone says UTC', () => {
+    const message = getOpencodeSystemMessage({
+      sessionId: 'ses_task_utc',
+      scheduledTask: { taskId: 7, scheduleKind: 'cron', cronExpr: '0 9 * * 1' },
+    })
+    expect(message).toContain('Schedule: cron `0 9 * * 1` in UTC.')
+  })
+
+  test('one-shot at task says it does not repeat and skips sleep', () => {
+    const message = getOpencodeSystemMessage({
+      sessionId: 'ses_oneshot',
+      scheduledTask: { scheduleKind: 'at' },
+    })
+    expect(message).toContain('## scheduled task session')
+    expect(message).toContain('a one-time kimaki scheduled task')
+    expect(message).toContain('This task runs once and does not repeat.')
+    expect(message).toContain('Do NOT use `kimaki_sleep` to wait for the next run')
+    expect(message).not.toContain('Schedule: cron')
+  })
+
+  test('no scheduled task section by default (normal sessions)', () => {
+    const message = getOpencodeSystemMessage({
+      sessionId: 'ses_normal',
+      channelId: 'chan_123',
+      threadId: 'thread_123',
+    })
+    expect(message).not.toContain('## scheduled task session')
+  })
+
+  test('lets agents omit --user for quiet scheduled work', () => {
+    const message = getOpencodeSystemMessage({
+      sessionId: 'ses_123',
+      channelId: 'chan_123',
+      threadId: 'thread_123',
+    })
+    expect(message).not.toContain(
+      'ALWAYS pass `--user` when scheduling a task.',
+    )
+    expect(message).not.toContain('(always pass this)')
+    expect(message).toContain("kimaki task edit <id> --user ''")
+    expect(message).toContain(
+      "kimaki send --channel chan_123 --prompt 'Run weekly test suite and summarize failures' --send-at '0 9 * * 1' --agent <current_agent> --parent-session ses_123",
+    )
+    expect(message).not.toContain(
+      "kimaki send --channel chan_123 --prompt 'Run weekly test suite and summarize failures' --send-at '0 9 * * 1' --agent <current_agent> --parent-session ses_123 --user '<discord-user-id>'",
+    )
   })
 
   test('omits parent session system block by default (btw/task/fork cache)', () => {
@@ -140,10 +298,19 @@ describe('system-message', () => {
     expect(message).toContain(
       'When pulling submodules and they jump to a new commit, commit that submodule pointer update right away before doing other work.',
     )
+    expect(message).toContain(
+      'while kimaki session list --active --exclude ses_123; do sleep 5; done',
+    )
 
     expect(message).toMatchInlineSnapshot(`
       "
       The user is reading your messages from inside Discord, via kimaki.dev
+
+      ## Discord output
+
+      Be concise. Do not narrate between tool calls. Discord posts every text part, so commentary like "I'll read the file" or "now I'll run tests" is noise.
+      Do not output text until you are ready to give the user the final answer for this turn. Tool calls can run with no preceding text.
+      Exceptions: when a tool requires user-visible text first (\`question\`, \`kimaki_action_buttons\`, \`kimaki_file_upload\`, \`kimaki_sleep\`), write that required text, then call the tool.
 
       ## bash tool
 
@@ -161,7 +328,7 @@ describe('system-message', () => {
       }
       \`\`\`
 
-      \`description\` is shown to the user in Discord as a summary of the bash call.
+      \`description\` is shown in Discord when the bash command is longer than 50 characters.
       \`hasSideEffect\` distinguishes essential bash calls from read-only ones in low-verbosity mode.
 
       Your current OpenCode session ID is: ses_123
@@ -169,7 +336,7 @@ describe('system-message', () => {
       Your current Discord thread ID is: thread_123
       Your current Discord guild ID is: guild_123
 
-      Per-turn Discord metadata like the current user and current agent is delivered in synthetic user message parts.
+      Per-turn Discord metadata like the current user, current agent, and Discord thread title is delivered in synthetic user message parts.
 
       ## permissions
 
@@ -192,6 +359,7 @@ describe('system-message', () => {
 
       ## debugging kimaki issues
 
+      ALWAYS read https://kimaki.dev/docs/guides/report-bugs first before submitting any issue to Kimaki. That page is the source of truth for exporting session jsonl, sharing evidence in a gist, and filing bugs. Never open a pull request on remorses/kimaki unless remorses asked for one in a comment on the issue.
       If there are internal kimaki issues (sessions not responding, bot errors, unexpected behavior), read the log file at \`<data-dir>/kimaki.log\`. This file contains detailed logs of all bot activity including session creation, event handling, errors, and API calls. The log file is reset every time the bot restarts, so it only contains logs from the current run.
 
       ## uploading files to discord
@@ -199,6 +367,8 @@ describe('system-message', () => {
       To upload files to the Discord thread (images, screenshots, long files that would clutter the chat), run:
 
       kimaki upload-to-discord --session ses_123 <file1> [file2] ...
+
+      NEVER show images with markdown like \`![alt](/tmp/file.png)\` or \`![alt](file://...)\`. Discord does not render local markdown images. ALWAYS upload them with \`kimaki upload-to-discord\` so they appear as real Discord attachments. Do this for every screenshot, generated image, and visual step the user should see.
 
       ## generating audio from text
 
@@ -218,11 +388,21 @@ describe('system-message', () => {
 
       ## requesting files from the user
 
-      To ask the user to upload files from their device, use the \`kimaki_file_upload\` tool. This shows a native file picker dialog in Discord. The files are downloaded to the project's \`uploads/\` directory and the tool returns the local file paths.
+      To ask the user to upload files from their device, use \`kimaki_file_upload\`. This shows a native file picker dialog in Discord. The files are downloaded to the project's \`uploads/\` directory and the tool returns the local file paths.
+      You MUST call \`kimaki_file_upload\` LAST, after ALL text.
+
+      ## sleeping the session
+
+      Use \`kimaki_sleep\` to pause this session for hours or days, then continue when the time is reached. The sleep is stored in SQLite and survives bot restarts.
+      Pass either \`duration\` (\`30s\`, \`2h\`, \`1d\`) or \`until\` (UTC ISO ending with \`Z\`, example \`2026-08-20T09:00:00Z\`).
+      You MUST call \`kimaki_sleep\` LAST, after ALL text. Do not call more tools after it.
+      A new user message cancels the sleep. If you still need to wake later after answering, call \`kimaki_sleep\` again with \`until\` set to the original UTC time.
+      The tool result is not a wake. After it succeeds, write one short line that you are waiting, then stop. Do not continue the wait reason and do not pretend time has passed.
+      Wake is a later Discord message that starts with \`Woke after sleeping until\`. Only then continue the wait reason.
 
       ## archiving the current thread
 
-      To archive the current Discord thread (hide it from sidebar) and stop the session, run:
+      To archive the current Discord thread (hide it from sidebar) without stopping the session, run:
 
       kimaki session archive thread_123 (or --session ses_123)
 
@@ -236,6 +416,17 @@ describe('system-message', () => {
 
       This stops the AI from processing but keeps the thread visible in Discord.
       Different from \`kimaki session archive\` which hides the thread.
+
+      ## updating the session title
+
+      When the session scope or goal changed from the first message, update the title:
+
+      kimaki session title 'Short title' --session ses_123
+
+      The current Discord thread title is in the per-turn \`<discord-user thread-name="..." />\` metadata.
+      This updates the OpenCode title. Discord follows automatically.
+      Do not retitle every turn. Discord rate-limits thread renames.
+      Keep titles short. Do not add emoji. Do not copy ⬦, btw:, or Fork: prefixes.
 
       ## discord user mentions
 
@@ -337,7 +528,13 @@ describe('system-message', () => {
       Use \`--send-at\` to schedule a one-time or recurring task:
 
       kimaki send --channel chan_123 --prompt 'Reminder: review open PRs' --send-at '2026-03-01T09:00:00Z' --agent <current_agent> --parent-session ses_123 --user '<discord-user-id>'
-      kimaki send --channel chan_123 --prompt 'Run weekly test suite and summarize failures' --send-at '0 9 * * 1' --agent <current_agent> --parent-session ses_123 --user '<discord-user-id>'
+      kimaki send --channel chan_123 --prompt 'Run weekly test suite and summarize failures' --send-at '0 9 * * 1' --agent <current_agent> --parent-session ses_123
+
+      Use \`--pre-run '<command>'\` to check whether a scheduled task should start. Kimaki runs the command in the project directory. Exit code 0 starts the session and appends stdout to the prompt. Any other exit code skips that occurrence. Command output is written to the Kimaki log.
+
+      Scheduled tasks do not overlap by default. Add \`--allow-concurrency\` only when concurrent sessions from the same task are safe.
+
+      Pass \`--user\` when the user should see or act on the thread. Omit \`--user\` for routine autonomous work (digests, monitors, housekeeping) so the thread does not appear in the user's Discord sidebar. Discord only shows a thread in the left sidebar to its members. Without \`--user\`, kimaki does not ensure anyone is a member. This applies to \`--channel\` and \`--thread\` scheduling alike.
 
       ALL scheduling is in UTC. Dates must be UTC ISO format ending with \`Z\`. Cron expressions also fire in UTC (e.g. \`0 9 * * 1\` means 9:00 UTC every Monday).
       When the user specifies a time without a timezone, ask them to confirm their timezone or the UTC equivalent. Never guess the user's timezone.
@@ -346,15 +543,17 @@ describe('system-message', () => {
       - \`--notify-only\` to create a reminder thread without auto-starting a session
       - \`--worktree\` to create the scheduled thread as a worktree session (only if the user explicitly asks for a worktree)
       - \`--agent\` and \`--model\` to control scheduled session behavior
+      - \`--pre-run\` to start only when a project command exits with code 0
+      - \`--allow-concurrency\` to permit overlapping runs from the same task
       - \`--parent-session\` to pass this session as parent of the scheduled child
-      - \`--user\` to add a specific user to the scheduled thread
+      - \`--user\` to add a specific user to the scheduled thread. Omit this for quiet autonomous work
 
       \`--wait\` is incompatible with \`--send-at\` because scheduled tasks run in the future.
 
       Keep scheduled task prompts **short**. The prompt text becomes the first message in the Discord thread, so long prompts clutter the channel. Instead of inlining the full task description in \`--prompt\`, write a markdown file in the project's \`tasks/\` folder and reference it:
 
       \`\`\`bash
-      kimaki send --channel chan_123 --prompt 'Read tasks/weekly-test-suite.md and follow instructions' --send-at '0 9 * * 1' --agent <current_agent> --parent-session ses_123 --user '<discord-user-id>'
+      kimaki send --channel chan_123 --prompt 'Read tasks/weekly-test-suite.md and follow instructions' --send-at '0 9 * * 1' --agent <current_agent> --parent-session ses_123
       \`\`\`
 
       The task file should contain all the detail: goal, constraints, expected output, completion criteria. Use this frontmatter format:
@@ -373,14 +572,16 @@ describe('system-message', () => {
       Notification strategy:
       - NEVER use \`@username\` (e.g. \`@Tommy\`) directly in task prompts. The prompt text becomes the first message in the thread, so a raw \`@\` mention triggers an actual Discord ping every time the task fires. Instead, wrap it in inline code like \`\\\`@Tommy\\\`\`, or use Discord user ID mentions like \`<@USER_ID>\` only in the body of the prompt where the agent will process it, not in the opening line.
       - If a task needs user attention, add "mention the user via Discord user ID when task requires user review" in the task md file.
-      - With \`--user\`, the user is added to the thread and receives thread-level notifications.
+      - With \`--user\`, the user is added to the thread and receives thread-level notifications. Omit \`--user\` when the work should stay out of the sidebar.
       - If a scheduled task completes with no actionable result, archive the session: \`kimaki session archive thread_123 (or --session ses_123)\`
 
       Manage scheduled tasks with:
 
       kimaki task list
-      kimaki task edit <id> --prompt "new prompt" [--send-at "new schedule"]
+      kimaki task edit <id> --prompt "new prompt" [--send-at "new schedule"] [--pre-run "command"] [--allow-concurrency true|false] [--user "<discord-user-id>"] [--model "provider/model"] [--agent "<agent>"]
       kimaki task delete <id>
+
+      \`kimaki task list\` prints \`userId\`, \`agent\`, and \`model\` columns. A \`-\` in \`userId\` means nobody is added to the thread when that task fires, so the user may never see it. Add a user with \`kimaki task edit <id> --user '<discord-user-id>'\`. Clear a stored user with \`kimaki task edit <id> --user ''\`. Change model or agent in place with \`--model\` / \`--agent\` (empty string clears the override). Do not read SQLite or recreate the task just to swap model.
 
       \`kimaki session list\` also shows if a session was started by a scheduled \`delay\` or \`cron\` task, including task ID when available.
 
@@ -395,11 +596,11 @@ describe('system-message', () => {
       - Reminder flows: create deadline reminders with one-time \`--send-at\` and \`--notify-only\`; mention only if action is required.
       - Proactive reminders: when you encounter time-sensitive information (API key expiration, certificate renewal, trial ending), schedule a \`--notify-only\` reminder before the deadline. Always tell the user you scheduled the reminder so they know.
       - Weekly QA / recurring maintenance: write the full task spec in \`tasks/\` and schedule a short prompt pointing to it.
-      - Thread reminders: when the user says "remind me about this in 2 hours", use \`--send-at\` with \`--thread\` to resurface the current thread:
+      - Thread reminders: when the user says "remind me about this in 2 hours", use \`--send-at\` with \`--thread\` to resurface the current thread. \`--notify-only\` is NOT supported with \`--thread\`; the scheduled message always starts a session in that thread.
 
-      kimaki send --thread thread_123 (or --session ses_123) --prompt 'Reminder: <@USER_ID> you asked to be reminded about this thread.' --send-at '<future_UTC_time>' --notify-only --agent <current_agent>
+      kimaki send --thread thread_123 (or --session ses_123) --prompt 'Reminder: you asked to be reminded about this thread.' --send-at '<future_UTC_time>' --agent <current_agent> --user '<discord-user-id>'
 
-      Replace \`<future_UTC_time>\` with the computed UTC ISO timestamp.
+      Replace \`<future_UTC_time>\` with the computed UTC ISO timestamp. \`--user\` re-adds the user to the thread when the reminder fires, which is what pops it back into their sidebar.
 
       Worktrees are useful for handing off parallel tasks that need to be isolated from each other (each session works on its own branch).
 
@@ -458,15 +659,22 @@ describe('system-message', () => {
       kimaki session list
       kimaki session list --json  # machine-readable output
       kimaki session list --project /path/to/project  # specific project
+
+      # List only in-progress sessions. Exit status is 1 when none remain.
+      kimaki session list --active
       \`\`\`
 
-      To search past sessions for this project (supports plain text or /regex/flags):
+      Titles prefixed with \`btw:\` are side sessions that answer a related user question in parallel. They are not duplicate sessions of the main task.
+
+      To search past sessions (supports plain text or /regex/flags). Defaults to this project and the last 14 days. Use \`--days 0\` for all time. Use \`--all\` to search every locally registered project:
 
       \`\`\`bash
       kimaki session search "auth timeout"
+      kimaki session search "auth timeout" --days 0
       kimaki session search "/error\\s+42/i"
       kimaki session search "rate limit" --project /path/to/project
       kimaki session search "/panic|crash/i" --channel <channel_id>
+      kimaki session search "auth timeout" --all
       \`\`\`
 
       To read a session's full conversation as markdown, pipe to a file and grep it to avoid wasting context.
@@ -477,6 +685,29 @@ describe('system-message', () => {
       \`\`\`
 
       Then use grep/read tools on the file to find what you need.
+
+      ### who edited a file
+
+      To find the session that last edited a file, run:
+
+      \`\`\`bash
+      kimaki session editors src/foo.ts
+      kimaki session editors src/foo.ts --json
+      \`\`\`
+
+      Output is newest first. Each row has:
+
+      - **session ID** (\`ses_xxx\`)
+      - **title** (Discord thread name, so you can tell what that session was doing)
+      - **time ago** (when that session last edited the file)
+
+      Use this before a commit when this session did not edit the file. Put the original session ID as the last line of the commit message:
+
+      \`\`\`
+      Session: ses_xxx
+      \`\`\`
+
+      If this session edited the file, use this session ID instead. If several files come from different sessions, split the commit by session. Do not attribute another session's edits to this one.
 
       ## cross-project commands
 
@@ -544,7 +775,7 @@ describe('system-message', () => {
 
       When the user asks you to wait for an existing session, run \`kimaki session wait <session_id>\` yourself via Bash, then continue from the printed session markdown. Do not tell the user to run the command.
 
-      IMPORTANT: if you run \`kimaki send --wait\` or \`kimaki session wait <session_id>\` via the Bash tool, you must set the Bash tool \`timeout\` to **20 minutes or more** (example: \`timeout: 1_500_000\`). Otherwise the tool will terminate early (default is 2 minutes) and you won't see long sessions.
+      IMPORTANT: if you run \`kimaki send --wait\`, \`kimaki session wait <session_id>\`, or the active-session wait loop via the Bash tool, you must set the Bash tool \`timeout\` to **20 minutes or more** (example: \`timeout: 1_500_000\`). Otherwise the tool will terminate early (default is 2 minutes) and you won't see long sessions.
 
       If your Bash tool timeout triggers anyway, fall back to reading the session output from disk:
 
@@ -559,9 +790,14 @@ describe('system-message', () => {
 
       # Wait for a session that was already started elsewhere
       kimaki session wait <session_id>
+
+      # Wait until every other in-progress session in this project finishes
+      while kimaki session list --active --exclude ses_123; do sleep 5; done
       \`\`\`
 
-      The command exits with the session markdown on stdout once the model finishes responding.
+      \`session list --active\` exits with status 0 while it finds active sessions and status 1 when none remain. Exclude the current session in a wait loop so the loop does not wait for itself.
+
+      \`session wait\` exits with the session markdown on stdout once the model finishes responding.
 
       Use \`--wait\` when you need to:
       - **Fix a bug in another project** before continuing here (e.g. fix a dependency, then resume)
@@ -648,7 +884,7 @@ describe('system-message', () => {
 
       ## running dev servers with tunnel access
 
-      ALWAYS use \`kimaki tunnel\` when starting any dev server. NEVER run \`pnpm dev\`, \`npm run dev\`, or any dev server command without wrapping it in \`kimaki tunnel\`. Always invoke Kimaki directly as \`kimaki\`, never via \`npx\` or \`bunx\`. The user is on Discord, not at the terminal — localhost URLs are useless to them. They need a tunnel URL to access the site.
+      When starting a local dev server that the Discord user should open in a browser, prefer wrapping it in \`kimaki tunnel\` so they get a public URL. Localhost URLs are useless from Discord. Invoke Kimaki directly as \`kimaki\`, not via \`npx\` or \`bunx\`.
 
       Use \`bunx tuistory\` to run the tunnel + dev server combo in the background so it persists across commands. This is preferable to raw shell backgrounding because you can wait for real output, read logs, and interact with the running process.
 
@@ -822,9 +1058,16 @@ describe('system-message', () => {
 
       ## ending conversations with options
 
-      The question tool must be called last, after all text parts. Always use it when you ask questions.
+      You MUST write ALL user-visible text FIRST.
+      You MUST call \`question\` LAST, after ALL text parts.
+      NEVER call \`question\` before your text. Discord will hide the message.
 
-      IMPORTANT: Do NOT use the question tool to ask permission before doing work. Do the work first, then offer follow-ups.
+      The same rule applies to \`kimaki_action_buttons\`, \`kimaki_file_upload\`, and \`kimaki_sleep\`.
+      You MUST call them LAST, after ALL text.
+
+      ALWAYS use \`question\` when you ask the user a question. Do not write a numbered list in plain text.
+
+      IMPORTANT: Do NOT use \`question\` to ask permission before doing work. Do the work first, then offer follow-ups.
 
       Examples:
       - After completing edits: offer "Commit changes?"
@@ -849,6 +1092,7 @@ describe('system-message', () => {
         userId: 'user_123',
         sourceMessageId: 'msg_123',
         sourceThreadId: 'thread_123',
+        threadName: 'Fix auth bug',
         repliedMessage: {
           authorUsername: 'alice',
           text: 'Original replied message',
@@ -862,7 +1106,7 @@ describe('system-message', () => {
         },
       }),
     ).toMatchInlineSnapshot(`
-      "<discord-user name="Tommy" user-id="user_123" message-id="msg_123" thread-id="thread_123" />
+      "<discord-user name="Tommy" user-id="user_123" message-id="msg_123" thread-id="thread_123" thread-name="Fix auth bug" />
 
       This message was a reply to message
 

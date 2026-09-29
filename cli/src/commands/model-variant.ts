@@ -8,6 +8,7 @@
 // Map. Whichever menu fires second sees the first selection stored and applies.
 
 import {
+  ChatInputCommandInteraction,
   StringSelectMenuInteraction,
   StringSelectMenuBuilder,
   ActionRowBuilder,
@@ -33,6 +34,7 @@ import {
 } from './model.js'
 
 import { getThinkingValuesForModel } from '../thinking-utils.js'
+import { resolveDisplayedModelId } from '../session-handler/model-utils.js'
 import { createLogger, LogPrefix } from '../logger.js'
 
 const logger = createLogger(LogPrefix.MODEL)
@@ -85,6 +87,31 @@ function formatSourceLabel(info: CurrentModelInfo): string {
     case 'none':
       return 'none'
   }
+}
+
+/** /model-variant slash command entrypoint — defers reply then delegates to the shared picker. */
+export async function handleModelVariantCommand({
+  interaction,
+  appId,
+}: {
+  interaction: ChatInputCommandInteraction
+  appId: string
+}): Promise<void> {
+  await interaction.deferReply()
+
+  const channel = interaction.channel
+  if (!channel) {
+    await interaction.editReply({
+      content: 'This command can only be used in a channel',
+    })
+    return
+  }
+
+  await showModelVariantPicker({
+    channel,
+    appId,
+    editReply: (options) => interaction.editReply(options),
+  })
 }
 
 export async function showModelVariantPicker({
@@ -188,6 +215,13 @@ export async function showModelVariantPicker({
   const { providerID, modelID, model: fullModelId } = currentModelInfo
   const sourceLabel = formatSourceLabel(currentModelInfo)
   const variantLabel = cascadeVariant ? ` (${cascadeVariant})` : ''
+  const displayedModelId =
+    (await resolveDisplayedModelId({
+      providers: providersResponse.data.all,
+      providerID,
+      modelID,
+      sessionID: sessionId,
+    })) ?? fullModelId
 
   const provider = providersResponse.data.all.find((p) => {
     return p.id === providerID
@@ -200,7 +234,7 @@ export async function showModelVariantPicker({
     modelId: modelID,
   })
 
-  const statusText = `**Current model:** \`${fullModelId}\`${variantLabel} — ${sourceLabel}`
+  const statusText = `**Current model:** \`${displayedModelId}\`${variantLabel} — ${sourceLabel}`
 
   if (variants.length === 0) {
     await editReply({

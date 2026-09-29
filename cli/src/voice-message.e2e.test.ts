@@ -28,6 +28,10 @@ import {
   closeDatabase,
   setChannelDirectory,
   setChannelVerbosity,
+  getThreadSession,
+  createPendingWorkspace,
+  setWorkspaceReady,
+  getThreadWorktreeOrWorkspace,
 } from './database.js'
 import { startHranaServer, stopHranaServer } from './hrana-server.js'
 import { initializeOpencodeForDirectory, getOpencodeClient, stopOpencodeServer } from './opencode.js'
@@ -429,6 +433,122 @@ e2eTest('voice message handling', () => {
 
   // ── Test 1: Voice message in a channel creates thread + session ──
 
+  // Vitest disallows inline snapshots in test.each; register separate tests instead.
+  for (const sessionAction of ['btw', 'new-session'] as const) {
+    test(
+      `voice ${sessionAction} routing creates a separate thread with the correct history`,
+      async () => {
+        await discord.channel(TEXT_CHANNEL_ID).user(TEST_USER_ID)
+          .sendMessage({ content: `Source history for voice ${sessionAction}` })
+        const thread = await discord.channel(TEXT_CHANNEL_ID).waitForThread({
+          timeout: 4_000,
+          predicate: (candidate) => Boolean(candidate.name?.includes(`Source history for voice ${sessionAction}`)),
+        })
+        await waitForFooterMessage({ discord, threadId: thread.id, timeout: 4_000 })
+        const sourceSessionId = await getThreadSession(thread.id)
+        await createPendingWorkspace({
+          threadId: thread.id,
+          workspaceType: 'worktree',
+          workspaceName: 'voice-workspace',
+          projectDirectory: directories.projectDirectory,
+        })
+        await setWorkspaceReady({
+          threadId: thread.id,
+          workspaceId: 'voice-workspace-id',
+          workspaceDirectory: directories.projectDirectory,
+        })
+        const prompt = `Explain voice routing ${sessionAction}`
+        setDeterministicTranscription({ transcription: prompt, queueMessage: false, sessionAction })
+        await discord.thread(thread.id).user(TEST_USER_ID).sendVoiceMessage()
+        const confirmation = sessionAction === 'btw' ? 'Session forked!' : 'Created new session in'
+        const routingMessages = await waitForBotMessageContaining({
+          discord,
+          threadId: thread.id,
+          text: confirmation,
+          timeout: 4_000,
+        })
+        // OpenCode can rename the destination before discovery; follow its confirmed ID.
+        const targetId = routingMessages.find((message) => message.content.includes(confirmation))
+          ?.content.match(/<#(\d+)>/)?.[1]
+        if (!targetId) throw new Error('Expected destination thread link')
+        const target = await discord.channel(TEXT_CHANNEL_ID).waitForThread({
+          timeout: 4_000,
+          predicate: (candidate) => candidate.id === targetId,
+        })
+        await waitForFooterMessage({ discord, threadId: target.id, timeout: 4_000 })
+        const th = discord.thread(target.id)
+        const transcript = {
+          source: (await discord.thread(thread.id).text()).replaceAll(target.id, 'TARGET_THREAD'),
+          target: (await th.text()).replaceAll(thread.id, 'SOURCE_THREAD'),
+        }
+        if (sessionAction === 'btw') {
+          expect(transcript).toMatchInlineSnapshot(`
+            {
+              "source": "--- from: user (voice-tester)
+            Source history for voice btw
+            --- from: assistant (TestBot)
+            > *using deterministic-provider/deterministic-v2*
+            > session-reply
+            > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>
+            --- from: user (voice-tester)
+            [attachment: voice-message.ogg]
+            --- from: assistant (TestBot)
+            🎤 Transcribing voice message...
+            📝 **Transcribed message:** Explain voice routing btw
+            Session forked! Continue in <#TARGET_THREAD>",
+              "target": "--- from: assistant (TestBot)
+            Reusing context from <#SOURCE_THREAD> to answer prompt...
+            Explain voice routing btw
+            > session-reply
+            > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>",
+            }
+          `)
+        } else {
+          expect(transcript).toMatchInlineSnapshot(`
+            {
+              "source": "--- from: user (voice-tester)
+            Source history for voice new-session
+            --- from: assistant (TestBot)
+            > *using deterministic-provider/deterministic-v2*
+            > session-reply
+            > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>
+            --- from: user (voice-tester)
+            [attachment: voice-message.ogg]
+            --- from: assistant (TestBot)
+            🎤 Transcribing voice message...
+            📝 **Transcribed message:** Explain voice routing new-session
+            Created new session in <#TARGET_THREAD>",
+              "target": "--- from: assistant (TestBot)
+            **Starting OpenCode session**
+            Explain voice routing new-session
+            > *using deterministic-provider/deterministic-v2*
+            > session-reply
+            > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>",
+            }
+          `)
+        }
+        const targetSessionId = await getThreadSession(target.id)
+        expect(targetSessionId).toBeTruthy()
+        expect(targetSessionId).not.toBe(sourceSessionId)
+        expect(await getThreadWorktreeOrWorkspace(target.id)).toMatchObject({
+          status: 'ready',
+          workspace_type: 'worktree',
+          workspace_name: 'voice-workspace',
+          workspace_id: 'voice-workspace-id',
+          workspace_directory: directories.projectDirectory,
+        })
+        const client = getOpencodeClientForTest(directories.projectDirectory)
+        const targetMessages = await client.session.messages({ sessionID: targetSessionId! })
+        const targetTexts = getUserTexts(targetMessages.data ?? []).join('\n')
+        expect(targetTexts).toContain(prompt)
+        expect(targetTexts).toContain(`Voice message transcription from Discord user:\n${prompt}`)
+        expect(targetTexts.includes(`Source history for voice ${sessionAction}`)).toBe(sessionAction === 'btw')
+        const sourceMessages = await client.session.messages({ sessionID: sourceSessionId! })
+        expect(getUserTexts(sourceMessages.data ?? []).join('\n')).not.toContain(prompt)
+      },
+    )
+  }
+
   test(
     'voice message in channel creates thread and starts session',
     async () => {
@@ -503,9 +623,9 @@ e2eTest('voice message handling', () => {
         --- from: assistant (TestBot)
         🎤 Transcribing voice message...
         📝 **Transcribed message:** Fix the login bug in auth.ts
-        *using deterministic-provider/deterministic-v2*
-        ⬥ session-reply
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*"
+        > *using deterministic-provider/deterministic-v2*
+        > session-reply
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>"
       `)
       expect(finalState.sessionId).toBeDefined()
 
@@ -607,9 +727,9 @@ e2eTest('voice message handling', () => {
         Voice transcription requires an API key (OpenAI or Gemini). Set one to enable voice message transcription.
         Gemini API key saved. Retrying the original voice message.
         📝 **Transcribed message:** Resume the original voice note
-        *using deterministic-provider/deterministic-v2*
-        ⬥ session-reply
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*"
+        > *using deterministic-provider/deterministic-v2*
+        > session-reply
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>"
       `)
 
       const finalState = getThreadState(thread.id)
@@ -685,9 +805,9 @@ e2eTest('voice message handling', () => {
         --- from: assistant (TestBot)
         🎤 Transcribing voice message...
         📝 **Transcribed message:** Investigate the missing content type path
-        *using deterministic-provider/deterministic-v2*
-        ⬥ session-reply
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*"
+        > *using deterministic-provider/deterministic-v2*
+        > session-reply
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>"
       `)
 
       const messages = await waitForSessionMessages({
@@ -794,16 +914,16 @@ e2eTest('voice message handling', () => {
         "--- from: user (voice-tester)
         FAST_RESPONSE_MARKER initial setup
         --- from: assistant (TestBot)
-        *using deterministic-provider/deterministic-v2*
-        ⬥ fast-response-done
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*
+        > *using deterministic-provider/deterministic-v2*
+        > fast-response-done
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>
         --- from: user (voice-tester)
         [attachment: voice-message.ogg]
         --- from: assistant (TestBot)
         🎤 Transcribing voice message...
         📝 **Transcribed message:** Add error handling to the parser
-        ⬥ session-reply
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*"
+        > session-reply
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>"
       `)
       expect(finalState?.sessionId).toBeDefined()
       if (!finalState?.sessionId) {
@@ -1053,19 +1173,19 @@ e2eTest('voice message handling', () => {
         "--- from: user (voice-tester)
         SLOW_RESPONSE_MARKER start queued task
         --- from: assistant (TestBot)
-        *using deterministic-provider/deterministic-v2*
+        > *using deterministic-provider/deterministic-v2*
         --- from: user (voice-tester)
         [attachment: voice-message.ogg]
         --- from: assistant (TestBot)
         🎤 Transcribing voice message...
         📝 **Transcribed message:** Queue this task for later
         Queued at position 1. Edit or delete your message to update the queue
-        ⬥ slow-response-done
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*
+        > slow-response-done
+        > *project ⋅ main ⋅ 2s ⋅ 0% ⋅ deterministic-v2*
         » **voice-tester:** Voice message transcription from Discord user:
         Queue this task for later
-        ⬥ session-reply
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*"
+        > session-reply
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>"
       `)
       expect(finalState.queueItems.length).toBe(0)
 
@@ -1181,16 +1301,16 @@ e2eTest('voice message handling', () => {
         "--- from: user (voice-tester)
         FAST_RESPONSE_MARKER quick task
         --- from: assistant (TestBot)
-        *using deterministic-provider/deterministic-v2*
-        ⬥ fast-response-done
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*
+        > *using deterministic-provider/deterministic-v2*
+        > fast-response-done
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>
         --- from: user (voice-tester)
         [attachment: voice-message.ogg]
         --- from: assistant (TestBot)
         🎤 Transcribing voice message...
         📝 **Transcribed message:** Delayed transcription result
-        ⬥ session-reply
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*"
+        > session-reply
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>"
       `)
       expect(finalState.sessionId).toBeDefined()
       expect(finalState.queueItems.length).toBe(0)
@@ -1319,16 +1439,16 @@ e2eTest('voice message handling', () => {
         "--- from: user (voice-tester)
         FAST_RESPONSE_MARKER fast before queued voice
         --- from: assistant (TestBot)
-        *using deterministic-provider/deterministic-v2*
-        ⬥ fast-response-done
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*
+        > *using deterministic-provider/deterministic-v2*
+        > fast-response-done
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>
         --- from: user (voice-tester)
         [attachment: voice-message.ogg]
         --- from: assistant (TestBot)
         🎤 Transcribing voice message...
         📝 **Transcribed message:** Queued voice after idle
-        ⬥ session-reply
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*"
+        > session-reply
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@300000000000000777>"
       `)
       expect(finalState.sessionId).toBeDefined()
       expect(finalState.queueItems.length).toBe(0)

@@ -1,0 +1,764 @@
+{
+  "startedAt": "2026-09-18T12:00:45.562Z",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "C:\\Program Files\\nodejs\\node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "~\\AppData\\Local\\Programs\\ZCode\\resources\\glm\\zcode.cjs",
+    "entrySha256": "da61b0663336a65f7cce3dec223678794ccaa58158e304fc0d97b695434a8f01",
+    "args": [
+      "~\\AppData\\Local\\Programs\\ZCode\\resources\\glm\\zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "~",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "~\\AppData\\Local\\Programs\\ZCode\\resources\\config\\provider\\zcode-builtin.json"
+    },
+    "cwd": "C:\\Dev\\zk-n00-disposable"
+  },
+  "rows": {
+    "N01": {
+      "description": "startup/readiness + session/list (read-only)",
+      "startupEmissions": {
+        "notifications": 0,
+        "reverseRequests": 0
+      },
+      "list": {
+        "at": "2026-09-18T12:00:47.949Z",
+        "method": "session/list",
+        "params": {
+          "workspace": {
+            "workspacePath": "C:\\Dev\\zk-n00-disposable",
+            "workspaceKey": "C:\\Dev\\zk-n00-disposable"
+          },
+          "includeArchived": false,
+          "limit": 1
+        },
+        "ms": 779,
+        "result": {
+          "sessions": []
+        }
+      }
+    },
+    "N02": {
+      "description": "session/create + identity readback",
+      "create": {
+        "at": "2026-09-18T12:00:48.349Z",
+        "method": "session/create",
+        "params": {
+          "workspace": {
+            "workspacePath": "C:\\Dev\\zk-n00-disposable",
+            "workspaceKey": "C:\\Dev\\zk-n00-disposable"
+          },
+          "mode": "build"
+        },
+        "ms": 401,
+        "result": {
+          "messages": [],
+          "projection": {
+            "activeToolCalls": [],
+            "backgroundJobs": [],
+            "contextUsed": 0,
+            "contextWindow": 200000,
+            "mode": "build",
+            "pendingPermissions": [],
+            "sessionId": "unknown",
+            "status": "idle",
+            "target": null,
+            "totalTokenCount": 0,
+            "turnCount": 0
+          },
+          "protocol": {
+            "name": "ZCode Protocol",
+            "version": 1
+          },
+          "runtime": {
+            "eventSeq": 0,
+            "pendingRequestIds": [],
+            "goalVerifications": [],
+            "goalVerificationTimeline": [],
+            "stateRevision": 0
+          },
+          "session": {
+            "createdAt": 1789732848157,
+            "mode": "build",
+            "traceId": "02e60e12-57f1-4c9a-9088-1f0fcf3112b4",
+            "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+            "sessionKind": "interactive",
+            "status": "idle",
+            "target": null,
+            "title": "",
+            "updatedAt": 1789732848157,
+            "workspace": {
+              "workspacePath": "C:\\Dev\\zk-n00-disposable",
+              "workspaceKey": "C:\\Dev\\zk-n00-disposable"
+            }
+          },
+          "settings": {
+            "mode": {
+              "current": "build"
+            },
+            "model": {
+              "available": []
+            },
+            "permission": {
+              "mode": "build"
+            },
+            "thoughtLevel": {
+              "available": [],
+              "enabled": false
+            }
+          },
+          "slashCommands": [
+            {
+              "description": "Show or set the current session goal.",
+              "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+              "name": "goal",
+              "source": "builtin"
+            },
+            {
+              "description": "Compact the current conversation with optional instructions.",
+              "inputHint": "/compact [instructions]",
+              "name": "compact",
+              "source": "builtin"
+            },
+            {
+              "description": "Create or update workspace AGENTS.md instructions.",
+              "inputHint": "/init [notes]",
+              "name": "init",
+              "source": "builtin"
+            },
+            {
+              "description": "Switch to Plan mode and optionally send a task.",
+              "inputHint": "/plan [task]",
+              "name": "plan",
+              "source": "builtin"
+            }
+          ],
+          "todos": [],
+          "todoGroups": []
+        }
+      },
+      "mode": "build"
+    },
+    "N03": {
+      "description": "session/read full schema capture",
+      "read": {
+        "at": "2026-09-18T12:00:48.508Z",
+        "method": "session/read",
+        "params": {
+          "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee"
+        },
+        "ms": 158,
+        "result": {
+          "messages": [],
+          "projection": {
+            "activeToolCalls": [],
+            "backgroundJobs": [],
+            "contextUsed": 0,
+            "contextWindow": 200000,
+            "mode": "build",
+            "pendingPermissions": [],
+            "sessionId": "unknown",
+            "status": "idle",
+            "target": null,
+            "totalTokenCount": 0,
+            "turnCount": 0
+          },
+          "protocol": {
+            "name": "ZCode Protocol",
+            "version": 1
+          },
+          "runtime": {
+            "eventSeq": 0,
+            "pendingRequestIds": [],
+            "goalVerifications": [],
+            "goalVerificationTimeline": [],
+            "stateRevision": 0
+          },
+          "session": {
+            "createdAt": 1789732848157,
+            "mode": "build",
+            "traceId": "02e60e12-57f1-4c9a-9088-1f0fcf3112b4",
+            "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+            "sessionKind": "interactive",
+            "status": "idle",
+            "target": null,
+            "title": "",
+            "updatedAt": 1789732848157,
+            "workspace": {
+              "workspacePath": "C:\\Dev\\zk-n00-disposable",
+              "workspaceKey": "C:\\Dev\\zk-n00-disposable"
+            }
+          },
+          "settings": {
+            "mode": {
+              "current": "build"
+            },
+            "model": {
+              "available": []
+            },
+            "permission": {
+              "mode": "build"
+            },
+            "thoughtLevel": {
+              "available": [],
+              "enabled": false
+            }
+          },
+          "slashCommands": [
+            {
+              "description": "Show or set the current session goal.",
+              "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+              "name": "goal",
+              "source": "builtin"
+            },
+            {
+              "description": "Compact the current conversation with optional instructions.",
+              "inputHint": "/compact [instructions]",
+              "name": "compact",
+              "source": "builtin"
+            },
+            {
+              "description": "Create or update workspace AGENTS.md instructions.",
+              "inputHint": "/init [notes]",
+              "name": "init",
+              "source": "builtin"
+            },
+            {
+              "description": "Switch to Plan mode and optionally send a task.",
+              "inputHint": "/plan [task]",
+              "name": "plan",
+              "source": "builtin"
+            }
+          ],
+          "todos": [],
+          "todoGroups": []
+        }
+      }
+    },
+    "N04": {
+      "description": "session/subscribe + v4/conversation/subscribe",
+      "legacy": {
+        "at": "2026-09-18T12:00:48.664Z",
+        "method": "session/subscribe",
+        "params": {
+          "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+          "deliveryKind": "desktop-continuous",
+          "includeSnapshot": true,
+          "afterSeq": 0
+        },
+        "ms": 156,
+        "result": {
+          "eventSeq": 0,
+          "events": [],
+          "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+          "snapshot": {
+            "messages": [],
+            "projection": {
+              "activeToolCalls": [],
+              "backgroundJobs": [],
+              "contextUsed": 0,
+              "contextWindow": 200000,
+              "mode": "build",
+              "pendingPermissions": [],
+              "sessionId": "unknown",
+              "status": "idle",
+              "target": null,
+              "totalTokenCount": 0,
+              "turnCount": 0
+            },
+            "protocol": {
+              "name": "ZCode Protocol",
+              "version": 1
+            },
+            "runtime": {
+              "deliveryKind": "desktop-continuous",
+              "eventSeq": 0,
+              "pendingRequestIds": [],
+              "goalVerifications": [],
+              "goalVerificationTimeline": [],
+              "stateRevision": 0
+            },
+            "session": {
+              "createdAt": 1789732848157,
+              "mode": "build",
+              "traceId": "02e60e12-57f1-4c9a-9088-1f0fcf3112b4",
+              "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+              "sessionKind": "interactive",
+              "status": "idle",
+              "target": null,
+              "title": "",
+              "updatedAt": 1789732848157,
+              "workspace": {
+                "workspacePath": "C:\\Dev\\zk-n00-disposable",
+                "workspaceKey": "C:\\Dev\\zk-n00-disposable"
+              }
+            },
+            "settings": {
+              "mode": {
+                "current": "build"
+              },
+              "model": {
+                "available": []
+              },
+              "permission": {
+                "mode": "build"
+              },
+              "thoughtLevel": {
+                "available": [],
+                "enabled": false
+              }
+            },
+            "slashCommands": [
+              {
+                "description": "Show or set the current session goal.",
+                "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+                "name": "goal",
+                "source": "builtin"
+              },
+              {
+                "description": "Compact the current conversation with optional instructions.",
+                "inputHint": "/compact [instructions]",
+                "name": "compact",
+                "source": "builtin"
+              },
+              {
+                "description": "Create or update workspace AGENTS.md instructions.",
+                "inputHint": "/init [notes]",
+                "name": "init",
+                "source": "builtin"
+              },
+              {
+                "description": "Switch to Plan mode and optionally send a task.",
+                "inputHint": "/plan [task]",
+                "name": "plan",
+                "source": "builtin"
+              }
+            ],
+            "todos": [],
+            "todoGroups": []
+          }
+        }
+      },
+      "v4": {
+        "at": "2026-09-18T12:00:48.675Z",
+        "method": "v4/conversation/subscribe",
+        "params": {
+          "topic": "conversation/sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+          "connectionId": "b609e6fe-fd3c-46ac-a634-ec75d6f18009",
+          "clientMode": "desktop-continuous"
+        },
+        "ms": 11,
+        "result": {
+          "ack": {
+            "subscriptionId": "sub-mu6wq880-fw5kilky-1",
+            "mode": "snapshot",
+            "logEpoch": "mu6wq880-fw5kilky",
+            "openTiming": {
+              "version": 1,
+              "initialFrameEncodeMs": 0,
+              "sessionRuntimeState": "warm",
+              "snapshotRowCount": 0
+            }
+          }
+        }
+      },
+      "framesAfterAck": {
+        "notifications": 6,
+        "reverseRequests": 1
+      }
+    },
+    "N05": {
+      "description": "session/setModel + readback (config only, no inference)",
+      "skipped": "no advertised model in session/read readback",
+      "read": {
+        "messages": [],
+        "projection": {
+          "activeToolCalls": [],
+          "backgroundJobs": [],
+          "contextUsed": 0,
+          "contextWindow": 200000,
+          "mode": "build",
+          "pendingPermissions": [],
+          "sessionId": "unknown",
+          "status": "idle",
+          "target": null,
+          "totalTokenCount": 0,
+          "turnCount": 0
+        },
+        "protocol": {
+          "name": "ZCode Protocol",
+          "version": 1
+        },
+        "runtime": {
+          "deliveryKind": "desktop-continuous",
+          "eventSeq": 0,
+          "pendingRequestIds": [],
+          "goalVerifications": [],
+          "goalVerificationTimeline": [],
+          "stateRevision": 0
+        },
+        "session": {
+          "createdAt": 1789732848157,
+          "mode": "build",
+          "traceId": "02e60e12-57f1-4c9a-9088-1f0fcf3112b4",
+          "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+          "sessionKind": "interactive",
+          "status": "idle",
+          "target": null,
+          "title": "",
+          "updatedAt": 1789732848157,
+          "workspace": {
+            "workspacePath": "C:\\Dev\\zk-n00-disposable",
+            "workspaceKey": "C:\\Dev\\zk-n00-disposable"
+          }
+        },
+        "settings": {
+          "mode": {
+            "current": "build"
+          },
+          "model": {
+            "available": []
+          },
+          "permission": {
+            "mode": "build"
+          },
+          "thoughtLevel": {
+            "available": [],
+            "enabled": false
+          }
+        },
+        "slashCommands": [
+          {
+            "description": "Show or set the current session goal.",
+            "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+            "name": "goal",
+            "source": "builtin"
+          },
+          {
+            "description": "Compact the current conversation with optional instructions.",
+            "inputHint": "/compact [instructions]",
+            "name": "compact",
+            "source": "builtin"
+          },
+          {
+            "description": "Create or update workspace AGENTS.md instructions.",
+            "inputHint": "/init [notes]",
+            "name": "init",
+            "source": "builtin"
+          },
+          {
+            "description": "Switch to Plan mode and optionally send a task.",
+            "inputHint": "/plan [task]",
+            "name": "plan",
+            "source": "builtin"
+          }
+        ],
+        "todos": [],
+        "todoGroups": []
+      }
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/list"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/create"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/read"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/subscribe"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "v4/conversation/subscribe"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "v4/conversation/frame"
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [
+    {
+      "at": 1789732847952,
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+        "scope": "runtime-materialization"
+      }
+    }
+  ],
+  "notifications": [
+    {
+      "at": 1789732847851,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "bc60f8b7-3efd-4241-aa63-13870ca0820b",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789732847852,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "bc60f8b7-3efd-4241-aa63-13870ca0820b",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789732847858,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "bc60f8b7-3efd-4241-aa63-13870ca0820b",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 5
+      }
+    },
+    {
+      "at": 1789732847860,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "bc60f8b7-3efd-4241-aa63-13870ca0820b",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 8
+      }
+    },
+    {
+      "at": 1789732847860,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "bc60f8b7-3efd-4241-aa63-13870ca0820b",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 9
+      }
+    },
+    {
+      "at": 1789732848675,
+      "method": "v4/conversation/frame",
+      "params": {
+        "wireVersion": 3,
+        "kind": "complete",
+        "deliveryKind": "initial",
+        "logicalFrameId": "sub-mu6wq880-fw5kilky-1-lf-1",
+        "logicalFrameOrdinal": 1,
+        "topic": "conversation/sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+        "subscriptionId": "sub-mu6wq880-fw5kilky-1",
+        "frame": {
+          "topic": "conversation/sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+          "subscriptionId": "sub-mu6wq880-fw5kilky-1",
+          "sentAt": 1789732848674,
+          "fromSeq": 0,
+          "toSeq": 0,
+          "payload": {
+            "kind": "snapshot",
+            "snapshot": {
+              "protocolVersion": 1,
+              "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+              "logEpoch": "mu6wq880-fw5kilky",
+              "seq": 0,
+              "revision": 0,
+              "control": {
+                "phase": "draft",
+                "sessionEnded": false,
+                "canStop": false,
+                "stopState": "idle",
+                "stopTargetKind": "unknown",
+                "activeWorks": [],
+                "lastError": null,
+                "apiRetry": null
+              },
+              "availability": {
+                "fork": {
+                  "allowed": false,
+                  "reasonCode": "forkTargetNotStable"
+                },
+                "compact": {
+                  "allowed": false,
+                  "reasonCode": "idleCannotCompact"
+                },
+                "switchModelConfig": {
+                  "allowed": true
+                },
+                "setFollowupMode": {
+                  "allowed": true
+                },
+                "queueEdit": {
+                  "allowed": true
+                },
+                "sendQueuedNow": {
+                  "allowed": false,
+                  "reasonCode": "sendQueuedNowRequiresRunning"
+                },
+                "pauseGoal": {
+                  "allowed": false,
+                  "reasonCode": "noGoalToPause"
+                },
+                "resumeGoal": {
+                  "allowed": false,
+                  "reasonCode": "noGoalToResume"
+                }
+              },
+              "inputRouting": {
+                "mode": "startNow"
+              },
+              "meta": {
+                "title": "",
+                "titleSource": "default"
+              },
+              "config": {
+                "provider": "",
+                "model": "",
+                "thought": "",
+                "thoughtLevels": [],
+                "followupMode": "queue",
+                "mode": "build",
+                "planEnabled": false
+              },
+              "modelTransition": null,
+              "usage": {
+                "contextWindow": null,
+                "cumulative": {
+                  "inputTokens": 0,
+                  "outputTokens": 0,
+                  "cacheReadTokens": 0,
+                  "cacheWriteTokens": 0
+                }
+              },
+              "queue": {
+                "items": [],
+                "autoDrain": true
+              },
+              "pendingInteractions": [],
+              "pendingCommands": [],
+              "backgroundWorks": [],
+              "subagents": {
+                "revision": 0,
+                "childSessionIds": [],
+                "running": [],
+                "endedTotal": 0
+              },
+              "goal": null,
+              "plan": null,
+              "workspaceHookAdmission": null,
+              "rows": {
+                "window": [],
+                "totalCount": 0,
+                "firstRowId": null
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 59880
+  },
+  "client": {
+    "generation": "b609e6fe-fd3c-46ac-a634-ec75d6f18009"
+  },
+  "sessionId": "sess_7ed8767d-faa8-4054-8aad-c2fde740f2ee",
+  "stop": {
+    "ok": true
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}

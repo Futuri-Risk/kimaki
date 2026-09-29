@@ -6,7 +6,7 @@ do not use spawnSync. use our util execAsync. which uses spawn under the hood
 
 the important package in this repo is cli. it contains the discord bot code.
 
-after making important changes to queueing or message handling always run the full test suite inside cli to make sure our changes did not break anything. also run with -u and see snapshots updates in git diff if needed. `pnpm test -u --run`
+after making important changes to queueing or message handling always run the full test suite inside cli to make sure our changes did not break anything. use `pnpm run test --run -u`, then inspect snapshot updates in git diff. for one file, use `pnpm run test --run src/example.test.ts`. always include `run` after `pnpm`; `pnpm test --run` makes pnpm consume the flag, and `pnpm run test -- --run` passes a literal `--` that can make vitest ignore the filter.
 
 # repo architecture
 
@@ -266,6 +266,8 @@ the website shows the changelog and install instructions, so it must be updated 
 
 never suggest installing kimaki from git (e.g. `npm i -g remorses/kimaki#main`). it does not work because the package needs a build step. always point users to the next npm release instead.
 
+user-facing bug report workflow (export jsonl, share evidence in a gist, issue vs PR) lives in `website/src/docs/docs/guides/report-bugs.mdx` and at https://kimaki.dev/docs/guides/report-bugs. keep that page in sync when these debug commands change.
+
 ## libsql in-memory gotcha
 
 when using `@prisma/adapter-libsql` with `file::memory:`, always use `file::memory:?cache=shared`. without `cache=shared`, libsql's `transaction()` method sets its internal `#db = null` and lazily creates a `new Database("file::memory:")` on the next operation -- which gives a **separate empty in-memory database**. this silently breaks any Prisma operation that uses transactions internally (`upsert`, `$transaction`, etc.) while simple `create`/`findMany` keep working, making the bug hard to diagnose.
@@ -346,6 +348,12 @@ instead:
 - resolve anything else at interaction time (eg call `resolveWorkingDirectory({ channel })` from the thread)
 - if you need extra context, store it server-side keyed by the short hash/id rather than encoding it into `custom_id`
 
+## discord message nonces
+
+Discord message `nonce` values have a strict maximum length of **25 characters**. never send a UUID directly as a nonce; Discord rejects it with `nonce[NONCE_TYPE_TOO_LONG]`.
+
+for durable delivery, keep the full delivery id in storage or message metadata and derive a stable nonce of at most 25 characters for Discord. add a regression test that asserts the nonce length before changing any message retry or deduplication flow.
+
 ## discord components v2 limits
 
 when editing Discord Components V2 (`IS_COMPONENTS_V2`) messages, always check the official docs first:
@@ -387,6 +395,26 @@ signal summary:
 - `SIGUSR2`: graceful restart (existing)
 
 the implementation is in `cli/src/heap-monitor.ts`.
+
+## live cpu profiling
+
+to capture a CPU profile from a **running** kimaki bot without restarting, type this in the same terminal and press Enter:
+
+```
+cpuprof
+```
+
+type `cpuprof` again to stop, or wait **20 seconds** for auto-stop. the profile is written to `<dataDir>/cpu-profiles/cpu-<date>.cpuprofile` (default `~/.kimaki/cpu-profiles/`).
+
+open the file in Chrome DevTools (Performance tab > Load) or:
+
+```bash
+bunx profano ~/.kimaki/cpu-profiles/cpu-*.cpuprofile
+```
+
+this uses `node:inspector` `Profiler.start` / `Profiler.stop` inside the bot process. it does not use SIGUSR1 (that remains heap snapshots). stdin must be a TTY; piped stdin is ignored.
+
+the implementation is in `cli/src/cpu-profiler.ts`.
 
 ## cpu profiling tests
 
@@ -466,6 +494,17 @@ jq -r '[.timestamp, .event.type] | @tsv' ~/.kimaki/opencode-session-events/ses_x
 ```
 
 for checkout validation requests, prefer non-recursive checks unless the user asks otherwise.
+
+## product analytics (Strada)
+
+anonymous install-level product events go to Strada via `cli/src/analytics.ts` (`bot_started`, `project_registered`, `session_created`, `turn_started`, `turn_completed`, `tokens_used`). no Discord IDs, paths, prompts, or secrets. metrics are **active installs**, not people. `tokens_used` fires on `session.idle` (each turn end, including abort and subagents) with billed token breakdowns so total Kimaki token usage can be summed.
+
+- prod project slug: `kimaki`
+- local/dev bot (this repo `cli/.env`): `kimaki-local`
+- disable: `kimaki --no-analytics` or `KIMAKI_STRADA_ENABLED=0`
+- query with `strada` CLI; login as the org owner (t.de Google account)
+
+full event schema, DAU/WAU/MAU, funnels, retention, completion rate, and copy-paste SQL: see `docs/strada-product-analytics.md`.
 
 ## kimaki command shim (`~/.kimaki/bin/kimaki`)
 
@@ -613,11 +652,11 @@ sometimes we need to interrupt the opencode session and restart it. for example 
 
 ## how kimaki messages look like in Discord
 
-Kimaki works by creating threads on the first user message. The bot will then reply messages there for text parts, prefixing them with ⬥
+Kimaki works by creating threads on the first user message. The bot then replies in that thread. New sessions start with a quoted silent banner like `> *using anthropic/claude-sonnet-4 ⋅ plan*`. Text parts have no prefix and use classic Discord content so they stay full width. Short text in a turn (at most two lines, no callout) is quoted as soon as it completes. Longer text, callouts, and text flushed because of a question, sleep, or action-button tool stay full width. Tool parts use classic Discord content too. When the displayed part kind changes between text and tool, Kimaki starts the next part with a blank line. Consecutive same-kind parts have no extra blank line.
 
-tool parts are also displayed in Discord as messages, either prefixed with ┣ or ◼︎ for file edits or writes. we also display context usage info like percentage of context used at 10% windows, prefixed with ⬦. the tool calls displayed depend on the verbosity parameter. the default skips tool parts for parts like `thinking`, file reads and non `sideEffect` bash parts (sideEffect is a param passed by the model).
+tool parts are also displayed in Discord as messages, either prefixed with ┣ or ◼︎ for file edits or writes. we also display context usage info like percentage of context used at 10% windows, prefixed with ⬦. the tool calls displayed depend on the verbosity parameter. the default skips tool parts for parts like `thinking` (prefixed ┣), file reads and non `sideEffect` bash parts (sideEffect is a param passed by the model).
 
-at assistant message normal completion we also display a footer message like `kimakivoice ⋅ main ⋅ 2m 30s ⋅ 71% ⋅ claude-opus-4-6`. with folder, branch, time, context used, model id. we should not show this message on interruptions or aborts.
+at assistant message normal completion we also display a quoted footer message like `> *kimakivoice ⋅ main ⋅ 2m 30s ⋅ 71% ⋅ claude-opus-4-6*`. with folder, branch, time, context used, model id. we should not show this message on interruptions or aborts.
 
 we also support voice user messages, these are transcribed with another model and sent with prefix `Transcribed message:`, shown by the bot.
 
@@ -695,3 +734,18 @@ when working on the slack bridge, consult these docs:
 **slack mrkdwn format:**
 - Slack uses `*bold*` (not `**bold**`), `~strike~` (not `~~strike~~`), `<url|text>` (not `[text](url)`)
 - Full reference: https://api.slack.com/reference/surfaces/formatting
+
+# official discord demo
+
+`kimaki-demo/` is the Fly.io app for the public try-Kimaki bot in the official Kimaki Discord. People use it to try Kimaki without a local install.
+
+Always bump `kimaki-demo/Dockerfile` (`kimaki@x.y.z`) to `npm view kimaki version` before deploy.
+
+```bash
+cd kimaki-demo
+pnpm fly logs            # live logs
+pnpm fly ssh console     # inspect /data/kimaki.log
+pnpm fly deploy          # rebuild + deploy
+```
+
+If `fly` says no access token, the local 30-day flyctl session expired. Export `FLY_ACCESS_TOKEN` from `access_token` in `~/.fly/config.yml`, or run `fly auth login`.

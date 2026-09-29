@@ -7,6 +7,8 @@ import {
   TEST_USER_ID,
 } from './queue-advanced-e2e-setup.js'
 import {
+  getMessageVisibleText,
+  isFooterMessage,
   waitForBotMessageContaining,
   waitForFooterMessage,
 } from './test-utils.js'
@@ -60,20 +62,18 @@ e2eTest('queue advanced: typing lifecycle', () => {
       })
 
       const replyIndex = messages.findIndex((message) => {
-        return message.author.id === ctx.discord.botUserId && message.content.includes('ok')
+        return message.author.id === ctx.discord.botUserId && getMessageVisibleText(message).includes('ok')
       })
       const footerIndex = messages.findIndex((message, index) => {
         if (index <= replyIndex) {
           return false
         }
-        return message.author.id === ctx.discord.botUserId
-          && message.content.startsWith('*')
-          && message.content.includes('⋅')
+        return isFooterMessage({ message, botUserId: ctx.discord.botUserId })
       })
 
       const timeline = await th.text({ showTyping: true })
       expect(timeline).toContain('Reply with exactly: typing-stop-normal')
-      expect(timeline).toContain('⬥ ok')
+      expect(timeline).toContain('ok')
       expect(timeline).toContain('*project ⋅ main ⋅')
       const typingCount = (timeline.match(/\[bot typing\]/g) || []).length
       expect(typingCount).toBeGreaterThanOrEqual(1)
@@ -145,7 +145,7 @@ e2eTest('queue advanced: typing lifecycle', () => {
           return false
         }
         return message.author.id === ctx.discord.botUserId
-          && message.content.includes('repulse-first')
+          && getMessageVisibleText(message).includes('repulse-first')
       })
       if (!firstReply) {
         throw new Error('Expected first bot reply after TYPING_REPULSE_MARKER')
@@ -173,7 +173,7 @@ e2eTest('queue advanced: typing lifecycle', () => {
 
       const timeline = await th.text({ showTyping: true })
       expect(timeline).toContain('TYPING_REPULSE_MARKER')
-      expect(timeline).toContain('⬥ repulse-first')
+      expect(timeline).toContain('repulse-first')
       const typingCount = (timeline.match(/\[bot typing\]/g) || []).length
       expect(typingCount).toBeGreaterThanOrEqual(2)
 
@@ -186,7 +186,7 @@ e2eTest('queue advanced: typing lifecycle', () => {
           return false
         }
         return message.author.id === ctx.discord.botUserId
-          && message.content.includes('repulse-first')
+          && getMessageVisibleText(message).includes('repulse-first')
       })
 
       expect(followupUserIndex).toBeGreaterThanOrEqual(0)

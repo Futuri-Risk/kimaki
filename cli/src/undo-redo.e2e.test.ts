@@ -27,7 +27,7 @@ import {
 import { getThreadSession } from './database.js'
 import { initializeOpencodeForDirectory } from './opencode.js'
 
-const TEXT_CHANNEL_ID = '200000000000001200'
+const TEXT_CHANNEL_ID = '200000000000003205'
 
 const e2eTest = describe
 
@@ -66,7 +66,13 @@ e2eTest('/undo sets revert state and cleans up on next prompt', () => {
         })
 
       const th = ctx.discord.thread(thread.id)
-      await th.waitForBotReply({ timeout: 4_000 })
+      await waitForBotMessageContaining({
+        discord: ctx.discord,
+        threadId: thread.id,
+        userId: TEST_USER_ID,
+        text: 'creating undo file',
+        timeout: 8_000,
+      })
 
       await waitForFooterMessage({
         discord: ctx.discord,
@@ -193,17 +199,19 @@ e2eTest('/undo sets revert state and cleans up on next prompt', () => {
         "--- from: user (undo-tester)
         UNDO_FILE_MARKER
         --- from: assistant (TestBot)
-        *using deterministic-provider/deterministic-v2*
-        ⬥ creating undo file
-        ┣ bash _mkdir -p tmp && printf created > tmp/undo-marker.txt_
-        ⬥ undo file created
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*
+        > *using deterministic-provider/deterministic-v2*
+        > creating undo file
+
+        ┣ bash _Create undo marker file_
+
+        > undo file created
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@200000000000000991>
         Undone - reverted last assistant message
         --- from: user (undo-tester)
         Reply with exactly: after-undo-message
         --- from: assistant (TestBot)
-        ⬥ ok
-        *project ⋅ main ⋅ Ns ⋅ N% ⋅ deterministic-v2*"
+        > ok
+        > *project ⋅ main ⋅ <1s ⋅ 0% ⋅ deterministic-v2* <@200000000000000991>"
       `)
     },
     20_000,

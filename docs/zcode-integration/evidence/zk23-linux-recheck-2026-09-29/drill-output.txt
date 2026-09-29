@@ -1,0 +1,43 @@
+ZK23 linux recheck — SWARM #23 POSIX keeper drill, captured 2026-09-29
+=====================================================================
+
+Host:        Windows 10.0.26200 x64, WSL2
+WSL kernel:  Linux DESKTOP-ETIHTPG 6.6.87-2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun 5 18:30:46 UTC 2025 x86_64 GNU/Linux
+WSL node:    /usr/bin/node v20.20.2 (drill driver)
+Repo:        C:/Dev/kimaki-zcode, branch feat/zcode-integration (verified: `git branch --show-current` -> feat/zcode-integration)
+HEAD:        5b1132a6
+Fix commit:  2b852b85 "SWARM #23: POSIX keeper for the native supervisor ... pre-fix orphan >10s, post-fix tree dead in 2-3ms" (2026-09-29 02:27:49 +1000)
+
+Command (as named by the ask; run from git-bash with MSYS path conversion
+disabled so the /mnt/c argument reaches WSL unmangled — equivalent to running
+`wsl -e node /mnt/c/...` from cmd/PowerShell):
+
+  MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' \
+    wsl.exe -e node /mnt/c/Dev/kimaki-zcode/cli/src/agent/native/supervision-posix-drill.mjs
+
+Full output:
+
+  PASS brutal-supervisor-death {"elapsedMs":59,"nativePid":64229,"grandchildPid":64240}
+  PASS clean-stop {"elapsedMs":45,"nativePid":64264,"grandchildPid":64275}
+  EXIT_CODE=0
+
+Reading:
+- Drill file located by glob under cli/src/agent/native/: supervision-posix-drill.mjs
+  (no drills/ subdir). Header (lines 1-11) names the exact invocation:
+  `node supervision-posix-drill.mjs` (exit 0 = pass, 1 = fail), zero deps.
+- Drill 1 (brutal-supervisor-death): SIGKILLs the supervisor with no stop
+  message; asserts native child + grandchild dead within TREE_DEAD_BOUND_MS
+  = 10000 (drill source line 22). Measured elapsed 59ms -> PASS.
+  Note: elapsed includes the drill's 50ms liveness poll interval (line 48),
+  so it bounds death+detection; consistent with the #23 commit's "post-fix
+  tree dead in 2-3ms".
+- Drill 2 (clean-stop): stop message, supervisor exit 0, tree dead in bound.
+  Measured 45ms -> PASS.
+- Drill drives the SOURCE supervisor: cli/src/agent/native/supervisor.js
+  (drill line 20 resolves './supervisor.js' next to itself). That file
+  contains the SWARM #23 POSIX keeper (KEEPER_JS, lines 84-115): detached
+  node keeper in its own session, WATCH <pgid> arms it, supervisor-stdin EOF
+  -> SIGTERM -> 5s grace -> SIGKILL -> 2s reap.
+
+Verdict: DRILL GREEN on WSL against feat/zcode-integration source.
+Supervisor death no longer orphans the native tree (59ms, bound 10s).

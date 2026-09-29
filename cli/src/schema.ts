@@ -4,6 +4,7 @@
 import { defineRelations } from 'drizzle-orm'
 import * as orm from 'drizzle-orm'
 import * as sqliteCore from 'drizzle-orm/sqlite-core'
+import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
 import crypto from 'node:crypto'
 
 const datetime = sqliteCore.customType<{
@@ -33,6 +34,10 @@ export const thread_sessions = sqliteCore.sqliteTable('thread_sessions', {
   // Survives bot restarts so child multi-turn system prompts keep the parent ID.
   parent_session_id: sqliteCore.text('parent_session_id'),
   created_at: datetime('created_at').default(orm.sql`CURRENT_TIMESTAMP`),
+  // Bumped on every (re)binding of a session to this thread. /resume can map one
+  // session to several threads, so session_id -> thread_id needs a tiebreaker.
+  // Without it the reverse lookup is arbitrary and tools can target a dead thread.
+  updated_at: datetime('updated_at').default(orm.sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
 })
 
 export const session_events = sqliteCore.sqliteTable('session_events', {
@@ -50,7 +55,7 @@ export const session_events = sqliteCore.sqliteTable('session_events', {
 export const part_messages = sqliteCore.sqliteTable('part_messages', {
   part_id: sqliteCore.text('part_id').primaryKey().notNull(),
   message_id: sqliteCore.text('message_id').notNull(),
-  thread_id: sqliteCore.text('thread_id').notNull().references(() => thread_sessions.thread_id, { onUpdate: 'cascade' }),
+  thread_id: sqliteCore.text('thread_id').notNull().references(() => thread_sessions.thread_id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   created_at: datetime('created_at').default(orm.sql`CURRENT_TIMESTAMP`),
 })
 
@@ -187,6 +192,21 @@ export const scheduled_tasks = sqliteCore.sqliteTable('scheduled_tasks', {
   sqliteCore.index('scheduled_tasks_thread_id_status_idx').on(table.thread_id, table.status),
 ])
 
+export const scheduled_task_runs = sqliteCore.sqliteTable('scheduled_task_runs', {
+  id: sqliteCore.integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }).notNull(),
+  scheduled_task_id: sqliteCore.integer('scheduled_task_id', { mode: 'number' }).notNull().references(() => scheduled_tasks.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  status: sqliteCore.text('status', { enum: ['pending', 'running', 'completed', 'skipped', 'failed'] }).notNull().default('pending'),
+  thread_id: sqliteCore.text('thread_id'),
+  session_id: sqliteCore.text('session_id'),
+  project_directory: sqliteCore.text('project_directory'),
+  started_at: datetime('started_at').notNull(),
+  completed_at: datetime('completed_at'),
+  error: sqliteCore.text('error'),
+}, (table) => [
+  sqliteCore.index('scheduled_task_runs_task_status_idx').on(table.scheduled_task_id, table.status),
+  sqliteCore.index('scheduled_task_runs_session_status_idx').on(table.session_id, table.status),
+])
+
 export const session_start_sources = sqliteCore.sqliteTable('session_start_sources', {
   session_id: sqliteCore.text('session_id').primaryKey().notNull(),
   schedule_kind: sqliteCore.text('schedule_kind', { enum: ['at', 'cron'] }).notNull(),
@@ -209,6 +229,36 @@ export const forum_sync_configs = sqliteCore.sqliteTable('forum_sync_configs', {
   sqliteCore.uniqueIndex('forum_sync_configs_app_id_forum_channel_id_key').on(table.app_id, table.forum_channel_id),
 ])
 
+// Durable "wake this session later" rows for the kimaki_sleep tool.
+//
+// Delivery is at-least-once, and ingress makes it at-most-once-per-turn:
+//
+//   planned ──► consumed          cancelled / failed are terminal
+//      ▲   │
+//      └───┘ retried until ingress consumes it
+//
+// A row stays `planned` until ingress turns the wake into a turn, so ANY loss
+// (crash before posting, crash after posting, missed gateway event) is covered
+// by the same retry. `delivery_id` is the Discord message nonce, so a retry
+// returns the existing message instead of waking the session twice.
+//
+// There is no thread_id: the owning thread is resolved from session_id at wake
+// time, so a session rebound by /resume wakes in its current thread.
+export const session_sleeps = sqliteCore.sqliteTable('session_sleeps', {
+  session_id: sqliteCore.text('session_id').primaryKey().notNull(),
+  wake_at: datetime('wake_at').notNull(),
+  reason: sqliteCore.text('reason'),
+  status: sqliteCore.text('status', { enum: ['planned', 'consumed', 'cancelled', 'failed'] }).notNull().default('planned'),
+  // Regenerated per sleep occurrence. Doubles as the Discord nonce and as a
+  // generation guard so a stale in-flight wake cannot mutate a newer sleep.
+  delivery_id: sqliteCore.text('delivery_id').notNull().$defaultFn(() => crypto.randomUUID()),
+  attempts: sqliteCore.integer('attempts', { mode: 'number' }).notNull().default(0),
+  last_attempt_at: datetime('last_attempt_at'),
+  created_at: datetime('created_at').default(orm.sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  sqliteCore.index('session_sleeps_status_wake_at_idx').on(table.status, table.wake_at),
+])
+
 export const ipc_requests = sqliteCore.sqliteTable('ipc_requests', {
   id: sqliteCore.text('id').primaryKey().notNull().$defaultFn(() => crypto.randomUUID()),
   type: sqliteCore.text('type', { enum: ['file_upload', 'action_buttons'] }).notNull(),
@@ -222,6 +272,180 @@ export const ipc_requests = sqliteCore.sqliteTable('ipc_requests', {
 }, (table) => [
   sqliteCore.index('ipc_requests_status_created_at_idx').on(table.status, table.created_at),
 ])
+
+// ── ZCode agent sidecar (ZK-004) ─────────────────────────────────────────────
+// Durable backend state for capability-aware agents. Additive only: no existing table
+// or ID changes. Timestamps are epoch milliseconds (NOT the datetime custom type —
+// never feed these into ISO parsers). Semantics ported from the hardened standalone
+// slice migration.ts; DDL is generated through drizzle-kit export into schema.sql and
+// guarded by the version/integrity gate in agent/schema-gate.ts BEFORE generic
+// bootstrap DDL runs (a missing journal is corruption, never recreated silently).
+
+const agentBackendCheck = sqliteCore.check('agent_backend_type_check', orm.sql`backend_type IN ('opencode', 'zcode')`)
+
+export const agent_schema_versions = sqliteCore.sqliteTable('agent_schema_versions', {
+  component: sqliteCore.text('component').primaryKey().notNull(),
+  version: sqliteCore.integer('version', { mode: 'number' }).notNull(),
+}, (table) => [
+  sqliteCore.check('agent_schema_version_positive', orm.sql`${table.version} > 0`),
+])
+
+export const agent_sessions = sqliteCore.sqliteTable('agent_sessions', {
+  id: sqliteCore.text('id').primaryKey().notNull(),
+  backend_type: sqliteCore.text('backend_type').notNull(),
+  native_session_id: sqliteCore.text('native_session_id'),
+  native_home_identity: sqliteCore.text('native_home_identity').notNull(),
+  owner_machine_id: sqliteCore.text('owner_machine_id').notNull(),
+  project_directory: sqliteCore.text('project_directory').notNull(),
+  canonical_directory: sqliteCore.text('canonical_directory').notNull(),
+  native_workspace_path: sqliteCore.text('native_workspace_path').notNull(),
+  native_workspace_key: sqliteCore.text('native_workspace_key').notNull(),
+  profile_id: sqliteCore.text('profile_id'),
+  profile_revision: sqliteCore.text('profile_revision'),
+  runtime_fingerprint: sqliteCore.text('runtime_fingerprint'),
+  model_json: sqliteCore.text('model_json'),
+  controller_thread_id: sqliteCore.text('controller_thread_id'),
+  parent_agent_session_id: sqliteCore.text('parent_agent_session_id').references((): SQLiteColumn => agent_sessions.id),
+  state: sqliteCore.text('state').notNull().default('creating'),
+  created_at: sqliteCore.integer('created_at', { mode: 'number' }).notNull(),
+  updated_at: sqliteCore.integer('updated_at', { mode: 'number' }).notNull(),
+}, (table) => [
+  agentBackendCheck,
+  sqliteCore.check('agent_sessions_zcode_prefix_check', orm.sql`${table.backend_type} <> 'zcode' OR substr(${table.id}, 1, 3) = 'zc:'`),
+  sqliteCore.uniqueIndex('agent_sessions_native_identity').on(table.backend_type, table.owner_machine_id, table.native_home_identity, table.native_session_id).where(orm.sql`native_session_id IS NOT NULL`),
+])
+
+export const agent_backend_defaults = sqliteCore.sqliteTable('agent_backend_defaults', {
+  scope_type: sqliteCore.text('scope_type').notNull(),
+  scope_id: sqliteCore.text('scope_id').notNull(),
+  backend_type: sqliteCore.text('backend_type').notNull(),
+  profile_id: sqliteCore.text('profile_id'),
+  model_json: sqliteCore.text('model_json'),
+  updated_at: sqliteCore.integer('updated_at', { mode: 'number' }).notNull(),
+}, (table) => [
+  sqliteCore.primaryKey({ columns: [table.scope_type, table.scope_id] }),
+  sqliteCore.check('agent_backend_defaults_scope_check', orm.sql`${table.scope_type} IN ('global', 'channel')`),
+  agentBackendCheck,
+])
+
+export const agent_thread_intents = sqliteCore.sqliteTable('agent_thread_intents', {
+  thread_id: sqliteCore.text('thread_id').primaryKey().notNull(),
+  backend_type: sqliteCore.text('backend_type').notNull(),
+  profile_id: sqliteCore.text('profile_id'),
+  profile_revision: sqliteCore.text('profile_revision'),
+  owner_machine_id: sqliteCore.text('owner_machine_id').notNull(),
+  state: sqliteCore.text('state').notNull(),
+  created_at: sqliteCore.integer('created_at', { mode: 'number' }).notNull(),
+  updated_at: sqliteCore.integer('updated_at', { mode: 'number' }).notNull(),
+}, (table) => [
+  agentBackendCheck,
+  sqliteCore.check('agent_thread_intents_state_check', orm.sql`${table.state} IN ('workspace-pending', 'ready-to-bind', 'bound', 'failed')`),
+])
+
+export const agent_operations = sqliteCore.sqliteTable('agent_operations', {
+  id: sqliteCore.text('id').primaryKey().notNull(),
+  agent_session_id: sqliteCore.text('agent_session_id').notNull().references(() => agent_sessions.id),
+  source_type: sqliteCore.text('source_type').notNull(),
+  source_id: sqliteCore.text('source_id').notNull(),
+  operation_kind: sqliteCore.text('operation_kind').notNull(),
+  controller_thread_id: sqliteCore.text('controller_thread_id').notNull(),
+  authorized_actor_id: sqliteCore.text('authorized_actor_id').notNull(),
+  payload_json: sqliteCore.text('payload_json').notNull(),
+  original_hash: sqliteCore.text('original_hash').notNull(),
+  normalized_hash: sqliteCore.text('normalized_hash').notNull(),
+  profile_revision: sqliteCore.text('profile_revision'),
+  // State is plain text on purpose: unknown persisted states must fail closed at read
+  // (STATE_CORRUPT), not be blocked by a CHECK that hides corruption classes.
+  state: sqliteCore.text('state').notNull(),
+  queue_order: sqliteCore.integer('queue_order', { mode: 'number' }),
+  native_command_id: sqliteCore.text('native_command_id'),
+  native_turn_id: sqliteCore.text('native_turn_id'),
+  connection_generation: sqliteCore.text('connection_generation'),
+  send_intent_at: sqliteCore.integer('send_intent_at', { mode: 'number' }),
+  accepted_at: sqliteCore.integer('accepted_at', { mode: 'number' }),
+  terminal_at: sqliteCore.integer('terminal_at', { mode: 'number' }),
+  outcome_json: sqliteCore.text('outcome_json'),
+  created_at: sqliteCore.integer('created_at', { mode: 'number' }).notNull(),
+  updated_at: sqliteCore.integer('updated_at', { mode: 'number' }).notNull(),
+}, (table) => [
+  sqliteCore.uniqueIndex('agent_operations_source_unique').on(table.agent_session_id, table.source_type, table.source_id, table.operation_kind),
+  sqliteCore.index('agent_operations_queue').on(table.agent_session_id, table.state, table.queue_order),
+  sqliteCore.check('agent_operations_source_check', orm.sql`${table.source_type} IN ('discord', 'schedule', 'cli')`),
+  sqliteCore.check('agent_operations_kind_check', orm.sql`${table.operation_kind} IN ('prompt', 'guide', 'answer', 'cancel', 'compact', 'model', 'fork')`),
+])
+
+export const agent_stream_state = sqliteCore.sqliteTable('agent_stream_state', {
+  agent_session_id: sqliteCore.text('agent_session_id').notNull().references(() => agent_sessions.id),
+  stream_kind: sqliteCore.text('stream_kind').notNull(),
+  log_epoch: sqliteCore.text('log_epoch').notNull().default(''),
+  connection_generation: sqliteCore.text('connection_generation').notNull(),
+  sequence: sqliteCore.integer('sequence', { mode: 'number' }),
+  revision: sqliteCore.integer('revision', { mode: 'number' }),
+  snapshot_json: sqliteCore.text('snapshot_json'),
+  updated_at: sqliteCore.integer('updated_at', { mode: 'number' }).notNull(),
+}, (table) => [
+  sqliteCore.primaryKey({ columns: [table.agent_session_id, table.stream_kind] }),
+  sqliteCore.check('agent_stream_state_kind_check', orm.sql`${table.stream_kind} IN ('legacy', 'v4')`),
+])
+
+export const agent_interactions = sqliteCore.sqliteTable('agent_interactions', {
+  id: sqliteCore.text('id').primaryKey().notNull(),
+  agent_session_id: sqliteCore.text('agent_session_id').notNull().references(() => agent_sessions.id),
+  operation_id: sqliteCore.text('operation_id').references(() => agent_operations.id),
+  connection_generation: sqliteCore.text('connection_generation').notNull(),
+  native_request_id_json: sqliteCore.text('native_request_id_json').notNull(),
+  kind: sqliteCore.text('kind').notNull(),
+  state: sqliteCore.text('state').notNull(),
+  safe_request_json: sqliteCore.text('safe_request_json').notNull(),
+  controller_thread_id: sqliteCore.text('controller_thread_id').notNull(),
+  expires_at: sqliteCore.integer('expires_at', { mode: 'number' }).notNull(),
+  created_at: sqliteCore.integer('created_at', { mode: 'number' }).notNull(),
+  updated_at: sqliteCore.integer('updated_at', { mode: 'number' }).notNull(),
+}, (table) => [
+  // v2 semantics: only simultaneous pending native request IDs are unique. A completed
+  // request frees its native numeric ID; history is never deleted to dodge uniqueness.
+  sqliteCore.uniqueIndex('agent_interactions_pending_id').on(table.agent_session_id, table.connection_generation, table.native_request_id_json).where(orm.sql`${table.state} = 'pending'`),
+  sqliteCore.check('agent_interactions_kind_check', orm.sql`${table.kind} IN ('permission', 'question', 'plan-approval')`),
+  sqliteCore.check('agent_interactions_state_check', orm.sql`${table.state} IN ('pending', 'answered', 'denied', 'expired', 'stale')`),
+])
+
+export const agent_attachments = sqliteCore.sqliteTable('agent_attachments', {
+  id: sqliteCore.text('id').primaryKey().notNull(),
+  agent_session_id: sqliteCore.text('agent_session_id').notNull().references(() => agent_sessions.id),
+  display_name: sqliteCore.text('display_name').notNull(),
+  storage_path: sqliteCore.text('storage_path').notNull(),
+  media_type: sqliteCore.text('media_type').notNull(),
+  byte_length: sqliteCore.integer('byte_length', { mode: 'number' }).notNull(),
+  sha256: sqliteCore.text('sha256').notNull(),
+  native_ref: sqliteCore.text('native_ref'),
+  transformation: sqliteCore.text('transformation'),
+  created_at: sqliteCore.integer('created_at', { mode: 'number' }).notNull(),
+}, (table) => [
+  sqliteCore.check('agent_attachments_length_check', orm.sql`${table.byte_length} >= 0`),
+])
+
+export const agent_outbox = sqliteCore.sqliteTable('agent_outbox', {
+  id: sqliteCore.text('id').primaryKey().notNull(),
+  agent_session_id: sqliteCore.text('agent_session_id').notNull().references(() => agent_sessions.id),
+  thread_id: sqliteCore.text('thread_id').notNull(),
+  display_part_id: sqliteCore.text('display_part_id').notNull(),
+  content_revision: sqliteCore.integer('content_revision', { mode: 'number' }).notNull(),
+  payload_json: sqliteCore.text('payload_json').notNull(),
+  state: sqliteCore.text('state').notNull(),
+  discord_message_id: sqliteCore.text('discord_message_id'),
+  created_at: sqliteCore.integer('created_at', { mode: 'number' }).notNull(),
+  updated_at: sqliteCore.integer('updated_at', { mode: 'number' }).notNull(),
+}, (table) => [
+  sqliteCore.uniqueIndex('agent_outbox_revision_unique').on(table.thread_id, table.display_part_id, table.content_revision),
+  sqliteCore.check('agent_outbox_state_check', orm.sql`${table.state} IN ('pending', 'sending', 'sent', 'delivery-unknown', 'failed')`),
+])
+
+export const agent_workspace_leases = sqliteCore.sqliteTable('agent_workspace_leases', {
+  resource: sqliteCore.text('resource').primaryKey().notNull(),
+  agent_session_id: sqliteCore.text('agent_session_id').notNull().references(() => agent_sessions.id),
+  owner_nonce: sqliteCore.text('owner_nonce').notNull(),
+  acquired_at: sqliteCore.integer('acquired_at', { mode: 'number' }).notNull(),
+})
 
 export const relations = defineRelations({
   thread_sessions,
@@ -241,8 +465,10 @@ export const relations = defineRelations({
   channel_mention_mode,
   global_models,
   scheduled_tasks,
+  scheduled_task_runs,
   session_start_sources,
   forum_sync_configs,
+  session_sleeps,
   ipc_requests,
 }, (r) => ({
   thread_sessions: {
@@ -304,7 +530,11 @@ export const relations = defineRelations({
   scheduled_tasks: {
     channel: r.one.channel_directories({ from: r.scheduled_tasks.channel_id, to: r.channel_directories.channel_id }),
     thread: r.one.thread_sessions({ from: r.scheduled_tasks.thread_id, to: r.thread_sessions.thread_id }),
+    runs: r.many.scheduled_task_runs(),
     session_start_sources: r.many.session_start_sources(),
+  },
+  scheduled_task_runs: {
+    scheduled_task: r.one.scheduled_tasks({ from: r.scheduled_task_runs.scheduled_task_id, to: r.scheduled_tasks.id }),
   },
   session_start_sources: {
     scheduled_task: r.one.scheduled_tasks({ from: r.session_start_sources.scheduled_task_id, to: r.scheduled_tasks.id }),
@@ -320,6 +550,7 @@ export const relations = defineRelations({
 export type BotMode = typeof bot_tokens.$inferSelect.bot_mode
 export type ChannelType = typeof channel_directories.$inferSelect.channel_type
 export type IpcRequestType = typeof ipc_requests.$inferSelect.type
+export type SessionSleepStatus = typeof session_sleeps.$inferSelect.status
 export type SessionEvent = typeof session_events.$inferSelect
 export type ThreadSessionSource = typeof thread_sessions.$inferSelect.source
 export type VerbosityLevel = typeof channel_verbosity.$inferSelect.verbosity

@@ -1,6 +1,7 @@
 // Regression tests for CLI argument parsing around Discord ID string preservation.
 import { describe, expect, test } from 'vitest'
 import { execAsync } from './exec-async.js'
+import maintenanceCommands from './cli-commands/maintenance.js'
 
 async function parseWithGoke(argv: string[]) {
   const script = [
@@ -8,10 +9,12 @@ async function parseWithGoke(argv: string[]) {
     'const cli = goke(\'kimaki\')',
     "cli.command('send', 'Send a message').option('-c, --channel <channelId>', 'Discord channel ID').option('--thread <threadId>', 'Thread ID').option('--session <sessionId>', 'Session ID').option('--send-at <schedule>', 'Schedule')",
     "cli.command('session archive <threadId>', 'Archive a thread')",
-    "cli.command('session search <query>', 'Search sessions').option('--channel <channelId>', 'Discord channel ID').option('--project <path>', 'Project path')",
+    "cli.command('session title <title>', 'Update title').option('--session <sessionId>', 'Session ID').option('--thread <threadId>', 'Thread ID')",
+    "cli.command('session search <query>', 'Search sessions').option('--channel <channelId>', 'Discord channel ID').option('--project <path>', 'Project path').option('--all', 'Search all registered projects').option('--days <n>', 'Only search recent sessions')",
     "cli.command('session export-events-jsonl', 'Export in-memory events to JSONL').option('--session <sessionId>', 'Session ID').option('--out <file>', 'Output path')",
     "cli.command('add-project', 'Add a project').option('-g, --guild <guildId>', 'Discord guild/server ID')",
     "cli.command('task delete <id>', 'Delete task')",
+    "cli.command('task edit <id>', 'Edit task').option('-u, --user <user>', 'Discord user')",
     "cli.command('multioauth anthropic list', 'List stored Anthropic accounts')",
     "cli.command('multioauth anthropic remove <indexOrEmail>', 'Remove stored Anthropic account')",
     "cli.command('multioauth openai list', 'List stored OpenAI accounts')",
@@ -51,6 +54,25 @@ async function getHelpOutput() {
   return stdout
 }
 
+async function parseRootBotOptions(argv: string[]) {
+  const script = [
+    "import { goke } from 'goke'",
+    'const cli = goke(\'kimaki\')',
+    "cli.command('', 'bot').option('--no-analytics', 'Disable analytics').option('--skip-footer-mentions', 'Do not mention the thread creator in final footers')",
+    `const result = await cli.parse(${JSON.stringify(argv)}, { run: false })`,
+    'process.stdout.write(JSON.stringify({ args: result.args, options: result.options }))',
+  ].join(';')
+
+  const { stdout } = await execAsync(`node --input-type=module -e ${JSON.stringify(script)}`, {
+    cwd: import.meta.dirname,
+    timeout: 10_000,
+  })
+  return JSON.parse(stdout) as {
+    args: string[]
+    options: Record<string, unknown>
+  }
+}
+
 describe('goke CLI ID parsing', () => {
   test('keeps large Discord IDs as strings', async () => {
     const channelId = '1234567890123456789'
@@ -87,6 +109,28 @@ describe('goke CLI ID parsing', () => {
     expect(typeof result.options.guild).toBe('string')
   })
 
+  test('keeps session title and session ID as strings', async () => {
+    const sessionId = '001111222233334444'
+    const title = 'Fix queue draining'
+
+    const result = await parseWithGoke(
+      [
+        'node',
+        'kimaki',
+        'session',
+        'title',
+        title,
+        '--session',
+        sessionId,
+      ],
+    )
+
+    expect(result.args[0]).toBe(title)
+    expect(typeof result.args[0]).toBe('string')
+    expect(result.options.session).toBe(sessionId)
+    expect(typeof result.options.session).toBe('string')
+  })
+
   test('keeps session archive thread ID as string', async () => {
     const threadId = '0098765432109876543'
 
@@ -110,6 +154,23 @@ describe('goke CLI ID parsing', () => {
     expect(typeof result.args[0]).toBe('string')
     expect(result.options.channel).toBe(channelId)
     expect(typeof result.options.channel).toBe('string')
+  })
+
+  test('parses session search --all as a boolean', async () => {
+    const result = await parseWithGoke(
+      ['node', 'kimaki', 'session', 'search', 'auth timeout', '--all'],
+    )
+
+    expect(result.args[0]).toBe('auth timeout')
+    expect(result.options.all).toBe(true)
+  })
+
+  test('parses session search --days as a string', async () => {
+    const result = await parseWithGoke(
+      ['node', 'kimaki', 'session', 'search', 'auth timeout', '--days', '0'],
+    )
+
+    expect(result.options.days).toBe('0')
   })
 
   test('keeps session export options as strings', async () => {
@@ -153,6 +214,21 @@ describe('goke CLI ID parsing', () => {
     expect(typeof result.args[0]).toBe('string')
   })
 
+  test('parses empty --user on task edit so the stored user can be cleared', async () => {
+    const result = await parseWithGoke([
+      'node',
+      'kimaki',
+      'task',
+      'edit',
+      '11',
+      '--user',
+      '',
+    ])
+
+    expect(result.args[0]).toBe('11')
+    expect(result.options.user).toBe('')
+  })
+
   test('multioauth account remove parses index and email as strings', async () => {
     const indexResult = await parseWithGoke(
       ['node', 'kimaki', 'multioauth', 'anthropic', 'remove', '2'],
@@ -173,5 +249,57 @@ describe('goke CLI ID parsing', () => {
 
     expect(stdout).toContain('send')
     expect(stdout).toContain('multioauth')
+  })
+
+  test('merge-worktree parses strategy and target branch', async () => {
+    const result = await maintenanceCommands.parse(
+      [
+        'node',
+        'kimaki',
+        'merge-worktree',
+        '--strategy',
+        'squash',
+        '--target-branch',
+        'release',
+        '--thread',
+        '123456789012345678',
+        '--thread-name',
+        'feature work',
+      ],
+      { run: false },
+    )
+
+    expect({
+      command: maintenanceCommands.matchedCommandName,
+      strategy: result.options.strategy,
+      targetBranch: result.options.targetBranch,
+      thread: result.options.thread,
+      threadName: result.options.threadName,
+    }).toMatchInlineSnapshot(`
+      {
+        "command": "merge-worktree",
+        "strategy": "squash",
+        "targetBranch": "release",
+        "thread": "123456789012345678",
+        "threadName": "feature work",
+      }
+    `)
+  })
+
+  test('parses root bot boolean flags', async () => {
+    const result = await parseRootBotOptions([
+      'node',
+      'kimaki',
+      '--no-analytics',
+      '--skip-footer-mentions',
+    ])
+
+    expect(result.options).toMatchInlineSnapshot(`
+      {
+        "--": [],
+        "noAnalytics": true,
+        "skipFooterMentions": true,
+      }
+    `)
   })
 })

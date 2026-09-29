@@ -12,7 +12,6 @@
 // state field, ask if it can be derived from existing state instead.
 
 import type { DiscordFileAttachment } from '../message-formatting.js'
-import type { PermissionRuleset } from '@opencode-ai/sdk/v2'
 import type { RepliedMessageContext } from '../system-message.js'
 import { store } from '../store.js'
 
@@ -44,12 +43,11 @@ export type QueuedMessage = {
   // Set by --agent/--model/--permission flags on kimaki send or slash commands.
   agent?: string
   model?: string
+  // Thinking-level variant from `/xxx-agent variant:`.
+  variant?: string
   // Raw permission rule strings ("tool:action" or "tool:pattern:action").
   // Parsed and merged into session permissions on creation.
   permissions?: string[]
-  // Already-resolved permission rules discovered at message ingress, for
-  // example #channel project directory references.
-  permissionRules?: PermissionRuleset
   // Injection guard scan patterns (e.g. "bash:*", "webfetch:*").
   // Written to a temp config file after session creation so the plugin
   // can check per-session whether to scan tool outputs.
@@ -187,6 +185,7 @@ export function setSessionUsername(threadId: string, username: string): void {
 }
 
 export function setSessionUserId(threadId: string, userId: string): void {
+  if (!userId) return
   updateThread(threadId, (t) => {
     if (t.sessionUserId) {
       return t

@@ -1,4 +1,4 @@
-// Plugin-safe git worktree creation and removal primitives.
+// Plugin-safe Git worktree creation, identity validation, and removal primitives.
 // This module must NOT import config.ts, logger.ts, or any module that
 // transitively pulls them in. It is used by both:
 //   - worktrees.ts (bot process — wraps with kimaki logger + config)
@@ -8,6 +8,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import * as errore from 'errore'
 import { execAsync } from './exec-async.js'
 
 const SUBMODULE_INIT_TIMEOUT_MS = 20 * 60_000
@@ -26,6 +27,13 @@ export type WorktreeLog = {
   warn(message: string): void
   error(message: string): void
 }
+
+export const KIMAKI_WORKTREE_ADAPTER_TYPE = 'kimaki-worktree'
+
+export class WorktreeIdentityError extends errore.createTaggedError({
+  name: 'WorktreeIdentityError',
+  message: 'Created worktree does not match the requested checkout: $reason',
+}) {}
 
 const silentLog: WorktreeLog = {
   info() {},
@@ -136,7 +144,15 @@ async function hasSubmoduleGitMetadata(directory: string): Promise<boolean> {
  * Remove broken submodule stubs created by `git worktree add`.
  * git worktree creates .git files pointing to incomplete gitdirs (missing HEAD).
  */
-async function removeBrokenSubmoduleStubs(directory: string, log: WorktreeLog): Promise<void> {
+async function removeBrokenSubmoduleStubs({
+  directory,
+  expectedCommonGitDirectory,
+  log,
+}: {
+  directory: string
+  expectedCommonGitDirectory: string
+  log: WorktreeLog
+}): Promise<void> {
   const submodulePaths = await getSubmodulePaths(directory, log)
   for (const subPath of submodulePaths) {
     const fullPath = path.join(directory, subPath)
@@ -150,7 +166,10 @@ async function removeBrokenSubmoduleStubs(directory: string, log: WorktreeLog): 
       const gitdir = path.resolve(fullPath, match[1].trim())
       const headFile = path.join(gitdir, 'HEAD')
       const headExists = await fs.promises.access(headFile).then(() => true).catch(() => false)
-      if (!headExists) {
+      const relativeGitdir = path.relative(expectedCommonGitDirectory, gitdir)
+      const pointsOutsideExpectedRepository =
+        relativeGitdir === '..' || relativeGitdir.startsWith(`..${path.sep}`)
+      if (!headExists || pointsOutsideExpectedRepository) {
         log.info(`Removing broken submodule stub: ${subPath}`)
         await fs.promises.rm(fullPath, { recursive: true, force: true })
       }
@@ -235,17 +254,36 @@ async function initializeSubmodulesWithLocalReferences({
   }
 }
 
-async function validateSubmodulePointers(directory: string, log: WorktreeLog): Promise<void> {
-  const submodulePaths = await getSubmodulePaths(directory, log)
+async function validateSubmodulePointers({
+  directory,
+  expectedCommonGitDirectory,
+  log,
+}: {
+  directory: string
+  expectedCommonGitDirectory: string
+  log: WorktreeLog
+}): Promise<void | Error> {
+  const submoduleConfigs = await readSubmoduleConfigs(directory)
+  if (submoduleConfigs instanceof Error) {
+    log.warn(submoduleConfigs.message)
+    return
+  }
+  const submodulePaths = submoduleConfigs.map(({ path: submodulePath }) => {
+    return submodulePath
+  })
   if (submodulePaths.length === 0) return
 
   const issues: string[] = []
+  const foreignGitdirs: string[] = []
   await Promise.all(
     submodulePaths.map(async (subPath) => {
       const gitFile = path.join(directory, subPath, '.git')
       try {
         const stat = await fs.promises.stat(gitFile)
-        if (!stat.isFile()) return
+        if (!stat.isFile()) {
+          issues.push(`${subPath}: .git is not a file`)
+          return
+        }
         const content = await fs.promises.readFile(gitFile, 'utf-8')
         const match = content.match(/^gitdir:\s*(.+)$/m)
         const gitdir = match?.[1]?.trim()
@@ -254,19 +292,30 @@ async function validateSubmodulePointers(directory: string, log: WorktreeLog): P
           return
         }
         const resolvedGitdir = path.resolve(path.join(directory, subPath), gitdir)
+        const relativeGitdir = path.relative(expectedCommonGitDirectory, resolvedGitdir)
+        if (relativeGitdir === '..' || relativeGitdir.startsWith(`..${path.sep}`)) {
+          foreignGitdirs.push(`${subPath}: ${resolvedGitdir}`)
+          return
+        }
         const headExists = await fs.promises.access(path.join(resolvedGitdir, 'HEAD')).then(() => true).catch(() => false)
         if (!headExists) {
           issues.push(`${subPath}: gitdir missing HEAD (${resolvedGitdir})`)
+          return
         }
-      } catch {
-        // skip
+      } catch (e) {
+        issues.push(
+          `${subPath}: failed to validate .git (${e instanceof Error ? e.message : String(e)})`,
+        )
       }
     }),
   )
 
-  if (issues.length > 0) {
-    log.warn(`Submodule validation issues: ${issues.join('; ')}`)
+  if (foreignGitdirs.length > 0) {
+    return new Error(
+      `Submodule gitdir belongs to another repository: ${foreignGitdirs.join('; ')}`,
+    )
   }
+  if (issues.length > 0) log.warn(`Submodule validation issues: ${issues.join('; ')}`)
 }
 
 function detectInstallCommand(directory: string): string | null {
@@ -297,6 +346,120 @@ export type WorktreeResult = {
   branch: string
 }
 
+async function canonicalizePath(value: string) {
+  return await fs.promises.realpath(value).catch(() => path.resolve(value))
+}
+
+export async function resolveGitCommit({
+  directory,
+  ref,
+}: {
+  directory: string
+  ref: string
+}): Promise<string | Error> {
+  const result = await execAsync(`git rev-parse --verify ${JSON.stringify(`${ref}^{commit}`)}`, {
+    cwd: directory,
+    timeout: 10_000,
+  }).catch((e) => new Error(`Failed to resolve Git commit ${ref}`, { cause: e }))
+  if (result instanceof Error) return result
+  const commit = result.stdout.trim()
+  if (!/^[0-9a-f]{40}$/i.test(commit)) {
+    return new Error(`Git returned an invalid commit for ${ref}: ${commit}`)
+  }
+  return commit
+}
+
+export async function resolveGitCommonDirectory({
+  directory,
+}: {
+  directory: string
+}): Promise<string | Error> {
+  const result = await execAsync('git rev-parse --git-common-dir', {
+    cwd: directory,
+    timeout: 10_000,
+  }).catch(
+    (e) => new Error(`Failed to resolve Git common directory for ${directory}`, { cause: e }),
+  )
+  if (result instanceof Error) return result
+  const commonDirectory = path.isAbsolute(result.stdout.trim())
+    ? result.stdout.trim()
+    : path.resolve(directory, result.stdout.trim())
+  return canonicalizePath(commonDirectory)
+}
+
+async function resolveGitDirectory({
+  directory,
+}: {
+  directory: string
+}): Promise<string | Error> {
+  const result = await execAsync('git rev-parse --absolute-git-dir', {
+    cwd: directory,
+    timeout: 10_000,
+  }).catch(
+    (e) => new Error(`Failed to resolve Git directory for ${directory}`, { cause: e }),
+  )
+  if (result instanceof Error) return result
+  return canonicalizePath(result.stdout.trim())
+}
+
+export async function validateWorktreeIdentity({
+  projectDirectory,
+  worktreeDirectory,
+  baseCommit,
+}: {
+  projectDirectory: string
+  baseCommit: string
+  worktreeDirectory: string
+}): Promise<{ commonGitDirectory: string; headCommit: string } | WorktreeIdentityError> {
+  const [sourceCommonGitDirectory, commonGitDirectory, gitDirectory, headCommit] =
+    await Promise.all([
+      resolveGitCommonDirectory({ directory: projectDirectory }),
+      resolveGitCommonDirectory({ directory: worktreeDirectory }),
+      resolveGitDirectory({ directory: worktreeDirectory }),
+      resolveGitCommit({ directory: worktreeDirectory, ref: 'HEAD' }),
+    ])
+  if (sourceCommonGitDirectory instanceof Error) {
+    return new WorktreeIdentityError({
+      reason: sourceCommonGitDirectory.message,
+      cause: sourceCommonGitDirectory,
+    })
+  }
+  if (commonGitDirectory instanceof Error) {
+    return new WorktreeIdentityError({
+      reason: commonGitDirectory.message,
+      cause: commonGitDirectory,
+    })
+  }
+  if (headCommit instanceof Error) {
+    return new WorktreeIdentityError({
+      reason: headCommit.message,
+      cause: headCommit,
+    })
+  }
+  if (gitDirectory instanceof Error) {
+    return new WorktreeIdentityError({
+      reason: gitDirectory.message,
+      cause: gitDirectory,
+    })
+  }
+  if (commonGitDirectory !== sourceCommonGitDirectory) {
+    return new WorktreeIdentityError({
+      reason: `expected common directory ${sourceCommonGitDirectory}, received ${commonGitDirectory}`,
+    })
+  }
+  if (gitDirectory === commonGitDirectory) {
+    return new WorktreeIdentityError({
+      reason: `${worktreeDirectory} is not a linked worktree`,
+    })
+  }
+  if (headCommit !== baseCommit) {
+    return new WorktreeIdentityError({
+      reason: `expected HEAD ${baseCommit}, received ${headCommit}`,
+    })
+  }
+  return { commonGitDirectory, headCommit }
+}
+
 /**
  * Create a git worktree with full submodule initialization and dependency install.
  * Plugin-safe: no config.ts or logger.ts imports. Logging is done via the `log`
@@ -306,24 +469,27 @@ export async function createWorktreeCore({
   projectDirectory,
   targetDirectory,
   branchName,
-  baseBranch,
+  baseCommit,
   onProgress,
   log = silentLog,
 }: {
   projectDirectory: string
   targetDirectory: string
   branchName: string
-  baseBranch?: string
+  baseCommit: string
   onProgress?: (phase: string) => void
   log?: WorktreeLog
 }): Promise<WorktreeResult | Error> {
   if (fs.existsSync(targetDirectory)) {
     return new Error(`Worktree directory already exists: ${targetDirectory}`)
   }
+  const commonGitDirectory = await resolveGitCommonDirectory({
+    directory: projectDirectory,
+  })
+  if (commonGitDirectory instanceof Error) return commonGitDirectory
   await fs.promises.mkdir(path.dirname(targetDirectory), { recursive: true })
 
-  const targetRef = baseBranch || 'HEAD'
-  const createCmd = `git worktree add ${JSON.stringify(targetDirectory)} -B ${JSON.stringify(branchName)} ${JSON.stringify(targetRef)}`
+  const createCmd = `git worktree add ${JSON.stringify(targetDirectory)} -B ${JSON.stringify(branchName)} ${JSON.stringify(baseCommit)}`
   const createResult = await execAsync(createCmd, {
     cwd: projectDirectory,
     timeout: SUBMODULE_INIT_TIMEOUT_MS,
@@ -333,7 +499,11 @@ export async function createWorktreeCore({
   if (createResult instanceof Error) return createResult
 
   // Remove broken submodule stubs before init
-  await removeBrokenSubmoduleStubs(targetDirectory, log)
+  await removeBrokenSubmoduleStubs({
+    directory: targetDirectory,
+    expectedCommonGitDirectory: commonGitDirectory,
+    log,
+  })
 
   // Init submodules with local --reference directories
   log.info(`Initializing submodules in ${targetDirectory}`)
@@ -348,8 +518,25 @@ export async function createWorktreeCore({
     log.info(`Submodules initialized in ${targetDirectory}`)
   }
 
-  // Validate submodule pointers (non-fatal)
-  await validateSubmodulePointers(targetDirectory, log)
+  // Invalid submodule pointers can route later Git commands into another clone.
+  const submoduleValidation = await validateSubmodulePointers({
+    directory: targetDirectory,
+    expectedCommonGitDirectory: commonGitDirectory,
+    log,
+  })
+  if (submoduleValidation instanceof Error) {
+    const cleanupResult = await removeWorktreeCore({
+      projectDirectory,
+      worktreeDirectory: targetDirectory,
+      branchName,
+    })
+    if (cleanupResult instanceof Error) {
+      return new Error(`${submoduleValidation.message}; cleanup failed: ${cleanupResult.message}`, {
+        cause: submoduleValidation,
+      })
+    }
+    return submoduleValidation
+  }
 
   // Dependency install (non-fatal)
   onProgress?.('Installing dependencies...')
@@ -381,9 +568,49 @@ export async function removeWorktreeCore({
   if (removeResult instanceof Error) return removeResult
 
   if (branchName) {
-    await execAsync(
-      `git branch -D ${JSON.stringify(branchName)}`,
+    const listResult = await execAsync(
+      `git branch --list --format=${JSON.stringify('%(refname:short)')} ${JSON.stringify(branchName)}`,
       { cwd: projectDirectory, timeout: 10_000 },
-    ).catch(() => {/* branch may not exist */})
+    ).catch((e) =>
+      new Error(`git branch list failed: ${formatCommandError(e)}`, { cause: e }),
+    )
+    if (listResult instanceof Error) return listResult
+    if (listResult.stdout.trim() === branchName) {
+      const deleteResult = await execAsync(
+        `git branch -D ${JSON.stringify(branchName)}`,
+        { cwd: projectDirectory, timeout: 10_000 },
+      ).catch((e) =>
+        new Error(`git branch delete failed: ${formatCommandError(e)}`, { cause: e }),
+      )
+      if (deleteResult instanceof Error) return deleteResult
+    }
   }
+}
+
+export async function removeWorktreeFromOwnRepository({
+  worktreeDirectory,
+  branchName,
+}: {
+  worktreeDirectory: string
+  branchName: string
+}): Promise<void | Error> {
+  if (!fs.existsSync(worktreeDirectory)) return
+  const listResult = await execAsync('git worktree list --porcelain', {
+    cwd: worktreeDirectory,
+    timeout: 10_000,
+  }).catch(
+    (e) => new Error('Failed to locate the worktree repository', { cause: e }),
+  )
+  if (listResult instanceof Error) return listResult
+  const mainWorktreeLine = listResult.stdout
+    .split('\n')
+    .find((line) => line.startsWith('worktree '))
+  if (!mainWorktreeLine) {
+    return new Error('Git returned no main worktree during cleanup')
+  }
+  return removeWorktreeCore({
+    projectDirectory: mainWorktreeLine.slice('worktree '.length),
+    worktreeDirectory,
+    branchName,
+  })
 }

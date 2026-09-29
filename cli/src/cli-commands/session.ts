@@ -1,6 +1,7 @@
 // Session inspection and archival terminal commands.
 import { goke } from 'goke'
 import { z } from 'zod'
+import dedent from 'string-dedent'
 import { note } from '@clack/prompts'
 import YAML from 'yaml'
 import * as errore from 'errore'
@@ -12,15 +13,18 @@ import { fileURLToPath } from 'node:url'
 import { spawn, execSync } from 'node:child_process'
 import { createLogger, LogPrefix, initLogFile } from '../logger.js'
 import { createDiscordClient, initDatabase, getChannelDirectory, initializeOpencodeForDirectory, createProjectChannels } from '../discord-bot.js'
-import { getBotTokenWithMode, getThreadSession, getThreadIdBySessionId, getSessionEventSnapshot, getDb, createScheduledTask, listScheduledTasks, cancelScheduledTask, getScheduledTask, updateScheduledTask, getSessionStartSourcesBySessionIds, deleteChannelDirectoryById, findChannelsByDirectory, getThreadWorktreeOrWorkspace } from '../database.js'
+import { getBotTokenWithMode, getThreadSession, getThreadIdBySessionId, getSessionEventSnapshot, getDb, createScheduledTask, listScheduledTasks, cancelScheduledTask, getScheduledTask, updateScheduledTask, getSessionStartSourcesBySessionIds, deleteChannelDirectoryById, findChannelsByDirectory, getThreadWorktreeOrWorkspace, getAllTextChannelDirectories } from '../database.js'
 import { ShareMarkdown } from '../markdown.js'
-import { parseSessionSearchPattern, findFirstSessionSearchHit, buildSessionSearchSnippet, getPartSearchTexts } from '../session-search.js'
+import { parseSessionSearchPattern, collectSessionSearchMatches, validateSessionSearchScope, resolveSessionSearchDirectories, parseSessionSearchDays, sessionSearchMinUpdated, SESSION_SEARCH_DEFAULT_DAYS, type SessionSearchMatch } from '../session-search.js'
 import { formatWorktreeName, formatAutoWorktreeName } from '../commands/new-worktree.js'
+import { formatTimeAgo } from '../commands/worktrees.js'
+import { editorsForFile, loadFileEditEvents } from '../file-edit-log.js'
 import { WORKTREE_PREFIX } from '../commands/merge-worktree.js'
 import type { ThreadStartMarker } from '../system-message.js'
 import { buildOpencodeEventLogLine } from '../session-handler/opencode-session-event-log.js'
 import { createDiscordRest } from '../discord-urls.js'
 import { archiveThread, uploadFilesToDiscord, stripMentions } from '../discord-utils.js'
+import { OpenCodeSdkError } from '../errors.js'
 import { setDataDir, setProjectsDir, getDataDir, getProjectsDir } from '../config.js'
 import { execAsync, validateWorktreeDirectory } from '../worktrees.js'
 import { upgrade, getCurrentVersion } from '../upgrade.js'
@@ -90,8 +94,10 @@ cli
     '--project <path>',
     'Project directory to list sessions for (defaults to cwd)',
   )
+  .option('--active', 'Only list active sessions; exits 1 when none remain')
+  .option('--exclude <sessionId>', 'Exclude one session ID from the results')
   .option('--json', 'Output as JSON')
-  .action(async (options: { project?: string; json?: boolean }) => {
+  .action(async (options) => {
     try {
       const projectDirectory = path.resolve(options.project || '.')
 
@@ -106,10 +112,28 @@ cli
 
       const sessionsResponse = await getClient().session.list()
       const sessions = sessionsResponse.data || []
+      const statuses = await (async () => {
+        if (!options.active) return null
+        const response = await getClient().session.status({
+          directory: projectDirectory,
+        })
+        if (response.error) {
+          cliLogger.error('Failed to list active sessions')
+          process.exit(EXIT_NO_RESTART)
+        }
+        return response.data || {}
+      })()
+      const selectedSessions = sessions.filter((session) => {
+        if (session.id === options.exclude) return false
+        if (!options.active) return true
+        const status = statuses?.[session.id]
+        return Boolean(status && status.type !== 'idle')
+      })
 
-      if (sessions.length === 0) {
-        cliLogger.log('No sessions found')
-        process.exit(0)
+      if (selectedSessions.length === 0) {
+        if (options.json) console.log('[]')
+        else cliLogger.log(options.active ? 'No active sessions found' : 'No sessions found')
+        process.exit(options.active ? 1 : 0)
       }
 
       // Look up which sessions were started via kimaki (have a thread mapping)
@@ -123,7 +147,7 @@ cli
           .map((row) => [row.session_id, row.thread_id]),
       )
       const sessionStartSources = await getSessionStartSourcesBySessionIds(
-        sessions.map((session) => session.id),
+        selectedSessions.map((session) => session.id),
       )
 
       const scheduleModeLabel = ({
@@ -138,7 +162,7 @@ cli
       }
 
       if (options.json) {
-        const output = sessions.map((session) => {
+        const output = selectedSessions.map((session) => {
           const startSource = sessionStartSources.get(session.id)
           const startedBy = startSource
             ? `scheduled-${scheduleModeLabel({ scheduleKind: startSource.schedule_kind })}`
@@ -152,13 +176,14 @@ cli
             threadId: sessionToThread.get(session.id) || null,
             startedBy,
             scheduledTaskId: startSource?.scheduled_task_id || null,
+            status: options.active ? statuses?.[session.id]?.type || 'busy' : undefined,
           }
         })
         console.log(JSON.stringify(output, null, 2))
         process.exit(0)
       }
 
-      for (const session of sessions) {
+      for (const session of selectedSessions) {
         const threadId = sessionToThread.get(session.id)
         const startSource = sessionStartSources.get(session.id)
         const source = threadId ? '(kimaki)' : '(opencode)'
@@ -167,8 +192,11 @@ cli
           : ''
         const updatedAt = new Date(session.time.updated).toISOString()
         const threadInfo = threadId ? ` | thread: ${threadId}` : ''
+        const statusInfo = options.active
+          ? ` | status: ${statuses?.[session.id]?.type || 'busy'}`
+          : ''
         console.log(
-          `${session.id} | ${session.title || 'Untitled Session'} | ${session.directory} | ${updatedAt} | ${source}${threadInfo}${startedBy}`,
+          `${session.id} | ${session.title || 'Untitled Session'} | ${session.directory} | ${updatedAt} | ${source}${threadInfo}${startedBy}${statusInfo}`,
         )
       }
 
@@ -178,6 +206,89 @@ cli
         'Error:',
         error instanceof Error ? error.stack : String(error),
       )
+      process.exit(EXIT_NO_RESTART)
+    }
+  })
+
+cli
+  .command(
+    'session editors <file>',
+    dedent`
+      List sessions that last edited a file, newest first.
+
+      Use this before a commit in another session so the \`Session:\` line
+      uses the session that actually edited the file.
+    `,
+  )
+  .option('--json', 'Output as JSON')
+  .option(
+    '--limit <n>',
+    z.number().default(20).describe('Max sessions to show'),
+  )
+  .example('kimaki session editors src/cli.ts')
+  .example('kimaki session editors src/cli.ts --json')
+  .action(async (file, options, { console, process }) => {
+    try {
+      const cwd = process.cwd
+      const loaded = loadFileEditEvents({ dataDir: getDataDir() })
+      if (loaded instanceof Error) {
+        console.error(loaded.message)
+        process.exit(EXIT_NO_RESTART)
+        return
+      }
+
+      const editors = editorsForFile({
+        events: loaded,
+        filePath: file,
+        cwd,
+      }).slice(0, options.limit)
+      if (editors.length === 0) {
+        console.error(`No recorded editors for ${path.resolve(cwd, file)}`)
+        process.exit(1)
+        return
+      }
+
+      const titles = new Map<string, string>()
+      try {
+        await initDatabase()
+        const db = await getDb()
+        const sessionRows = await db.query.thread_sessions.findMany({
+          columns: { session_id: true, last_synced_name: true },
+          where: { session_id: { in: editors.map((editor) => editor.sessionId) } },
+          orderBy: { updated_at: 'desc' },
+        })
+        for (const row of sessionRows) {
+          if (!titles.has(row.session_id) && row.last_synced_name) {
+            titles.set(row.session_id, row.last_synced_name)
+          }
+        }
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : String(error))
+      }
+
+      const rows = editors.map((editor) => {
+        const title = titles.get(editor.sessionId) || '-'
+        const editedAt = new Date(editor.at)
+        return {
+          sessionId: editor.sessionId,
+          title,
+          editedAt: editedAt.toISOString(),
+          ago: formatTimeAgo(editedAt),
+        }
+      })
+
+      if (options.json) {
+        console.log(JSON.stringify(rows, null, 2))
+        process.exit(0)
+        return
+      }
+
+      for (const row of rows) {
+        console.log(`${row.sessionId} | ${row.title} | ${row.ago}`)
+      }
+      process.exit(0)
+    } catch (error) {
+      console.error(error instanceof Error ? error.stack : String(error))
       process.exit(EXIT_NO_RESTART)
     }
   })
@@ -293,18 +404,31 @@ cli
 cli
   .command(
     'session search <query>',
-    'Search past sessions for text or /regex/flags in the selected project',
+    `Search past sessions for text or /regex/flags. Defaults to the last ${SESSION_SEARCH_DEFAULT_DAYS} days; use --days 0 for all time. Add --all for every locally registered project.`,
   )
   .option('--project <path>', 'Project directory (defaults to cwd)')
   .option('--channel <channelId>', 'Resolve project from a Discord channel ID')
+  .option('--all', 'Search every locally registered project')
+  .option(
+    '--days <n>',
+    `Only search sessions updated in the last n days (default: ${SESSION_SEARCH_DEFAULT_DAYS}; 0 = all time)`,
+  )
   .option('--limit <n>', 'Maximum matched sessions to return (default: 20)')
   .option('--json', 'Output as JSON')
+  .example('kimaki session search "auth timeout"')
+  .example('kimaki session search "auth timeout" --days 0')
+  .example('kimaki session search "auth timeout" --all')
   .action(async (query, options) => {
     try {
       await initDatabase()
 
-      if (options.project && options.channel) {
-        cliLogger.error('Use either --project or --channel, not both')
+      const scopeError = validateSessionSearchScope({
+        all: options.all,
+        project: options.project,
+        channel: options.channel,
+      })
+      if (scopeError) {
+        cliLogger.error(scopeError.message)
         process.exit(EXIT_NO_RESTART)
       }
 
@@ -323,9 +447,19 @@ cli
         process.exit(EXIT_NO_RESTART)
       }
 
-      const projectDirectoryResult = await (async (): Promise<
-        string | Error
-      > => {
+      const days = parseSessionSearchDays(
+        typeof options.days === 'string' ? options.days : undefined,
+      )
+      if (days instanceof Error) {
+        cliLogger.error(days.message)
+        process.exit(EXIT_NO_RESTART)
+      }
+      const minUpdated = sessionSearchMinUpdated({ days })
+
+      const explicitDirectory = await (async (): Promise<string | Error | undefined> => {
+        if (options.all) {
+          return undefined
+        }
         if (options.channel) {
           const channelConfig = await getChannelDirectory(options.channel)
           if (!channelConfig) {
@@ -335,17 +469,50 @@ cli
           }
           return path.resolve(channelConfig.directory)
         }
-        return path.resolve(options.project || '.')
+        if (options.project) {
+          return path.resolve(options.project)
+        }
+        return undefined
       })()
 
-      if (projectDirectoryResult instanceof Error) {
-        cliLogger.error(projectDirectoryResult.message)
+      if (explicitDirectory instanceof Error) {
+        cliLogger.error(explicitDirectory.message)
         process.exit(EXIT_NO_RESTART)
       }
 
-      const projectDirectory = projectDirectoryResult
-      if (!fs.existsSync(projectDirectory)) {
-        cliLogger.error(`Directory does not exist: ${projectDirectory}`)
+      const registeredDirectories = options.all
+        ? (await getAllTextChannelDirectories()).map((directory) => {
+            return path.resolve(directory)
+          })
+        : []
+      const projectDirectories = resolveSessionSearchDirectories({
+        all: Boolean(options.all),
+        registeredDirectories,
+        cwd: path.resolve('.'),
+        explicitDirectory,
+      })
+      if (projectDirectories instanceof Error) {
+        cliLogger.error(projectDirectories.message)
+        process.exit(EXIT_NO_RESTART)
+      }
+
+      const existingDirectories: string[] = []
+      for (const directory of projectDirectories) {
+        if (fs.existsSync(directory)) {
+          existingDirectories.push(directory)
+          continue
+        }
+        if (options.all) {
+          cliLogger.warn(`Skipping missing directory: ${directory}`)
+          continue
+        }
+        cliLogger.error(`Directory does not exist: ${directory}`)
+        process.exit(EXIT_NO_RESTART)
+      }
+      if (existingDirectories.length === 0) {
+        cliLogger.error(
+          'No searchable project directories found. Add a project with `kimaki project add`, or pass --project.',
+        )
         process.exit(EXIT_NO_RESTART)
       }
 
@@ -355,16 +522,61 @@ cli
         process.exit(EXIT_NO_RESTART)
       }
 
-      cliLogger.log('Connecting to OpenCode server...')
-      const getClient = await initializeOpencodeForDirectory(projectDirectory)
-      if (getClient instanceof Error) {
-        cliLogger.error('Failed to connect to OpenCode:', getClient.message)
-        process.exit(EXIT_NO_RESTART)
+      type OpencodeGetClient = Exclude<
+        Awaited<ReturnType<typeof initializeOpencodeForDirectory>>,
+        Error
+      >
+      const clientsBySessionId = new Map<string, OpencodeGetClient>()
+      const searchedDirectories: string[] = []
+      const searchableSessions: Array<{
+        id: string
+        title: string
+        directory: string
+        updated: number
+      }> = []
+
+      const listedDirectories = await Promise.all(
+        existingDirectories.map(async (projectDirectory) => {
+          cliLogger.log(`Connecting to OpenCode server for ${projectDirectory}...`)
+          const getClient = await initializeOpencodeForDirectory(projectDirectory)
+          if (getClient instanceof Error) {
+            return { projectDirectory, getClient, sessions: [] }
+          }
+          const sessionsResponse = await getClient().session.list()
+          return {
+            projectDirectory,
+            getClient,
+            sessions: sessionsResponse.data || [],
+          }
+        }),
+      )
+      for (const listed of listedDirectories) {
+        if (listed.getClient instanceof Error) {
+          if (options.all) {
+            cliLogger.warn(
+              `Skipping ${listed.projectDirectory}: failed to connect to OpenCode: ${listed.getClient.message}`,
+            )
+            continue
+          }
+          cliLogger.error(
+            'Failed to connect to OpenCode:',
+            listed.getClient.message,
+          )
+          process.exit(EXIT_NO_RESTART)
+        }
+        searchedDirectories.push(listed.projectDirectory)
+        for (const session of listed.sessions) {
+          clientsBySessionId.set(session.id, listed.getClient)
+          searchableSessions.push({
+            id: session.id,
+            title: session.title || 'Untitled Session',
+            directory: session.directory || listed.projectDirectory,
+            updated: session.time.updated,
+          })
+        }
       }
 
-      const sessionsResponse = await getClient().session.list()
-      const sessions = sessionsResponse.data || []
-      if (sessions.length === 0) {
+      if (searchableSessions.length === 0) {
         cliLogger.log('No sessions found')
         process.exit(0)
       }
@@ -379,76 +591,52 @@ cli
           .map((row) => [row.session_id, row.thread_id]),
       )
 
-      const sortedSessions = [...sessions].sort((a, b) => {
-        return b.time.updated - a.time.updated
-      })
-
-      const matchedSessions: Array<{
-        id: string
-        title: string
-        directory: string
-        updated: string
-        source: 'kimaki' | 'opencode'
-        threadId: string | null
-        snippets: string[]
-      }> = []
-
-      let scannedSessions = 0
-
-      for (const session of sortedSessions) {
-        scannedSessions++
-        const messagesResponse = await getClient().session.messages({
-          sessionID: session.id,
+      const scopeLabel = options.all
+        ? `${searchedDirectories.length} project(s)`
+        : searchedDirectories[0] || path.resolve('.')
+      const daysLabel =
+        days === 0 ? 'all time' : `the last ${days} day${days === 1 ? '' : 's'}`
+      const printMatch = (match: SessionSearchMatch) => {
+        const threadInfo = match.threadId ? ` | thread: ${match.threadId}` : ''
+        console.log(
+          `${match.id} | ${match.title} | ${match.updated} | ${match.source}${threadInfo}`,
+        )
+        console.log(`  Directory: ${match.directory}`)
+        match.snippets.forEach((snippet) => {
+          console.log(`  - ${snippet}`)
         })
-        const messages = messagesResponse.data || []
-
-        const snippets = messages
-          .flatMap((message) => {
-            const rolePrefix =
-              message.info.role === 'assistant'
-                ? 'assistant'
-                : message.info.role === 'user'
-                  ? 'user'
-                  : 'message'
-
-            return message.parts.filter((p) => !(p.type === 'text' && p.synthetic)).flatMap((part) => {
-              return getPartSearchTexts(part).flatMap((text) => {
-                const hit = findFirstSessionSearchHit({
-                  text,
-                  searchPattern,
-                })
-                if (!hit) {
-                  return []
-                }
-                const snippet = buildSessionSearchSnippet({ text, hit })
-                if (!snippet) {
-                  return []
-                }
-                return [`${rolePrefix}: ${snippet}`]
-              })
-            })
-          })
-          .slice(0, 3)
-
-        if (snippets.length === 0) {
-          continue
-        }
-
-        const threadId = sessionToThread.get(session.id)
-        matchedSessions.push({
-          id: session.id,
-          title: session.title || 'Untitled Session',
-          directory: session.directory,
-          updated: new Date(session.time.updated).toISOString(),
-          source: threadId ? 'kimaki' : 'opencode',
-          threadId: threadId || null,
-          snippets,
-        })
-
-        if (matchedSessions.length >= limit) {
-          break
-        }
       }
+
+      let printedHeader = false
+      const { matches: matchedSessions, scannedSessions } =
+        await collectSessionSearchMatches({
+          sessions: searchableSessions,
+          searchPattern,
+          sessionToThread,
+          limit,
+          minUpdated,
+          onMatch: options.json
+            ? undefined
+            : (match) => {
+                if (!printedHeader) {
+                  printedHeader = true
+                  cliLogger.log(
+                    `Found matching session(s) for ${searchPattern.raw} in ${scopeLabel} (${daysLabel})`,
+                  )
+                }
+                printMatch(match)
+              },
+          loadMessages: async (session) => {
+            const getClient = clientsBySessionId.get(session.id)
+            if (!getClient) {
+              return []
+            }
+            const messagesResponse = await getClient().session.messages({
+              sessionID: session.id,
+            })
+            return messagesResponse.data || []
+          },
+        })
 
       if (options.json) {
         console.log(
@@ -456,7 +644,9 @@ cli
             {
               query: searchPattern.raw,
               mode: searchPattern.mode,
-              projectDirectory,
+              all: Boolean(options.all),
+              days,
+              projectDirectories: searchedDirectories,
               scannedSessions,
               matches: matchedSessions,
             },
@@ -468,25 +658,12 @@ cli
       }
 
       if (matchedSessions.length === 0) {
+        const cutoffHint =
+          days === 0 ? '' : '. Use --days 0 to search all time'
         cliLogger.log(
-          `No matches found for ${searchPattern.raw} in ${projectDirectory} (${scannedSessions} sessions scanned)`,
+          `No matches found for ${searchPattern.raw} in ${scopeLabel} (${scannedSessions} sessions scanned, ${daysLabel})${cutoffHint}`,
         )
         process.exit(0)
-      }
-
-      cliLogger.log(
-        `Found ${matchedSessions.length} matching session(s) for ${searchPattern.raw} in ${projectDirectory}`,
-      )
-
-      for (const match of matchedSessions) {
-        const threadInfo = match.threadId ? ` | thread: ${match.threadId}` : ''
-        console.log(
-          `${match.id} | ${match.title} | ${match.updated} | ${match.source}${threadInfo}`,
-        )
-        console.log(`  Directory: ${match.directory}`)
-        match.snippets.forEach((snippet) => {
-          console.log(`  - ${snippet}`)
-        })
       }
 
       process.exit(0)
@@ -600,7 +777,7 @@ cli
 cli
   .command(
     'session archive [threadId]',
-    'Archive a Discord thread and stop its mapped OpenCode session',
+    'Archive a Discord thread without stopping its mapped OpenCode session',
   )
   .option('--session <sessionId>', 'Resolve thread from an OpenCode session ID')
   .action(async (threadIdArg: string | undefined, options: { session?: string }) => {
@@ -743,6 +920,89 @@ cli
         `Aborted session: ${sessionId}${threadId ? `\nThread ID: ${threadId}` : ''}`,
         '✅ Aborted',
       )
+      process.exit(0)
+    } catch (error) {
+      cliLogger.error(
+        'Error:',
+        error instanceof Error ? error.stack : String(error),
+      )
+      process.exit(EXIT_NO_RESTART)
+    }
+  })
+
+cli
+  .command(
+    'session title <title>',
+    'Update the OpenCode session title. Discord thread name follows automatically.',
+  )
+  .option('--session <sessionId>', 'OpenCode session ID')
+  .option('--thread <threadId>', 'Discord thread ID')
+  .example("kimaki session title 'Fix queue draining' --session ses_xxx")
+  .action(async (title, options) => {
+    try {
+      await initDatabase()
+
+      const trimmedTitle = title.trim()
+      if (!trimmedTitle) {
+        cliLogger.error('Title must not be empty')
+        process.exit(EXIT_NO_RESTART)
+      }
+      if (options.session && options.thread) {
+        cliLogger.error('Use either --session or --thread, not both')
+        process.exit(EXIT_NO_RESTART)
+      }
+      if (!options.session && !options.thread) {
+        cliLogger.error('Provide --session <sessionId> or --thread <threadId>')
+        process.exit(EXIT_NO_RESTART)
+      }
+
+      const sessionId = await (async () => {
+        if (options.session) return options.session
+        const threadId = options.thread
+        if (!threadId) return null
+        return getThreadSession(threadId)
+      })()
+      if (!sessionId) {
+        cliLogger.error(
+          options.thread
+            ? `No OpenCode session found for thread: ${options.thread}`
+            : 'Provide --session <sessionId> or --thread <threadId>',
+        )
+        process.exit(EXIT_NO_RESTART)
+      }
+
+      const directory = await resolveSessionDirectoryFromDatabase({
+        sessionId,
+      })
+      if (directory instanceof Error) {
+        cliLogger.error(directory.message)
+        process.exit(EXIT_NO_RESTART)
+      }
+
+      const serverResult = await initializeOpencodeForDirectory(directory)
+      if (serverResult instanceof Error) {
+        cliLogger.error(`Failed to initialize OpenCode: ${serverResult.message}`)
+        process.exit(EXIT_NO_RESTART)
+      }
+
+      const updateResult = await serverResult()
+        .session.update({
+          sessionID: sessionId,
+          title: trimmedTitle,
+        })
+        .catch((e) =>
+          new OpenCodeSdkError({ operation: 'session.update', cause: e }),
+        )
+      if (updateResult instanceof Error) {
+        cliLogger.error(updateResult.message)
+        process.exit(EXIT_NO_RESTART)
+      }
+      if (updateResult.error) {
+        cliLogger.error('OpenCode rejected the session title update')
+        process.exit(EXIT_NO_RESTART)
+      }
+
+      note(`Updated OpenCode title: ${trimmedTitle}`, 'Title updated')
       process.exit(0)
     } catch (error) {
       cliLogger.error(

@@ -55,6 +55,22 @@ export async function chooseAvailableLockPort({ key }: { key: string }) {
   }
   throw new Error('No available test lock port in 53000-54999')
 }
+
+/**
+ * Normalize the wall-clock duration token inside run-footer messages so
+ * inline snapshots do not flake on machine speed. The footer shape is
+ * `*project ⋅ <branch> ⋅ <duration> ⋅ <context>% ⋅ <model> ⋅ **<agent>*** <@id>`
+ * where <duration> renders as `<1s` (sub-second), `1s`, `2s`, `1m 30s`, ...
+ * depending on how long the turn took. Only the duration token between the
+ * branch and the context-percent segments is rewritten — model, agent,
+ * branch, and context assertions stay exact.
+ */
+export function normalizeFooterDuration(text: string): string {
+  return text.replace(
+    /( ⋅ )(?:<1s|\d+(?:\.\d+)?ms|\d+(?:\.\d+)?s|\d+m \d+s|\d+m)( ⋅ \d+% ⋅ )/g,
+    '$1<1s$2',
+  )
+}
 /**
  * Initialize a git repo with a `main` branch and empty initial commit.
  * E2e tests create project directories under tmp/ which inherit the parent
@@ -73,7 +89,12 @@ export function initTestGitRepo(directory: string): void {
   execSync('git commit --allow-empty -m "init"', { cwd: directory, stdio: 'pipe' })
 }
 
-import type { DigitalDiscord } from 'discord-digital-twin/src'
+import {
+  getMessageVisibleText,
+  type DigitalDiscord,
+} from 'discord-digital-twin/src'
+
+export { getMessageVisibleText }
 import {
   getOpencodeClient,
   initializeOpencodeForDirectory,
@@ -83,7 +104,12 @@ import {
   type ThreadRunState,
 } from './session-handler/thread-runtime-state.js'
 
-const MAX_VITEST_WAIT_TIMEOUT_MS = 10_000
+// MAX raised 10s → 20s for #20: on a loaded win32 host (parallel agent
+// sessions), the FIRST opencode turn of a suite — session create + config
+// + agent discovery + deterministic-provider TS transpile — can exceed
+// 10s before any bot output appears, starving the early tests' waits.
+// Only failing waits ever burn the full budget, so green runs pay nothing.
+const MAX_VITEST_WAIT_TIMEOUT_MS = 20_000
 
 // LESSON: the deterministic provider answers instantly, but the FIRST turn
 // against a freshly booted opencode server still costs 2-4s: session create,
@@ -210,7 +236,7 @@ export async function waitForBotReplyAfterUserMessage({
     const userMessageIndex = messages.findIndex((message) => {
       return (
         message.author.id === userId &&
-        message.content.includes(userMessageIncludes)
+        getMessageVisibleText(message).includes(userMessageIncludes)
       )
     })
     const botReplyIndex = messages.findIndex((message, index) => {
@@ -265,7 +291,7 @@ export async function waitForBotMessageContaining({
         return messages.findLastIndex((message) => {
           return (
             message.author.id === userId &&
-            message.content.includes(afterUserMessageIncludes)
+            getMessageVisibleText(message).includes(afterUserMessageIncludes)
           )
         })
       }
@@ -285,7 +311,7 @@ export async function waitForBotMessageContaining({
       }
       return (
         message.author.id === discord.botUserId &&
-        message.content.includes(text)
+        getMessageVisibleText(message).includes(text)
       )
     })
     if (match) {
@@ -299,7 +325,7 @@ export async function waitForBotMessageContaining({
     .slice(-12)
     .map((message) => {
       const role = message.author.id === discord.botUserId ? 'bot' : 'user'
-      return `${role}: ${message.content.slice(0, 120)}`
+      return `${role}: ${getMessageVisibleText(message).slice(0, 120)}`
     })
     .join('\n')
   throw new Error(
@@ -339,7 +365,7 @@ export async function waitForMessageById({
   )
 }
 
-function isFooterMessage({
+export function isFooterMessage({
   message,
   botUserId,
 }: {
@@ -349,10 +375,16 @@ function isFooterMessage({
   if (message.author.id !== botUserId) {
     return false
   }
-  if (!message.content.startsWith('*')) {
+  const content = message.content.startsWith('> ')
+    ? message.content.slice(2)
+    : message.content
+  if (!content.startsWith('*')) {
     return false
   }
-  return message.content.includes('⋅')
+  if (content.startsWith('*using ')) {
+    return false
+  }
+  return content.includes('⋅')
 }
 
 /**
@@ -380,7 +412,7 @@ export async function waitForFooterMessage({
     lastMessages = messages
     const afterIndex = afterMessageIncludes
       ? messages.findLastIndex((message) => {
-          if (!message.content.includes(afterMessageIncludes)) {
+          if (!getMessageVisibleText(message).includes(afterMessageIncludes)) {
             return false
           }
           if (!afterAuthorId) {
@@ -413,7 +445,7 @@ export async function waitForFooterMessage({
     .slice(-12)
     .map((message) => {
       const role = message.author.id === discord.botUserId ? 'bot' : 'user'
-      return `${role}: ${message.content.slice(0, 120)}`
+      return `${role}: ${getMessageVisibleText(message).slice(0, 120)}`
     })
     .join('\n')
   const anchorText = afterMessageIncludes || 'start'

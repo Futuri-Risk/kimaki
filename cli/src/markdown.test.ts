@@ -133,6 +133,10 @@ beforeAll(async () => {
   await client.session.promptAsync({
     sessionID,
     directory: directories.projectDirectory,
+    model: {
+      providerID: 'deterministic-provider',
+      modelID: 'deterministic-v2',
+    },
     parts: [{ type: 'text', text: 'hello markdown test' }],
   })
 
@@ -173,6 +177,10 @@ beforeAll(async () => {
   await client.session.promptAsync({
     sessionID: toolSessionID,
     directory: directories.projectDirectory,
+    model: {
+      providerID: 'deterministic-provider',
+      modelID: 'deterministic-v2',
+    },
     parts: [{ type: 'text', text: 'use a tool please' }],
   })
 
@@ -205,7 +213,19 @@ afterAll(async () => {
   }
   await stopOpencodeServer()
   if (directories) {
-    fs.rmSync(directories.dataDir, { recursive: true, force: true })
+    // win32: a just-stopped opencode server can hold the data dir past
+    // bounded retries. All assertions have already run — a leftover temp dir
+    // (swept with the workspace tmp) must not fail the suite.
+    try {
+      fs.rmSync(directories.dataDir, {
+        recursive: true,
+        force: true,
+        maxRetries: 10,
+        retryDelay: 100,
+      })
+    } catch {
+      // best-effort on win32
+    }
   }
 }, 5_000)
 
@@ -243,7 +263,9 @@ test('generate markdown with system info', async () => {
   expect(markdown).toContain('## Conversation')
   expect(markdown).toContain('### 👤 User')
   expect(markdown).toContain('hello markdown test')
-  expect(markdown).toContain('### 🤖 Assistant')
+  expect(markdown).toContain(
+    '### 🤖 Assistant (deterministic-provider/deterministic-v2)',
+  )
   expect(markdown).toContain('Hello! This is a deterministic markdown test response.')
   expect(markdown).toContain('**Started using deterministic-provider/deterministic-v2**')
 
@@ -264,7 +286,7 @@ test('generate markdown with system info', async () => {
     hello markdown test
 
 
-    ### 🤖 Assistant (deterministic-v2)
+    ### 🤖 Assistant (deterministic-provider/deterministic-v2)
 
     **Started using deterministic-provider/deterministic-v2**
 
@@ -301,7 +323,7 @@ test('generate markdown without system info', async () => {
     hello markdown test
 
 
-    ### 🤖 Assistant (deterministic-v2)
+    ### 🤖 Assistant (deterministic-provider/deterministic-v2)
 
     **Started using deterministic-provider/deterministic-v2**
 

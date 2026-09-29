@@ -5,7 +5,6 @@
 import { describe, test, expect } from 'vitest'
 import {
   deriveThreadNameFromSessionTitle,
-  deriveThreadRenameFromSessionUpdate,
 } from './session-handler/thread-session-runtime.js'
 
 describe('deriveThreadNameFromSessionTitle', () => {
@@ -98,6 +97,42 @@ describe('deriveThreadNameFromSessionTitle', () => {
     ).toMatchInlineSnapshot(`undefined`)
   })
 
+  test('ignores a title containing only OpenCode callout markup', () => {
+    expect(
+      deriveThreadNameFromSessionTitle({
+        sessionTitle: '<callout accent="#ef4444">',
+        currentName: 'Useful existing title',
+      }),
+    ).toMatchInlineSnapshot(`undefined`)
+  })
+
+  test('ignores paired OpenCode callout markup with no title text', () => {
+    expect(
+      deriveThreadNameFromSessionTitle({
+        sessionTitle: '<callout accent="#ef4444"></callout>',
+        currentName: 'Useful existing title',
+      }),
+    ).toMatchInlineSnapshot(`undefined`)
+  })
+
+  test('keeps useful text while removing OpenCode callout wrappers', () => {
+    expect(
+      deriveThreadNameFromSessionTitle({
+        sessionTitle: '<callout accent="#ef4444">Useful title</callout>',
+        currentName: 'seed',
+      }),
+    ).toMatchInlineSnapshot(`"Useful title"`)
+  })
+
+  test('preserves a thread prefix around a multiline uppercase callout', () => {
+    expect(
+      deriveThreadNameFromSessionTitle({
+        sessionTitle: '<CALLOUT icon="info">\nUseful title\n</CALLOUT>',
+        currentName: 'btw: original title',
+      }),
+    ).toMatchInlineSnapshot(`"btw: Useful title"`)
+  })
+
   test('preserves btw: prefix from current name', () => {
     expect(
       deriveThreadNameFromSessionTitle({
@@ -116,6 +151,24 @@ describe('deriveThreadNameFromSessionTitle', () => {
     ).toMatchInlineSnapshot(`"Fork: Forked task title"`)
   })
 
+  test('does not double a worktree prefix copied from the Discord thread name', () => {
+    expect(
+      deriveThreadNameFromSessionTitle({
+        sessionTitle: '⬦ Fix queue draining',
+        currentName: '⬦ Old name',
+      }),
+    ).toMatchInlineSnapshot(`"⬦ Fix queue draining"`)
+  })
+
+  test('preserves the worktree prefix', () => {
+    expect(
+      deriveThreadNameFromSessionTitle({
+        sessionTitle: 'Refactor queue',
+        currentName: '⬦ old worktree title',
+      }),
+    ).toMatchInlineSnapshot(`"⬦ Refactor queue"`)
+  })
+
   test('returns undefined for null/undefined title', () => {
     expect(
       deriveThreadNameFromSessionTitle({
@@ -129,52 +182,5 @@ describe('deriveThreadNameFromSessionTitle', () => {
         currentName: 'seed',
       }),
     ).toMatchInlineSnapshot(`undefined`)
-  })
-})
-
-describe('deriveThreadRenameFromSessionUpdate', () => {
-  test('skips auto-rename after the thread differs from the persisted synced name', () => {
-    expect(
-      deriveThreadRenameFromSessionUpdate({
-        sessionTitle: 'New OpenCode title',
-        currentName: 'custom name from user',
-        lastSyncedName: 'Old OpenCode title',
-      }),
-    ).toMatchInlineSnapshot(`
-      {
-        "desiredName": null,
-        "nextSyncedName": "Old OpenCode title",
-      }
-    `)
-  })
-
-  test('returns desired name while thread still matches the persisted synced name', () => {
-    expect(
-      deriveThreadRenameFromSessionUpdate({
-        sessionTitle: 'New OpenCode title',
-        currentName: 'Old OpenCode title',
-        lastSyncedName: 'Old OpenCode title',
-      }),
-    ).toMatchInlineSnapshot(`
-      {
-        "desiredName": "New OpenCode title",
-        "nextSyncedName": "New OpenCode title",
-      }
-    `)
-  })
-
-  test('remembers a no-op matching title as synced for later manual rename detection', () => {
-    expect(
-      deriveThreadRenameFromSessionUpdate({
-        sessionTitle: 'Old OpenCode title',
-        currentName: 'Old OpenCode title',
-        lastSyncedName: null,
-      }),
-    ).toMatchInlineSnapshot(`
-      {
-        "desiredName": null,
-        "nextSyncedName": "Old OpenCode title",
-      }
-    `)
   })
 })

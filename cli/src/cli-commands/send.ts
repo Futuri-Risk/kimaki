@@ -26,10 +26,11 @@ import { ShareMarkdown } from '../markdown.js'
 import { parseSessionSearchPattern, findFirstSessionSearchHit, buildSessionSearchSnippet, getPartSearchTexts } from '../session-search.js'
 import { formatWorktreeName, formatAutoWorktreeName } from '../commands/new-worktree.js'
 import { WORKTREE_PREFIX } from '../commands/merge-worktree.js'
+import { QUEUE_PREFIX } from '../message-formatting.js'
 import type { ThreadStartMarker } from '../system-message.js'
 import { buildOpencodeEventLogLine } from '../session-handler/opencode-session-event-log.js'
 import { createDiscordRest } from '../discord-urls.js'
-import { archiveThread, uploadFilesToDiscord, stripMentions } from '../discord-utils.js'
+import { archiveThread, ensureThreadMember, uploadFilesToDiscord, stripMentions } from '../discord-utils.js'
 import { setDataDir, setProjectsDir, getDataDir, getProjectsDir } from '../config.js'
 import { execAsync, resolveSessionWorkingDirectory, isGitRepositoryRoot } from '../worktrees.js'
 import { upgrade, getCurrentVersion } from '../upgrade.js'
@@ -47,6 +48,7 @@ import {
   resolveDiscordUserOption,
   sendDiscordMessageWithOptionalAttachment,
 } from '../cli-runner.js'
+import { validateCliModelOption } from '../session-handler/model-utils.js'
 
 const cliLogger = createLogger(LogPrefix.CLI)
 const cli = goke()
@@ -111,6 +113,14 @@ cli
     '--send-at <schedule>',
     'Schedule send for future (UTC ISO date/time ending in Z, or cron expression)',
   )
+  .option(
+    '--pre-run <command>',
+    'Run a shell command in the project before starting a scheduled task',
+  )
+  .option(
+    '--allow-concurrency',
+    'Allow concurrent sessions from the same scheduled task',
+  )
   .option('--thread <threadId>', 'Post prompt to an existing thread')
   .option(
     '--session <sessionId>',
@@ -143,6 +153,11 @@ cli
 
         const existingThreadMode = Boolean(threadId || sessionId)
 
+        if ((options.preRun || options.allowConcurrency) && !sendAt) {
+          cliLogger.error('--pre-run and --allow-concurrency require --send-at')
+          process.exit(EXIT_NO_RESTART)
+        }
+
         if (threadId && sessionId) {
           cliLogger.error('Use either --thread or --session, not both')
           process.exit(EXIT_NO_RESTART)
@@ -162,6 +177,14 @@ cli
 
         if (!prompt) {
           cliLogger.error('Prompt is required. Use --prompt <prompt>')
+          process.exit(EXIT_NO_RESTART)
+        }
+
+        const earlyModelCheck = await validateCliModelOption({
+          model: options.model,
+        })
+        if (earlyModelCheck instanceof Error) {
+          cliLogger.error(earlyModelCheck.message)
           process.exit(EXIT_NO_RESTART)
         }
 
@@ -266,9 +289,6 @@ cli
           }
           if (name) {
             incompatibleFlags.push('--name')
-          }
-          if (options.user) {
-            incompatibleFlags.push('--user')
           }
 
           if (incompatibleFlags.length > 0) {
@@ -455,12 +475,34 @@ cli
             throw new Error(`Thread has no parent channel: ${targetThreadId}`)
           }
 
+          // Adding the user as a thread member is what makes the thread appear
+          // in their Discord left sidebar. Without it a scheduled reminder posts
+          // into a thread the user may have already left or never joined, so
+          // they never see it.
+          const threadTargetUser = await resolveDiscordUserOption({
+            user: options.user,
+            guildId: threadData.guild_id,
+            rest,
+          })
+          if (threadTargetUser instanceof Error) {
+            cliLogger.error(threadTargetUser.message)
+            process.exit(EXIT_NO_RESTART)
+          }
+
           // channelConfig is optional: in CI/headless environments the local DB
           // has no channel_directories rows because the bot hasn't synced yet.
           // The running bot on the other end resolves the directory from its own DB.
           // We only require it for features that genuinely need a local directory
           // (scheduled tasks and --wait).
           const channelConfig = await getChannelDirectory(threadData.parent_id)
+          const threadModelCheck = await validateCliModelOption({
+            model: options.model,
+            directory: channelConfig?.directory,
+          })
+          if (threadModelCheck instanceof Error) {
+            cliLogger.error(threadModelCheck.message)
+            process.exit(EXIT_NO_RESTART)
+          }
 
           // Guard early: fail before sending the message if a feature that
           // needs local project directory mapping is requested.
@@ -479,11 +521,13 @@ cli
               prompt,
               agent: options.agent || null,
               model: options.model || null,
-              username: null,
-              userId: null,
+              username: threadTargetUser?.username || null,
+              userId: threadTargetUser?.id || null,
               permissions: options.permission?.length ? options.permission : null,
               injectionGuardPatterns: options.injectionGuard?.length ? options.injectionGuard : null,
               parentSessionId: options.parentSession || null,
+              preRunCommand: options.preRun || null,
+              allowConcurrency: Boolean(options.allowConcurrency),
             }
             const taskId = await createScheduledTask({
               scheduleKind: parsedSchedule.scheduleKind,
@@ -511,6 +555,10 @@ cli
 
           const threadPromptMarker: ThreadStartMarker = {
             start: true,
+            ...(threadTargetUser && {
+              userId: threadTargetUser.id,
+              ...(threadTargetUser.username && { username: threadTargetUser.username }),
+            }),
             ...(options.agent && { agent: options.agent }),
             ...(options.model && { model: options.model }),
             ...(options.permission?.length ? { permissions: options.permission } : {}),
@@ -527,7 +575,22 @@ cli
           // Prefix the prompt so it's clear who sent it (matches /queue format).
           // Use a newline between prefix and prompt so leading /command
           // detection can find the command on its own line.
-          const prefixedPrompt = `» **kimaki-cli:**\n${prompt}`
+          const prefixedPrompt = `${QUEUE_PREFIX}**kimaki-cli:**\n${prompt}`
+
+          if (threadTargetUser) {
+            cliLogger.log(
+              `Adding user ${threadTargetUser.username || threadTargetUser.id} to thread...`,
+            )
+            const addMemberResult = await ensureThreadMember({
+              rest,
+              threadId: targetThreadId,
+              userId: threadTargetUser.id,
+            })
+            if (addMemberResult instanceof Error) {
+              cliLogger.error(addMemberResult.message)
+              process.exit(EXIT_NO_RESTART)
+            }
+          }
 
           await sendDiscordMessageWithOptionalAttachment({
             channelId: targetThreadId,
@@ -583,6 +646,14 @@ cli
         // (--send-at, --wait, --cwd).
         const channelConfig = await getChannelDirectory(channelData.id)
         const projectDirectory = channelConfig?.directory
+        const channelModelCheck = await validateCliModelOption({
+          model: options.model,
+          directory: projectDirectory,
+        })
+        if (channelModelCheck instanceof Error) {
+          cliLogger.error(channelModelCheck.message)
+          process.exit(EXIT_NO_RESTART)
+        }
 
         // Features that require a local project directory mapping
         const needsProjectDirectory = Boolean(parsedSchedule || options.wait || options.cwd)
@@ -665,6 +736,8 @@ cli
             permissions: options.permission?.length ? options.permission : null,
             injectionGuardPatterns: options.injectionGuard?.length ? options.injectionGuard : null,
             parentSessionId: options.parentSession || null,
+            preRunCommand: options.preRun || null,
+            allowConcurrency: Boolean(options.allowConcurrency),
           }
           const taskId = await createScheduledTask({
             scheduleKind: parsedSchedule.scheduleKind,
@@ -696,8 +769,8 @@ cli
               ...(worktreeName && { worktree: worktreeName }),
               ...(resolvedCwd && { cwd: resolvedCwd }),
               ...(resolvedUser && {
-                username: resolvedUser.username,
                 userId: resolvedUser.id,
+                ...(resolvedUser.username && { username: resolvedUser.username }),
               }),
               ...(options.agent && { agent: options.agent }),
               ...(options.model && { model: options.model }),
@@ -747,7 +820,9 @@ cli
 
         // Add user to thread if specified
         if (resolvedUser) {
-          cliLogger.log(`Adding user ${resolvedUser.username} to thread...`)
+          cliLogger.log(
+            `Adding user ${resolvedUser.username || resolvedUser.id} to thread...`,
+          )
           await rest.put(Routes.threadMembers(threadData.id, resolvedUser.id))
         }
 

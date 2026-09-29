@@ -1,6 +1,7 @@
 // Message pre-processing pipeline for incoming Discord messages.
 // Extracts prompt text, voice transcription, file/text attachments, and
 // session context from a Discord Message before handing off to the runtime.
+// Voice side/fresh-chat requests dispatch to separate threads instead.
 //
 // This module exists so discord-bot.ts stays a thin event router and the
 // expensive async work (voice transcription, context fetch, attachment
@@ -11,6 +12,7 @@ import type { Message, ThreadChannel } from 'discord.js'
 import { DiscordOperationError, OpenCodeSdkError } from './errors.js'
 import type { DiscordFileAttachment } from './message-formatting.js'
 import type { PreprocessResult } from './session-handler/thread-session-runtime.js'
+import { getOrCreateRuntime } from './session-handler/thread-session-runtime.js'
 import type { AgentInfo, RepliedMessageContext } from './system-message.js'
 import {
   resolveMentions,
@@ -19,12 +21,14 @@ import {
 } from './message-formatting.js'
 import { processVoiceAttachment } from './voice-handler.js'
 import { isVoiceAttachment } from './voice-attachment.js'
-import {
-  buildExternalDirectoryPermissionRules,
-  initializeOpencodeForDirectory,
-} from './opencode.js'
+import { initializeOpencodeForDirectory } from './opencode.js'
 import { getCompactSessionContext, getLastSessionId } from './markdown.js'
-import { getThreadSession, listTrackedTextChannels } from './database.js'
+import { getThreadSession, getThreadWorktreeOrWorkspace } from './database.js'
+import { isZcodeSessionId } from './agent/registry.js'
+import { resolveWorkingDirectory, resolveTextChannel, sendThreadMessage } from './discord-utils.js'
+import { forkSessionToBtwThread } from './commands/btw.js'
+import { createNewSessionThread } from './commands/session.js'
+import type { TranscriptionResult } from './voice.js'
 import * as errore from 'errore'
 import { createLogger, LogPrefix } from './logger.js'
 import { notifyError } from './sentry.js'
@@ -34,6 +38,96 @@ const voiceLogger = createLogger(LogPrefix.VOICE)
 
 export const VOICE_MESSAGE_TRANSCRIPTION_PREFIX =
   'Voice message transcription from Discord user:\n'
+
+// Dispatch before returning a prompt so the source runtime never receives the side request.
+async function routeVoiceSession({
+  voiceResult,
+  message,
+  thread,
+  appId,
+}: {
+  voiceResult: TranscriptionResult | null
+  message: Message
+  thread: ThreadChannel
+  appId?: string
+}): Promise<boolean> {
+  if (!voiceResult?.sessionAction) return false
+  const resolved = await resolveWorkingDirectory({ channel: thread })
+  if (!resolved) {
+    await sendThreadMessage(thread, 'Could not determine project directory. Use /add-project to configure it, then retry.')
+    return true
+  }
+  const images = await getFileAttachments(message)
+  const textAttachments = await getTextAttachments(message)
+  const caption = resolveMentions(message).trim()
+  const prompt = [caption, voiceResult.transcription, textAttachments]
+    .filter((part) => part?.trim())
+    .join('\n\n')
+  const modelPrompt = [caption, `${VOICE_MESSAGE_TRANSCRIPTION_PREFIX}${voiceResult.transcription}`, textAttachments]
+    .filter((part) => part?.trim())
+    .join('\n\n')
+  if (voiceResult.sessionAction === 'btw') {
+    const result = await forkSessionToBtwThread({
+      sourceThread: thread,
+      projectDirectory: resolved.projectDirectory,
+      sdkDirectory: resolved.workingDirectory,
+      prompt,
+      modelPrompt,
+      images,
+      agent: voiceResult.agent,
+      userId: message.author.id,
+      username: message.member?.displayName || message.author.displayName,
+      appId,
+    })
+      .catch((cause) => new DiscordOperationError({ operation: 'forkVoiceSession', cause }))
+    if (result instanceof Error) {
+      logger.error('Voice side chat failed:', result)
+      await sendThreadMessage(thread, `${result.message}. Start a session first, then retry with /btw.`)
+      return true
+    }
+    await sendThreadMessage(thread, `Session forked! Continue in ${result.thread.toString()}`)
+    return true
+  }
+  const textChannel = await resolveTextChannel(thread)
+  if (!textChannel) {
+    await sendThreadMessage(thread, 'Could not resolve parent text channel. Retry /new-session in the project channel.')
+    return true
+  }
+  const result = await createNewSessionThread({
+    textChannel,
+    projectDirectory: resolved.projectDirectory,
+    prompt,
+    userId: message.author.id,
+    sourceWorkspace: await getThreadWorktreeOrWorkspace(thread.id),
+  }).catch((cause) => new DiscordOperationError({ operation: 'createVoiceSessionThread', cause }))
+  if (result instanceof Error) {
+    logger.error('Voice new session failed:', result)
+    await sendThreadMessage(thread, `${result.message}. Retry with /new-session.`)
+    return true
+  }
+  await sendThreadMessage(thread, `Created new session in ${result.toString()}`)
+  const runtime = getOrCreateRuntime({
+    threadId: result.id,
+    thread: result,
+    projectDirectory: resolved.projectDirectory,
+    sdkDirectory: resolved.workingDirectory,
+    channelId: textChannel.id,
+    appId,
+  })
+  await runtime.enqueueIncoming({
+    prompt: modelPrompt,
+    images,
+    agent: voiceResult.agent,
+    userId: message.author.id,
+    username: message.member?.displayName || message.author.displayName,
+    appId,
+    mode: 'opencode',
+  }).catch(async (error) => {
+    logger.error('Voice session dispatch failed:', error)
+    await sendThreadMessage(result, 'Could not send the request to OpenCode. Send your request again in this thread.')
+  })
+  return true
+}
 
 /** Fetch available agents from OpenCode for voice transcription agent selection. */
 async function fetchAvailableAgents(
@@ -72,6 +166,23 @@ export function extractQueueSuffix(prompt: string): { prompt: string; forceQueue
     return { prompt, forceQueue: false }
   }
   return { prompt: prompt.replace(QUEUE_SUFFIX_RE, '').trimEnd(), forceQueue: true }
+}
+
+/**
+ * Backend plan for preprocessing an existing-thread message (ZK-005).
+ * A zc: session must never hydrate OpenCode context (no client init, no session
+ * context, no agent list) and must not be routed through OpenCode voice
+ * side-session creation — OpenCode fallback is prohibited for native sessions.
+ */
+export function resolvePreprocessBackendPlan(sessionId: string | null): {
+  backend: 'opencode' | 'zcode'
+  hydrateOpencodeContext: boolean
+  allowVoiceSideSessions: boolean
+} {
+  if (sessionId !== null && isZcodeSessionId(sessionId)) {
+    return { backend: 'zcode', hydrateOpencodeContext: false, allowVoiceSideSessions: false }
+  }
+  return { backend: 'opencode', hydrateOpencodeContext: true, allowVoiceSideSessions: true }
 }
 
 function shouldSkipEmptyPrompt({
@@ -136,32 +247,6 @@ async function getRepliedMessageContext({
   }
 }
 
-export async function getChannelReferencePermissionRules({
-  message,
-}: {
-  message: Message
-}) {
-  const channelIds = [...message.mentions.channels.keys()]
-  if (channelIds.length === 0) {
-    return []
-  }
-
-  const mentionedChannelIds = new Set(channelIds)
-  const referencedChannels = (await listTrackedTextChannels()).filter((channel) => {
-    return mentionedChannelIds.has(channel.channel_id)
-  })
-  const resolvedDirectories = new Set(
-    referencedChannels.map((channel) => channel.directory.replaceAll('\\', '/')),
-  )
-
-  return [...resolvedDirectories].flatMap((directory) => {
-    return buildExternalDirectoryPermissionRules({
-      resolvedPattern: directory,
-      action: 'allow',
-    })
-  })
-}
-
 /**
  * Pre-process a message in an existing thread (thread already has a session or
  * needs a new one). Handles voice transcription, text/file attachments, and
@@ -203,6 +288,8 @@ export async function preprocessExistingThreadMessage({
 
   // ── Existing session path ──
   voiceLogger.log(`[SESSION] Found session ${sessionId} for thread ${thread.id}`)
+  // ZK-005: native sessions never initialize OpenCode for enrichment or voice routing.
+  const backendPlan = resolvePreprocessBackendPlan(sessionId)
 
   let messageContent = isCliInjected
     ? (message.content || '')
@@ -214,7 +301,7 @@ export async function preprocessExistingThreadMessage({
   let lastSessionContext: string | undefined
   let agents: AgentInfo[] = []
 
-  if (projectDirectory) {
+  if (projectDirectory && backendPlan.hydrateOpencodeContext) {
     try {
       const getClient = await initializeOpencodeForDirectory(
         projectDirectory,
@@ -274,8 +361,16 @@ export async function preprocessExistingThreadMessage({
     currentSessionContext,
     lastSessionContext,
     agents,
+    canForkSession: backendPlan.allowVoiceSideSessions,
   })
-  const permissionRules = await getChannelReferencePermissionRules({ message })
+  if (voiceResult instanceof Error) {
+    voiceLogger.warn('Voice request not dispatched:', voiceResult)
+    return { prompt: '', mode: 'opencode', skip: true }
+  }
+  // ZK-005: native sessions never route through OpenCode voice side-session creation.
+  if (backendPlan.allowVoiceSideSessions && (await routeVoiceSession({ voiceResult, message, thread, appId }))) {
+    return { prompt: '', mode: 'opencode', skip: true }
+  }
   if (voiceResult) {
     messageContent = `${VOICE_MESSAGE_TRANSCRIPTION_PREFIX}${voiceResult.transcription}`
   }
@@ -311,7 +406,6 @@ export async function preprocessExistingThreadMessage({
     prompt,
     images: fileAttachments.length > 0 ? fileAttachments : undefined,
     repliedMessage,
-    permissionRules,
     mode: qs.forceQueue || voiceResult?.queueMessage ? 'local-queue' : 'opencode',
     agent: voiceResult?.agent,
   }
@@ -351,7 +445,6 @@ export async function preprocessNewSessionMessage({
 
   let prompt = resolveMentions(message)
   const repliedMessage = await getRepliedMessageContext({ message })
-  const permissionRules = await getChannelReferencePermissionRules({ message })
   const voiceResult = await processVoiceAttachment({
     message,
     thread,
@@ -359,6 +452,13 @@ export async function preprocessNewSessionMessage({
     appId,
     agents,
   })
+  if (voiceResult instanceof Error) {
+    voiceLogger.warn('Voice request not dispatched:', voiceResult)
+    return { prompt: '', mode: 'opencode', skip: true }
+  }
+  if (await routeVoiceSession({ voiceResult, message, thread, appId })) {
+    return { prompt: '', mode: 'opencode', skip: true }
+  }
   if (voiceResult) {
     prompt = `${VOICE_MESSAGE_TRANSCRIPTION_PREFIX}${voiceResult.transcription}`
   }
@@ -412,7 +512,6 @@ export async function preprocessNewSessionMessage({
     prompt: finalPrompt,
     images: fileAttachments.length > 0 ? fileAttachments : undefined,
     repliedMessage,
-    permissionRules,
     mode: qs.forceQueue || voiceResult?.queueMessage ? 'local-queue' : 'opencode',
     agent: voiceResult?.agent,
   }
@@ -449,7 +548,6 @@ export async function preprocessNewThreadMessage({
 
   let messageContent = resolveMentions(message)
   const repliedMessage = await getRepliedMessageContext({ message })
-  const permissionRules = await getChannelReferencePermissionRules({ message })
   const voiceResult = await processVoiceAttachment({
     message,
     thread,
@@ -458,6 +556,10 @@ export async function preprocessNewThreadMessage({
     appId,
     agents,
   })
+  if (voiceResult instanceof Error) {
+    voiceLogger.warn('Voice request not dispatched:', voiceResult)
+    return { prompt: '', mode: 'opencode', skip: true }
+  }
   if (voiceResult) {
     messageContent = `${VOICE_MESSAGE_TRANSCRIPTION_PREFIX}${voiceResult.transcription}`
   }
@@ -492,7 +594,6 @@ export async function preprocessNewThreadMessage({
     prompt,
     images: fileAttachments.length > 0 ? fileAttachments : undefined,
     repliedMessage,
-    permissionRules,
     mode: qs.forceQueue || voiceResult?.queueMessage ? 'local-queue' : 'opencode',
     agent: voiceResult?.agent,
   }

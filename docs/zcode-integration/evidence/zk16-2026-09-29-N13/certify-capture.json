@@ -1,0 +1,218 @@
+{
+  "startedAt": "2026-09-29T22:01:53.474Z",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "C:/Program Files/nodejs/node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+    "entrySha256": "fad4c35c4c36ec210d8a06d3fa0e77de23c8545e2eb6ff90aea1eb38d1e6275f",
+    "args": [
+      "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "C:/Users/Cody",
+      "ZCODE_DATA_BASE_DIR": "D:/Filen/Reference/Tech/AI/Claude/ZCode Data",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/config/provider/zcode-builtin.json"
+    },
+    "cwd": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-20260929-n09b-ws"
+  },
+  "rows": {
+    "session-setup": {
+      "skipped": "--session sess_a6760d17-e3fa-4288-b897-3560df5d52f6 unreadable",
+      "error": {
+        "code": "NATIVE_-32004",
+        "safeMessage": "Native RPC rejected the request.",
+        "phase": "control",
+        "effects": "possible",
+        "automaticTaskReplayAllowed": false
+      }
+    },
+    "N13": {
+      "description": "idle native compact",
+      "notRun": "SEED_TURN_FAILED",
+      "detail": "no turn-bearing session; seeding turn was not accepted. No compact attempted.",
+      "seed": {
+        "reused": false,
+        "seededBy": "N13",
+        "send": {
+          "at": "2026-09-29T22:01:54.719Z",
+          "method": "session/send",
+          "params": {
+            "sessionId": "sess_a6760d17-e3fa-4288-b897-3560df5d52f6",
+            "content": "zk16-n13 seed 1790719314717: create a file named SENTINEL-N13.txt containing exactly the word ok. Do nothing else."
+          },
+          "ms": 1,
+          "error": {
+            "code": "NATIVE_-32004",
+            "safeMessage": "Native RPC rejected the request.",
+            "phase": "control",
+            "effects": "possible",
+            "automaticTaskReplayAllowed": false
+          }
+        },
+        "settle": {
+          "sawRunning": false,
+          "runningAtMs": null,
+          "sawTerminal": false,
+          "withinMs": 20234,
+          "baseline": {
+            "turnCount": 0,
+            "stateRevision": 0
+          }
+        },
+        "permissionsAnswered": 0,
+        "sentinel": {
+          "file": "SENTINEL-N13.txt",
+          "content": null
+        },
+        "turnCount": null
+      }
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/send"
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [],
+  "notifications": [
+    {
+      "at": 1790719314667,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "2fbec78b-2156-48a2-be33-5774381fb251",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1790719314668,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "2fbec78b-2156-48a2-be33-5774381fb251",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1790719314670,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "2fbec78b-2156-48a2-be33-5774381fb251",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 3
+      }
+    },
+    {
+      "at": 1790719314671,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "2fbec78b-2156-48a2-be33-5774381fb251",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 4
+      }
+    },
+    {
+      "at": 1790719314671,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "2fbec78b-2156-48a2-be33-5774381fb251",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 4
+      }
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 38884
+  },
+  "client": {
+    "generation": "05f4fbd0-5689-4207-9c24-1175dfcc42bf"
+  },
+  "sessionIdSource": "session/list (pre-existing)",
+  "secondRuntimeStops": [],
+  "stop": {
+    "ok": true,
+    "nativePid": 38884,
+    "nativePidLivenessAfterStop": "dead"
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}

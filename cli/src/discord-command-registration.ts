@@ -65,6 +65,32 @@ function truncateCommandDescription(description: string): string {
   return description.slice(0, 100)
 }
 
+export function buildQuickAgentSlashCommand({
+  commandName,
+  description,
+}: {
+  commandName: string
+  description: string
+}) {
+  return new SlashCommandBuilder()
+    .setName(commandName)
+    .setDescription(truncateCommandDescription(description))
+    .setDMPermission(false)
+    .addStringOption((opt) =>
+      opt
+        .setName('prompt')
+        .setDescription('Send a prompt with this agent')
+        .setRequired(false),
+    )
+    .addStringOption((opt) =>
+      opt
+        .setName('variant')
+        .setDescription('Model thinking level for this agent')
+        .setRequired(false)
+        .setAutocomplete(true),
+    )
+}
+
 export async function registerCommands({
   token,
   appId,
@@ -175,8 +201,22 @@ export async function registerCommands({
     new SlashCommandBuilder()
       .setName('merge-worktree')
       .setDescription(
-        truncateCommandDescription('Squash-merge worktree into default branch. Aborts if main has uncommitted changes.'),
+        truncateCommandDescription('Merge worktree commits into the default branch'),
       )
+      .addStringOption((option) => {
+        option
+          .setName('strategy')
+          .setDescription(
+            truncateCommandDescription('How to merge commits (default: keep commits)'),
+          )
+          .setRequired(false)
+          .addChoices(
+            { name: 'Keep commits (rebase)', value: 'rebase' },
+            { name: 'Squash into one commit', value: 'squash' },
+          )
+
+        return option
+      })
       .addStringOption((option) => {
         option
           .setName('target-branch')
@@ -265,21 +305,6 @@ export async function registerCommands({
       .setDMPermission(false)
       .toJSON(),
     new SlashCommandBuilder()
-      .setName('add-dir')
-      .setDescription(
-        truncateCommandDescription('Allow the current session to access an extra directory or * for all folders'),
-      )
-      .addStringOption((option) => {
-        option
-          .setName('directory')
-          .setDescription(truncateCommandDescription('Directory to allow, resolved from the current worktree. Use * for all folders'))
-          .setRequired(false)
-
-        return option
-      })
-      .setDMPermission(false)
-      .toJSON(),
-    new SlashCommandBuilder()
       .setName('abort')
       .setDescription(truncateCommandDescription('Abort, stop, terminate, or cancel the current OpenCode request in this thread'))
       .setDMPermission(false)
@@ -334,6 +359,13 @@ export async function registerCommands({
       .setDMPermission(false)
       .toJSON(),
     new SlashCommandBuilder()
+      .setName('model-variant')
+      .setDescription(
+        truncateCommandDescription('Change thinking level for current model. Tied to the model; lost when you switch models'),
+      )
+      .setDMPermission(false)
+      .toJSON(),
+    new SlashCommandBuilder()
       .setName('login')
       .setDescription(
         truncateCommandDescription('Authenticate with an AI provider (OAuth or API key). Use this instead of /connect'),
@@ -357,6 +389,21 @@ export async function registerCommands({
           .setName('message')
           .setDescription(truncateCommandDescription('The message to queue'))
           .setRequired(true)
+
+        return option
+      })
+      .setDMPermission(false)
+      .toJSON(),
+    new SlashCommandBuilder()
+      .setName('clear-queue')
+      .setDescription(truncateCommandDescription('Clear all queued messages in this thread'))
+      .addIntegerOption((option) => {
+        option
+          .setName('position')
+          .setDescription(
+            truncateCommandDescription('1-based queued message position to clear (default: all)'),
+          )
+          .setMinValue(1)
 
         return option
       })
@@ -503,17 +550,7 @@ export async function registerCommands({
     })
 
     commands.push(
-      new SlashCommandBuilder()
-        .setName(commandName)
-        .setDescription(truncateCommandDescription(description))
-        .setDMPermission(false)
-        .addStringOption((opt) =>
-          opt
-            .setName('prompt')
-            .setDescription('Send a prompt with this agent')
-            .setRequired(false),
-        )
-        .toJSON(),
+      buildQuickAgentSlashCommand({ commandName, description }).toJSON(),
     )
   }
 

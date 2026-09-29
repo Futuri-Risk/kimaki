@@ -1,0 +1,365 @@
+{
+  "startedAt": "2026-09-18T14:24:26.342Z",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.15.0"
+  },
+  "profile": {
+    "executable": "C:/Program Files/nodejs/node.exe",
+    "executableSha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "entryPath": "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+    "entrySha256": "da61b0663336a65f7cce3dec223678794ccaa58158e304fc0d97b695434a8f01",
+    "args": [
+      "C:/Users/Cody/AppData/Local/Programs/ZCode/resources/glm/zcode.cjs",
+      "app-server"
+    ],
+    "environment": {
+      "HOME": "C:\\Users\\Cody",
+      "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE": "C:\\Users\\Cody\\AppData\\Local\\Programs\\ZCode\\resources\\config\\provider\\zcode-builtin.json"
+    },
+    "cwd": "C:\\Users\\Cody\\AppData\\Local\\Temp\\zk16-n05-0033"
+  },
+  "rows": {
+    "N02": {
+      "description": "session/create + identity readback",
+      "create": {
+        "at": "2026-09-18T14:24:28.392Z",
+        "method": "session/create",
+        "params": {
+          "workspace": {
+            "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-n05-0033",
+            "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-n05-0033"
+          },
+          "mode": "build"
+        },
+        "ms": 748,
+        "result": {
+          "messages": [],
+          "projection": {
+            "activeToolCalls": [],
+            "backgroundJobs": [],
+            "contextUsed": 0,
+            "contextWindow": 200000,
+            "mode": "build",
+            "pendingPermissions": [],
+            "sessionId": "unknown",
+            "status": "idle",
+            "target": null,
+            "totalTokenCount": 0,
+            "turnCount": 0
+          },
+          "protocol": {
+            "name": "ZCode Protocol",
+            "version": 1
+          },
+          "runtime": {
+            "eventSeq": 0,
+            "pendingRequestIds": [],
+            "goalVerifications": [],
+            "goalVerificationTimeline": [],
+            "stateRevision": 0
+          },
+          "session": {
+            "createdAt": 1789741468263,
+            "mode": "build",
+            "traceId": "942922c0-2747-4597-ac04-94f4b97eb04f",
+            "sessionId": "sess_da801aa3-70ff-4098-a4ad-e0d0537d8b74",
+            "sessionKind": "interactive",
+            "status": "idle",
+            "target": null,
+            "title": "",
+            "updatedAt": 1789741468263,
+            "workspace": {
+              "workspacePath": "~win\\AppData\\Local\\Temp\\zk16-n05-0033",
+              "workspaceKey": "~win\\AppData\\Local\\Temp\\zk16-n05-0033"
+            }
+          },
+          "settings": {
+            "mode": {
+              "current": "build"
+            },
+            "model": {
+              "available": []
+            },
+            "permission": {
+              "mode": "build"
+            },
+            "thoughtLevel": {
+              "available": [],
+              "enabled": false
+            }
+          },
+          "slashCommands": [
+            {
+              "description": "Show or set the current session goal.",
+              "inputHint": "/goal [pause|resume|clear|replace <objective>|<objective>]",
+              "name": "goal",
+              "source": "builtin"
+            },
+            {
+              "description": "Compact the current conversation with optional instructions.",
+              "inputHint": "/compact [instructions]",
+              "name": "compact",
+              "source": "builtin"
+            },
+            {
+              "description": "Create or update workspace AGENTS.md instructions.",
+              "inputHint": "/init [notes]",
+              "name": "init",
+              "source": "builtin"
+            },
+            {
+              "description": "Switch to Plan mode and optionally send a task.",
+              "inputHint": "/plan [task]",
+              "name": "plan",
+              "source": "builtin"
+            }
+          ],
+          "todos": [],
+          "todoGroups": []
+        }
+      },
+      "mode": "build"
+    },
+    "N05": {
+      "description": "session/setModel + readback (config only, no inference)",
+      "skipped": "no advertised model in session/read readback after 12s poll",
+      "pollTimeline": [
+        {
+          "atMs": 87,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 1178,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 2279,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 3391,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 4474,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 5578,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 6696,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 7812,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 8907,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 10019,
+          "available": 0,
+          "hasCurrent": false
+        },
+        {
+          "atMs": 11103,
+          "available": 0,
+          "hasCurrent": false
+        }
+      ],
+      "settingsModel": {
+        "available": []
+      }
+    }
+  },
+  "envelopeLog": [
+    {
+      "dir": "out",
+      "kind": "request",
+      "method": "session/create"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "startup/storageState"
+    },
+    {
+      "dir": "in",
+      "kind": "request",
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences"
+    },
+    {
+      "dir": "in",
+      "kind": "notification",
+      "method": "process/mcpTelemetry"
+    }
+  ],
+  "stderrTail": [],
+  "reverseRequests": [
+    {
+      "at": 1789741467992,
+      "id": "server-1",
+      "method": "session/requestRuntimePreferences",
+      "params": {
+        "sessionId": "sess_da801aa3-70ff-4098-a4ad-e0d0537d8b74",
+        "scope": "runtime-materialization"
+      }
+    }
+  ],
+  "notifications": [
+    {
+      "at": 1789741467928,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "922b5f78-b1df-4d44-b1fe-e639adf414a5",
+        "sequence": 1,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 0
+      }
+    },
+    {
+      "at": 1789741467929,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "922b5f78-b1df-4d44-b1fe-e639adf414a5",
+        "sequence": 2,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "elapsedMs": 1
+      }
+    },
+    {
+      "at": 1789741467933,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "922b5f78-b1df-4d44-b1fe-e639adf414a5",
+        "sequence": 3,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "checking",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0
+        },
+        "elapsedMs": 4
+      }
+    },
+    {
+      "at": 1789741467934,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "922b5f78-b1df-4d44-b1fe-e639adf414a5",
+        "sequence": 4,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "committing",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 5
+      }
+    },
+    {
+      "at": 1789741467934,
+      "method": "startup/storageState",
+      "params": {
+        "schemaVersion": 1,
+        "attemptId": "922b5f78-b1df-4d44-b1fe-e639adf414a5",
+        "sequence": 5,
+        "databaseId": "f51400f8b3a41779af83810b2e29145b66ab081d62f7bfb35b0685da8c6dfe8b",
+        "databaseKind": "session",
+        "phase": "ready",
+        "migration": {
+          "kind": "none",
+          "executedCount": 0,
+          "committedCount": 0,
+          "lastAppliedMigrationId": "0022_backfilled_session_reasoning"
+        },
+        "elapsedMs": 6
+      }
+    },
+    {
+      "at": 1789741472020,
+      "method": "process/mcpTelemetry",
+      "params": {
+        "arch": "x64",
+        "kind": "process_start",
+        "mcpId": "builtin:node_repl",
+        "mcpInstanceId": "a33cf118-fadd-4141-91da-87dcad5ef04a",
+        "mcpIsolation": "workspace",
+        "mcpSource": "builtin",
+        "occurredAt": 1789741472019,
+        "platform": "win32"
+      }
+    }
+  ],
+  "classification": "captured",
+  "redaction": "allowlisted: home paths -> ~; strings >512b truncated",
+  "launch": {
+    "ok": true,
+    "pid": 70064
+  },
+  "client": {
+    "generation": "0ca6a2ff-4090-4fd2-8d45-4237dbf3e160"
+  },
+  "sessionId": "sess_da801aa3-70ff-4098-a4ad-e0d0537d8b74",
+  "stop": {
+    "ok": true,
+    "nativePid": 70064,
+    "nativePidLivenessAfterStop": "dead"
+  },
+  "disconnected": {
+    "code": "PROCESS_EXITED",
+    "safeMessage": "Native connection closed; execution may be uncertain.",
+    "phase": "control",
+    "effects": "possible",
+    "automaticTaskReplayAllowed": false
+  }
+}

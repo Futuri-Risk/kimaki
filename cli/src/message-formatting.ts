@@ -10,18 +10,58 @@ export type DiscordFileAttachment = FilePartInput & {
   sourceUrl?: string
 }
 
+import fs from 'node:fs'
+import path from 'node:path'
 import { createLogger, LogPrefix } from './logger.js'
-import { FetchError } from './errors.js'
+import { FetchError, FilesystemOperationError } from './errors.js'
 import { processImage } from './image-utils.js'
 import { parsePatchFileCounts } from './patch-text-parser.js'
+import { getDataDir } from './config.js'
 
 // Generic message type compatible with both v1 and v2 SDK
 type GenericSessionMessage = {
-  info: { role: string; id?: string }
+  info: { role: string; id?: string; parentID?: string }
   parts: Part[]
 }
 
 const logger = createLogger(LogPrefix.FORMATTING)
+
+export const TOOL_PREFIX = '┣ '
+export const FILE_EDIT_PREFIX = '◼︎ '
+export const THINKING_PREFIX = '┣ '
+export const STATUS_PREFIX = '⬦ '
+export const QUEUE_PREFIX = '» '
+export const WORKTREE_PREFIX = STATUS_PREFIX
+
+/**
+ * Built-in read-only tools that are hidden in default verbosity mode.
+ * Any tool NOT in this list is considered "essential" and shown,
+ * which means custom tools, MCP tools, and plugin tools are visible by default.
+ */
+export const HIDDEN_READONLY_TOOLS = ['read', 'glob', 'grep', 'describe-media', 'todoread']
+
+/** Check if a tool part is "essential" (shown in text-and-essential-tools mode). */
+export function isEssentialToolName(toolName: string): boolean {
+  // Hide known read-only built-in tools; show everything else
+  // (custom tools, MCP tools, plugin tools are visible by default)
+  return !HIDDEN_READONLY_TOOLS.some((name) => {
+    return toolName === name || toolName.endsWith(`_${name}`)
+  })
+}
+
+export function isEssentialToolPart(part: Part): boolean {
+  if (part.type !== 'tool') {
+    return false
+  }
+  if (!isEssentialToolName(part.tool)) {
+    return false
+  }
+  if (part.tool === 'bash') {
+    const hasSideEffect = part.state.input?.hasSideEffect
+    return hasSideEffect !== false
+  }
+  return true
+}
 
 /**
  * Serialize Discord embeds into plain text so the AI model can read them.
@@ -81,9 +121,7 @@ export function serializePoll(poll: Poll | null): string {
  * Serialize forwarded message snapshots into plain text. Each snapshot is a
  * partial Message with content and embeds.
  */
-export function serializeMessageSnapshots(
-  snapshots: Message['messageSnapshots'],
-): string {
+export function serializeMessageSnapshots(snapshots: Message['messageSnapshots']): string {
   if (snapshots.size === 0) return ''
   const parts: string[] = []
   for (const [, snapshot] of snapshots) {
@@ -115,10 +153,7 @@ export function resolveMentions(message: Message): string {
   for (const [userId, user] of message.mentions.users) {
     const member = message.guild?.members.cache.get(userId)
     const displayName = member?.displayName || user.displayName || user.username
-    content = content.replace(
-      new RegExp(`<@!?${userId}>`, 'g'),
-      `@${displayName}`,
-    )
+    content = content.replace(new RegExp(`<@!?${userId}>`, 'g'), `@${displayName}`)
   }
 
   // Replace role mentions <@&roleId> with @roleName
@@ -163,11 +198,168 @@ function normalizeWhitespace(text: string): string {
   return text.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ')
 }
 
+export type SessionPartKind = 'text' | 'tool'
+
+export function sessionPartKind(part: { type: string }): SessionPartKind {
+  return part.type === 'text' ? 'text' : 'tool'
+}
+
+export function shouldLeadWithBlankLine({
+  previousKind,
+  nextKind,
+}: {
+  previousKind: SessionPartKind | undefined
+  nextKind: SessionPartKind
+}): boolean {
+  if (!previousKind) return false
+  return previousKind !== nextKind
+}
+
+export function sessionPartContent({
+  content,
+  leadWithBlankLine,
+}: {
+  content: string
+  leadWithBlankLine: boolean
+}): string {
+  if (!leadWithBlankLine) return content
+  return `\n${content}`
+}
+
+export function asDiscordQuote(text: string): string {
+  const lead = text.startsWith('\n') ? '\n' : ''
+  const body = lead ? text.slice(1) : text
+  return (
+    lead +
+    body
+      .split('\n')
+      .map((line) => {
+        if (line.startsWith('>')) return line
+        return `> ${line}`
+      })
+      .join('\n')
+  )
+}
+
+function isNonEmptyTextPart(part: { type: string; text?: string }): boolean {
+  return part.type === 'text' && Boolean(part.text?.trim())
+}
+
+function isRenderableTurnPart(part: { type: string; text?: string }): boolean {
+  return isNonEmptyTextPart(part) || part.type === 'tool'
+}
+
+function nextToolNameAfter({
+  parts,
+  fromIndex,
+}: {
+  parts: Array<{ type: string; tool?: string; text?: string }>
+  fromIndex: number
+}): string | undefined {
+  for (const part of parts.slice(fromIndex + 1)) {
+    if (isNonEmptyTextPart(part)) return undefined
+    if (part.type === 'tool' && part.tool) return part.tool
+  }
+}
+
+export function shouldQuoteIntermediateTextPart({
+  part,
+  isLastInTurn,
+  nextToolName,
+}: {
+  part: { type: string; text?: string }
+  isLastInTurn: boolean
+  nextToolName?: string
+}): boolean {
+  if (!isNonEmptyTextPart(part) || isLastInTurn) return false
+  const text = part.text ?? ''
+  if (text.includes('<callout')) return false
+  if (text.trim().split('\n').length > 2) return false
+  if (
+    nextToolName === 'question' ||
+    nextToolName?.endsWith('kimaki_sleep') ||
+    nextToolName?.endsWith('kimaki_action_buttons')
+  ) {
+    return false
+  }
+  return true
+}
+
+export type AssistantTurnFlushMode = 'progress' | 'interactive' | 'final'
+
+export type PlannedAssistantTurnPart<T extends { id: string; type: string; text?: string }> = {
+  part: T
+  quoteText: boolean
+}
+
+export function planAssistantTurnFlush<
+  T extends {
+    id: string
+    type: string
+    text?: string
+    tool?: string
+    time?: { end?: number; created?: number }
+  },
+>({
+  parts,
+  mode,
+  throughPartId,
+}: {
+  parts: T[]
+  mode: AssistantTurnFlushMode
+  throughPartId?: string
+}): {
+  send: Array<{ id: string; quoteText: boolean }>
+  hold: Array<{ id: string; quoteText: boolean }>
+  sendParts: Array<PlannedAssistantTurnPart<T>>
+} {
+  const lastText = parts.filter(isNonEmptyTextPart).at(-1)
+  const lastTextIndex = lastText ? parts.findLastIndex((part) => part.id === lastText.id) : -1
+  const throughIndex = throughPartId ? parts.findIndex((part) => part.id === throughPartId) : -1
+
+  const sendUntil = (() => {
+    if (mode === 'final') return parts.length
+    if (mode === 'interactive') {
+      if (throughIndex >= 0) return throughIndex + 1
+      return parts.length
+    }
+    if (!lastText) return parts.length
+    // Hold unfinished last text and anything after it so tool order stays intact.
+    if (!lastText.time?.end) return lastTextIndex
+    return parts.length
+  })()
+
+  const sendParts: Array<PlannedAssistantTurnPart<T>> = []
+  const holdParts: T[] = []
+  for (const [index, part] of parts.entries()) {
+    if (index < sendUntil) {
+      sendParts.push({
+        part,
+        quoteText: shouldQuoteIntermediateTextPart({
+          part,
+          isLastInTurn:
+            mode !== 'progress' && parts.filter(isRenderableTurnPart).at(-1)?.id === part.id,
+          nextToolName: nextToolNameAfter({ parts, fromIndex: index }),
+        }),
+      })
+      continue
+    }
+    holdParts.push(part)
+  }
+
+  return {
+    send: sendParts.map((entry) => ({ id: entry.part.id, quoteText: entry.quoteText })),
+    hold: holdParts.map((part) => ({ id: part.id, quoteText: false })),
+    sendParts,
+  }
+}
+
 // A chunk of formatted content with associated part IDs, ready to be
 // batched into as few Discord messages as possible.
 export type SessionChunk = {
   partIds: string[]
   content: string
+  kind: SessionPartKind
 }
 
 /**
@@ -203,7 +395,19 @@ export function collectSessionChunks({
       if (!content.trim()) {
         continue
       }
-      allChunks.push({ partIds: [part.id], content: content.trimEnd() })
+      const quote = shouldQuoteIntermediateTextPart({
+        part,
+        isLastInTurn: false,
+        nextToolName: nextToolNameAfter({
+          parts: message.parts,
+          fromIndex: message.parts.indexOf(part),
+        }),
+      })
+      allChunks.push({
+        partIds: [part.id],
+        content: (quote ? asDiscordQuote(content) : content).trimEnd(),
+        kind: sessionPartKind(part),
+      })
     }
   }
 
@@ -225,19 +429,37 @@ export function batchChunksForDiscord(chunks: SessionChunk[]): SessionChunk[] {
     return []
   }
   const batched: SessionChunk[] = []
-  let current: SessionChunk = { partIds: [...chunks[0]!.partIds], content: chunks[0]!.content }
+  let current: SessionChunk = {
+    partIds: [...chunks[0]!.partIds],
+    content: chunks[0]!.content,
+    kind: chunks[0]!.kind,
+  }
 
   for (let i = 1; i < chunks.length; i++) {
     const next = chunks[i]!
+    if (next.kind !== current.kind) {
+      batched.push(current)
+      current = {
+        partIds: [...next.partIds],
+        content: next.content,
+        kind: next.kind,
+      }
+      continue
+    }
     const merged = current.content + '\n' + next.content
     if (merged.length <= DISCORD_BATCH_MAX_LENGTH) {
       current = {
         partIds: [...current.partIds, ...next.partIds],
         content: merged,
+        kind: current.kind,
       }
     } else {
       batched.push(current)
-      current = { partIds: [...next.partIds], content: next.content }
+      current = {
+        partIds: [...next.partIds],
+        content: next.content,
+        kind: next.kind,
+      }
     }
   }
   batched.push(current)
@@ -261,44 +483,104 @@ export function isTextMimeType(contentType: string | null): boolean {
   return TEXT_MIME_TYPES.some((prefix) => contentType.startsWith(prefix))
 }
 
+// Small Discord "send as file" prompts stay inlined. Bigger dumps only get a URL.
+export const TEXT_ATTACHMENT_INLINE_LIMIT_BYTES = 64 * 1024
+const KIMAKI_SEND_PROMPT_ATTACHMENT_NAME = 'prompt.md'
+
+function formatAttachmentSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) {
+    const kb = bytes / 1024
+    return `${kb < 10 ? kb.toFixed(1) : kb.toFixed(0)} KB`
+  }
+  const mb = bytes / (1024 * 1024)
+  return `${mb < 10 ? mb.toFixed(1) : mb.toFixed(0)} MB`
+}
+
+function shouldInlineTextAttachment(attachment: { name: string; size: number }): boolean {
+  if (attachment.name === KIMAKI_SEND_PROMPT_ATTACHMENT_NAME) return true
+  return attachment.size <= TEXT_ATTACHMENT_INLINE_LIMIT_BYTES
+}
+
+function textAttachmentAttrs(
+  attachment: { name: string; contentType: string | null; size: number; url: string },
+  extra: string[] = [],
+): string {
+  return [
+    `filename="${attachment.name}"`,
+    `mime="${attachment.contentType}"`,
+    `size="${attachment.size}"`,
+    `url="${attachment.url}"`,
+    ...extra,
+  ].join(' ')
+}
+
+function safeAttachmentBasename(name: string): string {
+  const sanitized = path.basename(name).replace(/\0/g, '')
+  if (!sanitized || sanitized === '.' || sanitized === '..') return 'attachment'
+  return sanitized
+}
+
+function localAttachmentPath(attachment: { id?: string; name: string; url: string }): string {
+  const id = attachment.id || attachment.url.slice(-12).replace(/[^a-zA-Z0-9]/g, '')
+  return path.join(getDataDir(), 'attachments', `${id}-${safeAttachmentBasename(attachment.name)}`)
+}
+
 export async function getTextAttachments(message: Message): Promise<string> {
-  const textAttachments = Array.from(message.attachments.values()).filter(
-    (attachment) => isTextMimeType(attachment.contentType),
+  const textAttachments = Array.from(message.attachments.values()).filter((attachment) =>
+    isTextMimeType(attachment.contentType),
   )
 
   if (textAttachments.length === 0) {
     return ''
   }
 
+  const attachmentsDir = path.join(getDataDir(), 'attachments')
+  fs.mkdirSync(attachmentsDir, { recursive: true })
+
   const textContents = await Promise.all(
     textAttachments.map(async (attachment) => {
-      const response = await fetch(attachment.url)
-        .catch((e) => new FetchError({ url: attachment.url, cause: e }))
+      const response = await fetch(attachment.url).catch(
+        (e) => new FetchError({ url: attachment.url, cause: e }),
+      )
       if (response instanceof Error) {
-        return `<attachment filename="${attachment.name}" error="${response.message}" />`
+        return `<attachment ${textAttachmentAttrs(attachment)} error="${response.message}" />`
       }
       if (!response.ok) {
-        return `<attachment filename="${attachment.name}" error="Failed to fetch: ${response.status}" />`
+        return `<attachment ${textAttachmentAttrs(attachment)} error="Failed to fetch: ${response.status}" />`
       }
-      const text = await response.text()
-      return `<attachment filename="${attachment.name}" mime="${attachment.contentType}">\n${text}\n</attachment>`
+
+      const buffer = Buffer.from(await response.arrayBuffer())
+      const savedPath = localAttachmentPath(attachment)
+      const written = await fs.promises
+        .writeFile(savedPath, buffer)
+        .catch((e) => new FilesystemOperationError({ operation: 'write attachment', cause: e }))
+      if (written instanceof Error) {
+        logger.error(`Failed to save attachment ${attachment.name}:`, written.message)
+      }
+      const pathAttr = written instanceof Error ? [] : [`path="${savedPath}"`]
+
+      if (!shouldInlineTextAttachment(attachment)) {
+        const sizeLabel = formatAttachmentSize(attachment.size)
+        return [
+          `<attachment ${textAttachmentAttrs(attachment, [...pathAttr, 'large="true"'])}>`,
+          `This file is large (${sizeLabel}, ${attachment.contentType || 'unknown type'}). Contents were not inlined to save context. Read the local path.`,
+          `</attachment>`,
+        ].join('\n')
+      }
+
+      return `<attachment ${textAttachmentAttrs(attachment, pathAttr)}>\n${buffer.toString('utf8')}\n</attachment>`
     }),
   )
 
   return textContents.join('\n\n')
 }
 
-export async function getFileAttachments(
-  message: Message,
-): Promise<DiscordFileAttachment[]> {
-  const fileAttachments = Array.from(message.attachments.values()).filter(
-    (attachment) => {
-      const contentType = attachment.contentType || ''
-      return (
-        contentType.startsWith('image/') || contentType === 'application/pdf'
-      )
-    },
-  )
+export async function getFileAttachments(message: Message): Promise<DiscordFileAttachment[]> {
+  const fileAttachments = Array.from(message.attachments.values()).filter((attachment) => {
+    const contentType = attachment.contentType || ''
+    return contentType.startsWith('image/') || contentType === 'application/pdf'
+  })
 
   if (fileAttachments.length === 0) {
     return []
@@ -306,19 +588,15 @@ export async function getFileAttachments(
 
   const results = await Promise.all(
     fileAttachments.map(async (attachment) => {
-      const response = await fetch(attachment.url)
-        .catch((e) => new FetchError({ url: attachment.url, cause: e }))
+      const response = await fetch(attachment.url).catch(
+        (e) => new FetchError({ url: attachment.url, cause: e }),
+      )
       if (response instanceof Error) {
-        logger.error(
-          `Error downloading attachment ${attachment.name}:`,
-          response.message,
-        )
+        logger.error(`Error downloading attachment ${attachment.name}:`, response.message)
         return null
       }
       if (!response.ok) {
-        logger.error(
-          `Failed to fetch attachment ${attachment.name}: ${response.status}`,
-        )
+        logger.error(`Failed to fetch attachment ${attachment.name}: ${response.status}`)
         return null
       }
 
@@ -348,31 +626,23 @@ export async function getFileAttachments(
   return results.filter((r) => r !== null) as DiscordFileAttachment[]
 }
 
-const MAX_BASH_COMMAND_INLINE_LENGTH = 100
+const MAX_BASH_COMMAND_INLINE_LENGTH = 50
 
-/**
- * Format the inline title for a bash tool part. Handles three cases:
- * 1. Short single-line command → show full command
- * 2. Long/multiline command with description → show description
- * 3. Long/multiline command without description → truncate first line of command
- *
- * The description field was removed from the opencode v2 bash tool schema but
- * kimaki's system prompt instructs models to always send it as an extra field.
- * Case 3 is the fallback when a model omits it.
- */
 export function formatBashToolTitle({
   command,
   description,
+  summary,
   stateTitle,
 }: {
   command: string
   description?: string
+  summary?: string
   stateTitle?: string
 }): string {
-  if (!command && !description && !stateTitle) return ''
+  const label = description || summary
+  if (!command && !label && !stateTitle) return ''
 
   const isSingleLine = !command.includes('\n')
-  // Find first non-empty line to handle commands with leading blank lines
   const firstMeaningfulLine =
     command
       .split('\n')
@@ -382,8 +652,8 @@ export function formatBashToolTitle({
   if (command && isSingleLine && command.length <= MAX_BASH_COMMAND_INLINE_LENGTH) {
     return ` _${escapeInlineMarkdown(command)}_`
   }
-  if (description) {
-    return ` _${escapeInlineMarkdown(description)}_`
+  if (label) {
+    return ` _${escapeInlineMarkdown(label)}_`
   }
   if (firstMeaningfulLine.length > 0) {
     const needsTruncation = firstMeaningfulLine.length > MAX_BASH_COMMAND_INLINE_LENGTH
@@ -444,9 +714,7 @@ export function getToolSummaryText(part: Part): string {
   if (part.tool === 'webfetch') {
     const url = (part.state.input?.url as string) || ''
     const urlWithoutProtocol = url.replace(/^https?:\/\//, '')
-    return urlWithoutProtocol
-      ? `*${escapeInlineMarkdown(urlWithoutProtocol)}*`
-      : ''
+    return urlWithoutProtocol ? `*${escapeInlineMarkdown(urlWithoutProtocol)}*` : ''
   }
 
   if (part.tool === 'read') {
@@ -471,11 +739,7 @@ export function getToolSummaryText(part: Part): string {
     return pattern ? `*${escapeInlineMarkdown(pattern)}*` : ''
   }
 
-  if (
-    part.tool === 'bash' ||
-    part.tool === 'todoread' ||
-    part.tool === 'todowrite'
-  ) {
+  if (part.tool === 'bash' || part.tool === 'todoread' || part.tool === 'todowrite') {
     return ''
   }
 
@@ -495,16 +759,28 @@ export function getToolSummaryText(part: Part): string {
     return prompt ? `*${escapeInlineMarkdown(prompt.slice(0, 60))}*` : ''
   }
 
+  // LESSON: tool parts are sent to Discord at `running` status (see
+  // shouldSendPart in thread-session-runtime), so `state.title` from the tool
+  // result is never rendered here. Everything shown must come from state.input.
+  // `until` is already absolute; `duration` is relative, so say "for 2h" —
+  // never "until 2h".
+  if (part.tool.endsWith('kimaki_sleep')) {
+    const until = (part.state.input?.until as string) || ''
+    const duration = (part.state.input?.duration as string) || ''
+    const reason = (part.state.input?.reason as string) || ''
+    const when = until ? `until ${until}` : duration ? `for ${duration}` : ''
+    const reasonText = reason ? `_${escapeInlineMarkdown(reason)}_` : ''
+    return [when && escapeInlineMarkdown(when), reasonText].filter(Boolean).join(' ')
+  }
+
   if (!part.state.input) return ''
 
   const inputFields = Object.entries(part.state.input)
     .map(([key, value]) => {
       if (value === null || value === undefined) return null
-      const stringValue =
-        typeof value === 'string' ? value : JSON.stringify(value)
+      const stringValue = typeof value === 'string' ? value : JSON.stringify(value)
       const normalized = normalizeWhitespace(stringValue)
-      const truncatedValue =
-        normalized.length > 50 ? normalized.slice(0, 50) + '…' : normalized
+      const truncatedValue = normalized.length > 50 ? normalized.slice(0, 50) + '…' : normalized
       return `${key}: ${truncatedValue}`
     })
     .filter(Boolean)
@@ -526,14 +802,28 @@ export function formatTodoList(part: Part): string {
   })
   const activeTodo = todos[activeIndex]
   if (activeIndex === -1 || !activeTodo) return ''
-  // digit-with-period ⒈-⒛ for 1-20, fallback to regular number for 21+
-  const digitWithPeriod = '⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑⒒⒓⒔⒕⒖⒗⒘⒙⒚⒛'
   const todoNumber = activeIndex + 1
-  const num =
-    todoNumber <= 20 ? digitWithPeriod[todoNumber - 1] : `${todoNumber}.`
-  const content =
-    activeTodo.content.charAt(0).toLowerCase() + activeTodo.content.slice(1)
-  return `${num} **${escapeInlineMarkdown(content)}**`
+  const content = activeTodo.content.charAt(0).toLowerCase() + activeTodo.content.slice(1)
+  return `${todoNumber}.  **${escapeInlineMarkdown(content)}**`
+}
+
+export function formatTaskToolTitle(part: Extract<Part, { type: 'tool' }>): string {
+  // Running only. The child session can be created later when many tasks queue.
+  if (part.tool !== 'task' || part.state.status !== 'running') return ''
+
+  const description = part.state.input?.description
+  const stateTitle = part.state.title
+  const title =
+    typeof description === 'string' && description
+      ? description
+      : typeof stateTitle === 'string'
+        ? stateTitle
+        : ''
+  if (!title) return ''
+
+  const subagentType = part.state.input?.subagent_type
+  const agent = typeof subagentType === 'string' ? subagentType : 'task'
+  return `${TOOL_PREFIX}${escapeInlineMarkdown(agent)} **${escapeInlineMarkdown(title)}**`
 }
 
 export function formatPart(part: Part, prefix?: string): string {
@@ -542,53 +832,42 @@ export function formatPart(part: Part, prefix?: string): string {
   if (part.type === 'text') {
     const text = part.text?.trim()
     if (!text) return ''
-    // For subtask text, always use bullet with prefix
     if (prefix) {
-      return `⬥ ${pfx}${text}`
+      return `${pfx}${text}`
     }
-    const firstChar = text[0] || ''
-    const markdownStarters = ['#', '*', '_', '-', '>', '`', '[', '|']
-    const startsWithMarkdown =
-      markdownStarters.includes(firstChar) ||
-      /^\d+\./.test(text) ||
-      /^<callout[\s>]/i.test(text)
-    if (startsWithMarkdown) {
-      return `\n${text}`
-    }
-    return `⬥ ${text}`
+    return text
   }
 
   if (part.type === 'reasoning') {
     if (!part.text?.trim()) return ''
-    return `┣ ${pfx}thinking`
+    return `${THINKING_PREFIX}${pfx}thinking`
   }
 
   if (part.type === 'file') {
-    return prefix
-      ? `📄 ${pfx}${part.filename || 'File'}`
-      : `📄 ${part.filename || 'File'}`
+    return prefix ? `📄 ${pfx}${part.filename || 'File'}` : `📄 ${part.filename || 'File'}`
   }
 
   if (
     part.type === 'step-start' ||
     part.type === 'step-finish' ||
-    part.type === 'patch'
+    part.type === 'patch' ||
+    part.type === 'compaction'
   ) {
     return ''
   }
 
   if (part.type === 'agent') {
-    return `┣ ${pfx}agent ${part.id}`
+    return `${TOOL_PREFIX}${pfx}agent ${part.id}`
   }
 
   if (part.type === 'snapshot') {
-    return `┣ ${pfx}snapshot ${part.snapshot}`
+    return `${TOOL_PREFIX}${pfx}snapshot ${part.snapshot}`
   }
 
   if (part.type === 'tool') {
     if (part.tool === 'todowrite') {
       const formatted = formatTodoList(part)
-      return prefix && formatted ? `┣ ${pfx}${formatted}` : formatted
+      return prefix && formatted ? `${TOOL_PREFIX}${pfx}${formatted}` : formatted
     }
 
     // Question tool is handled via Discord dropdowns, not text
@@ -617,11 +896,13 @@ export function formatPart(part: Part, prefix?: string): string {
       }
       const command = (part.state.input?.command as string) || ''
       const description = (part.state.input?.description as string) || ''
+      const summary = (part.state.input?.summary as string) || ''
       const toolTitle = formatBashToolTitle({
         command,
         description,
+        summary,
       })
-      return `┣ ${pfx}bash${toolTitle}`
+      return `${TOOL_PREFIX}${pfx}bash${toolTitle}`
     }
 
     const summaryText = getToolSummaryText(part)
@@ -633,9 +914,11 @@ export function formatPart(part: Part, prefix?: string): string {
     } else if (part.tool === 'bash') {
       const command = (part.state.input?.command as string) || ''
       const description = (part.state.input?.description as string) || ''
+      const summary = (part.state.input?.summary as string) || ''
       const formatted = formatBashToolTitle({
         command,
         description,
+        summary,
         stateTitle,
       })
       toolTitle = formatted.startsWith(' ') ? formatted.slice(1) : formatted
@@ -647,19 +930,16 @@ export function formatPart(part: Part, prefix?: string): string {
       if (part.state.status === 'error') {
         return '⨯'
       }
-      if (
-        part.tool === 'edit' ||
-        part.tool === 'write' ||
-        part.tool === 'apply_patch'
-      ) {
-        return '◼︎'
+      if (part.tool === 'edit' || part.tool === 'write' || part.tool === 'apply_patch') {
+        return FILE_EDIT_PREFIX
       }
-      return '┣'
+      return TOOL_PREFIX
     })()
-    const toolParts = [part.tool, toolTitle, summaryText]
-      .filter(Boolean)
-      .join(' ')
-    return `${icon} ${pfx}${toolParts}`
+    const toolParts = [part.tool, toolTitle, summaryText].filter(Boolean).join(' ')
+    if (icon === '⨯') {
+      return `${icon} ${pfx}${toolParts}`
+    }
+    return `${icon}${pfx}${toolParts}`
   }
 
   logger.warn('Unknown part type:', part)

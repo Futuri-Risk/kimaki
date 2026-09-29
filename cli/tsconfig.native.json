@@ -1,0 +1,19 @@
+{
+  // Isolated strict check of the shared native core (ZK-002). This mirrors the hardened
+  // slice's independent native-only check: the native graph must typecheck under the
+  // stricter-than-host flags and must not depend on any host module.
+  "compilerOptions": {
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["src/agent/native/*.ts"],
+  "exclude": ["src/agent/native/*.test.ts", "src/agent/native/supervisor.js"]
+}

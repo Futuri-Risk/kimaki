@@ -29,6 +29,7 @@ import {
   getChannelDirectory,
   startDiscordBot,
   initializeOpencodeForDirectory,
+  assertCompatibleOpencodeVersion,
   createProjectChannels,
   createDefaultKimakiChannel,
   type ChannelWithTags,
@@ -57,11 +58,14 @@ import { discordApiUrl, getDiscordRestApiUrl, getGatewayProxyRestBaseUrl, getInt
 import crypto from 'node:crypto'
 import path from 'node:path'
 import fs from 'node:fs'
-import os from 'node:os'
 import { spawn } from 'node:child_process'
 import { createLogger, LogPrefix } from './logger.js'
 import { notifyError } from './sentry.js'
-import { uploadFilesToDiscord, stripMentions } from './discord-utils.js'
+import {
+  uploadFilesToDiscord,
+  stripMentions,
+  isThreadChannelType,
+} from './discord-utils.js'
 import { setDataDir, getDataDir } from './config.js'
 import { execAsync } from './worktrees.js'
 import { backgroundUpgradeKimaki } from './upgrade.js'
@@ -200,12 +204,44 @@ export async function resolveBotCredentials({ appIdOverride }: { appIdOverride?:
   process.exit(EXIT_NO_RESTART)
 }
 
-export function isThreadChannelType(type: number): boolean {
-  return [
-    ChannelType.PublicThread,
-    ChannelType.PrivateThread,
-    ChannelType.AnnouncementThread,
-  ].includes(type)
+export { isThreadChannelType }
+
+/** Wrap long lines so prompt.md is readable in Discord's attachment preview. */
+function wrapPromptAttachmentText(prompt: string): string {
+  return prompt
+    .split('\n')
+    .flatMap((line) => {
+      if (line.length <= 120) {
+        return [line]
+      }
+      const wrapped: string[] = []
+      let remaining = line
+      const maxCol = 120
+      // Only soft-break at a space if it's reasonably close to maxCol,
+      // otherwise hard-break to avoid tiny fragments from early spaces
+      const minSoftBreak = 90
+      while (remaining.length > maxCol) {
+        const lastSpace = remaining.lastIndexOf(' ', maxCol)
+        const useSoftBreak = lastSpace >= minSoftBreak
+        const breakAt = useSoftBreak ? lastSpace : maxCol
+        wrapped.push(remaining.slice(0, breakAt))
+        // Only consume the separator space on soft breaks
+        remaining = useSoftBreak
+          ? remaining.slice(breakAt + 1)
+          : remaining.slice(breakAt)
+      }
+      if (remaining.length > 0) {
+        wrapped.push(remaining)
+      }
+      return wrapped
+    })
+    .join('\n')
+}
+
+function promptAttachmentBlob(text: string) {
+  return new Blob([new Uint8Array(Buffer.from(text, 'utf8'))], {
+    type: 'text/markdown',
+  })
 }
 
 export async function sendDiscordMessageWithOptionalAttachment({
@@ -221,7 +257,8 @@ export async function sendDiscordMessageWithOptionalAttachment({
   prompt: string
   botToken: string
   embeds?: Array<{ color: number; footer: { text: string } }>
-  rest: REST
+  /** Only `post` is used (short prompt / split paths). Accept a narrow shape so tests need no cast. */
+  rest: Pick<REST, 'post'>
   /** When true, long messages are split into multiple Discord messages instead of
    *  being attached as a file. Useful for notify-only messages where the content
    *  should be directly visible in the channel. */
@@ -248,24 +285,26 @@ export async function sendDiscordMessageWithOptionalAttachment({
     }
 
     // When prompt exceeds Discord's limit, attach it as prompt.md alongside
-    // user files so nothing is silently lost.
+    // user files so nothing is silently lost. Build prompt.md from memory so
+    // parallel kimaki send processes never share or unlink a temp path.
     const isLongPrompt = prompt.length > discordMaxLength
     const content = isLongPrompt
       ? `Prompt attached as file (${prompt.length} chars)\n\n> ${prompt.slice(0, 100).replace(/\n/g, ' ')}...`
       : prompt
 
-    // Build attachment metadata: user files + optional prompt.md
-    const allFiles: Array<{ filePath: string; filename: string; mimeType: string }> = files.map((file) => ({
-      filePath: file,
-      filename: path.basename(file),
-      mimeType: mime.getType(file) || 'application/octet-stream',
-    }))
+    const allFiles: Array<{ data: Uint8Array; filename: string; mimeType: string }> =
+      files.map((file) => ({
+        data: new Uint8Array(fs.readFileSync(file)),
+        filename: path.basename(file),
+        mimeType: mime.getType(file) || 'application/octet-stream',
+      }))
 
     if (isLongPrompt) {
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kimaki-prompt-'))
-      const tmpFile = path.join(tmpDir, 'prompt.md')
-      fs.writeFileSync(tmpFile, prompt)
-      allFiles.push({ filePath: tmpFile, filename: 'prompt.md', mimeType: 'text/markdown' })
+      allFiles.push({
+        data: new Uint8Array(Buffer.from(prompt, 'utf8')),
+        filename: 'prompt.md',
+        mimeType: 'text/markdown',
+      })
     }
 
     const attachments = allFiles.map((f, index) => ({
@@ -285,10 +324,9 @@ export async function sendDiscordMessageWithOptionalAttachment({
     )
 
     for (const [index, f] of allFiles.entries()) {
-      const buffer = fs.readFileSync(f.filePath)
       formData.append(
         `files[${index}]`,
-        new Blob([buffer], { type: f.mimeType }),
+        new Blob([f.data], { type: f.mimeType }),
         f.filename,
       )
     }
@@ -346,82 +384,42 @@ export async function sendDiscordMessageWithOptionalAttachment({
 
   const preview = prompt.slice(0, 100).replace(/\n/g, ' ')
   const summaryContent = `Prompt attached as file (${prompt.length} chars)\n\n> ${preview}...`
+  // In-memory Blob only — no temp file. Parallel send must never share a path.
+  const formData = new FormData()
+  formData.append(
+    'payload_json',
+    JSON.stringify({
+      content: summaryContent,
+      attachments: [{ id: 0, filename: 'prompt.md' }],
+      embeds,
+      allowed_mentions: { parse: store.getState().allowedMentions },
+    }),
+  )
+  formData.append(
+    'files[0]',
+    promptAttachmentBlob(wrapPromptAttachmentText(prompt)),
+    'prompt.md',
+  )
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kimaki-prompt-'))
-  const tmpFile = path.join(tmpDir, 'prompt.md')
-  // Wrap long lines so the file is readable in Discord's preview
-  // (Discord doesn't wrap text in file attachments)
-  const wrappedPrompt = prompt
-    .split('\n')
-    .flatMap((line) => {
-      if (line.length <= 120) {
-        return [line]
-      }
-      const wrapped: string[] = []
-      let remaining = line
-      const maxCol = 120
-      // Only soft-break at a space if it's reasonably close to maxCol,
-      // otherwise hard-break to avoid tiny fragments from early spaces
-      const minSoftBreak = 90
-      while (remaining.length > maxCol) {
-        const lastSpace = remaining.lastIndexOf(' ', maxCol)
-        const useSoftBreak = lastSpace >= minSoftBreak
-        const breakAt = useSoftBreak ? lastSpace : maxCol
-        wrapped.push(remaining.slice(0, breakAt))
-        // Only consume the separator space on soft breaks
-        remaining = useSoftBreak
-          ? remaining.slice(breakAt + 1)
-          : remaining.slice(breakAt)
-      }
-      if (remaining.length > 0) {
-        wrapped.push(remaining)
-      }
-      return wrapped
-    })
-    .join('\n')
-  fs.writeFileSync(tmpFile, wrappedPrompt)
-
-  try {
-    const formData = new FormData()
-    formData.append(
-      'payload_json',
-      JSON.stringify({
-        content: summaryContent,
-        attachments: [{ id: 0, filename: 'prompt.md' }],
-        embeds,
-        allowed_mentions: { parse: store.getState().allowedMentions },
-      }),
-    )
-    const buffer = fs.readFileSync(tmpFile)
-    formData.append(
-      'files[0]',
-      new Blob([buffer], { type: 'text/markdown' }),
-      'prompt.md',
-    )
-
-    const starterMessageResponse = await fetch(
-      discordApiUrl(`/channels/${channelId}/messages`),
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bot ${botToken}`,
-        },
-        body: formData,
+  const starterMessageResponse = await fetch(
+    discordApiUrl(`/channels/${channelId}/messages`),
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${botToken}`,
       },
+      body: formData,
+    },
+  )
+
+  if (!starterMessageResponse.ok) {
+    const error = await starterMessageResponse.text()
+    throw new Error(
+      `Discord API error: ${starterMessageResponse.status} - ${error}`,
     )
-
-    if (!starterMessageResponse.ok) {
-      const error = await starterMessageResponse.text()
-      throw new Error(
-        `Discord API error: ${starterMessageResponse.status} - ${error}`,
-      )
-    }
-
-    return (await starterMessageResponse.json()) as { id: string }
-  } finally {
-    fs.unlinkSync(tmpFile)
-    fs.rmdirSync(tmpDir)
   }
+
+  return (await starterMessageResponse.json()) as { id: string }
 }
 
 export function formatRelativeTime(target: Date): string {
@@ -459,6 +457,10 @@ export function formatTaskScheduleLine(schedule: ParsedSendAt): string {
 }
 
 export const EXIT_NO_RESTART = 64
+// Temporary failure (sysexits EX_TEMPFAIL). Wrapper retries forever with
+// backoff and does not count this toward the crash-loop detector. Used when
+// Discord login fails because the network is down.
+export const EXIT_TEMPFAIL = 75
 
 export type GuildMemberSearchResult = {
   user: { id: string; username: string; global_name?: string }
@@ -467,7 +469,7 @@ export type GuildMemberSearchResult = {
 
 export type DiscordUserTarget = {
   id: string
-  username: string
+  username?: string
 }
 
 export function isGuildMemberSearchResult(value: object | null): value is GuildMemberSearchResult {
@@ -545,6 +547,20 @@ const TRANSIENT_ERROR_CODES = new Set([
   'DEPTH_ZERO_SELF_SIGNED_CERT',
   'SELF_SIGNED_CERT_IN_CHAIN',
   'ERR_TLS_CERT_ALTNAME_INVALID',
+  // undici fetch/WebSocket connect failures when the network is down.
+  // Without these, Discord login exits EXIT_NO_RESTART and the wrapper never
+  // comes back after a connect timeout to discord-gateway.kimaki.dev.
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_BODY_TIMEOUT',
+  'UND_ERR_SOCKET',
+])
+
+const TRANSIENT_ERROR_NAMES = new Set([
+  'ConnectTimeoutError',
+  'HeadersTimeoutError',
+  'BodyTimeoutError',
+  'SocketError',
 ])
 
 const TRANSIENT_ERROR_MESSAGE_PATTERNS = [
@@ -552,12 +568,16 @@ const TRANSIENT_ERROR_MESSAGE_PATTERNS = [
   /certificate has expired/i,
   /self[- ]signed certificate/i,
   /unable to get local issuer certificate/i,
+  /connect timeout error/i,
+  /headers timeout error/i,
+  /body timeout error/i,
 ]
 
 export function isTransientNetworkError(error: unknown): boolean {
   if (!(error instanceof Error)) return false
   const code = (error as NodeJS.ErrnoException).code
   if (code && TRANSIENT_ERROR_CODES.has(code)) return true
+  if (TRANSIENT_ERROR_NAMES.has(error.name)) return true
   // Fallback when code is stripped by wrappers (discord.js sometimes rethrows by message only).
   if (
     TRANSIENT_ERROR_MESSAGE_PATTERNS.some((pattern) =>
@@ -617,7 +637,7 @@ export async function resolveDiscordUserOption({
   const directUserId = getDiscordUserIdFromUserOption(user)
   if (directUserId) {
     cliLogger.log(`Using Discord user ID: ${directUserId}`)
-    return { id: directUserId, username: directUserId }
+    return { id: directUserId }
   }
 
   cliLogger.log(`Searching for user "${user}" in guild...`)
@@ -1085,7 +1105,7 @@ export function showReadyMessage({
 }
 
 /**
- * Create the default kimaki channel in each guild and send a welcome message.
+ * Create default channels in locally configured guilds, or proxy-authorized gateway guilds.
  * Idempotent: skips guilds that already have the channel.
  * Extracted so both the interactive and headless startup paths share the same logic.
  */
@@ -1104,9 +1124,15 @@ export async function ensureDefaultChannelsWithWelcome({
 }): Promise<{ name: string; id: string; guildId: string }[]> {
   if (process.env['KIMAKI_NO_DEFAULT_CHANNEL'] === '1') return []
 
+  const localMappings = isGatewayMode ? [] : await findChannelsByDirectory({})
   const created: { name: string; id: string; guildId: string }[] = []
   for (const guild of guilds) {
     try {
+      if (!isGatewayMode) {
+        // Match live channel IDs: older local mappings have no guild_id.
+        const channels = await guild.channels.fetch()
+        if (!localMappings.some((row) => channels.has(row.channel_id))) continue
+      }
       const result = await createDefaultKimakiChannel({
         guild,
         botName: discordClient.user?.username,
@@ -1589,6 +1615,12 @@ export async function run({
     }),
   ])
 
+  const opencodeVersionCheck = await assertCompatibleOpencodeVersion()
+  if (opencodeVersionCheck instanceof Error) {
+    cliLogger.error(opencodeVersionCheck.message)
+    process.exit(EXIT_NO_RESTART)
+  }
+
 
   if (store.getState().autoUpgradeEnabled) {
     void backgroundUpgradeKimaki()
@@ -1760,12 +1792,14 @@ export async function run({
     cliLogger.error(
       'Error: ' + (error instanceof Error ? error.stack : String(error)),
     )
-    // Transient network errors (DNS down, gateway unreachable) should allow
-    // the bin.ts wrapper to restart us after a delay. Only truly fatal errors
-    // (bad token, invalid intent, etc.) should use EXIT_NO_RESTART.
+    // Transient network errors (DNS down, gateway unreachable, connect
+    // timeout) should allow the bin.ts wrapper to restart us after a delay.
+    // EXIT_TEMPFAIL skips the crash-loop detector so a long outage cannot
+    // permanently stop the bot. Only truly fatal errors (bad token, invalid
+    // intent, etc.) should use EXIT_NO_RESTART.
     if (isTransientNetworkError(error)) {
       cliLogger.error('Transient network error, exiting for wrapper restart...')
-      process.exit(1)
+      process.exit(EXIT_TEMPFAIL)
     }
     process.exit(EXIT_NO_RESTART)
   }
@@ -1826,7 +1860,7 @@ export async function run({
         )
       }
 
-      // Create default kimaki channel + welcome message in each guild.
+      // Create default channels only in locally configured or gateway-authorized guilds.
       // Runs after channel sync so existing channels are detected correctly.
       try {
         await ensureDefaultChannelsWithWelcome({
@@ -2033,7 +2067,7 @@ export async function run({
     }
 
     // Create default kimaki channel for general-purpose tasks.
-    // Runs for every guild the bot is in, idempotent (skips if already exists).
+    // Only locally configured or gateway-authorized guilds are eligible.
     const defaultChannelResults = await ensureDefaultChannelsWithWelcome({
       guilds,
       discordClient,

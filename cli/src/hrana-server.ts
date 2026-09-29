@@ -208,33 +208,60 @@ export async function startHranaServer({
     res.end()
   }
 
-  const started = await new Promise<ServerStartError | true>((resolve) => {
-    const srv = http.createServer(handler)
-
-    srv.on('error', (err) => {
-      const code = 'code' in err ? err.code : undefined
-      resolve(
-        new ServerStartError({
-          port,
-          reason:
-            code === 'EADDRINUSE'
-              ? `Port ${port} still in use after eviction`
-              : err.message,
-        }),
-      )
+  const listenOnPort = (
+    portToBind: number,
+  ) => {
+    return new Promise<
+      { srv: http.Server; boundPort: number } | NodeJS.ErrnoException
+    >((resolve) => {
+      const srv = http.createServer(handler)
+      srv.once('error', (err) => {
+        resolve(err)
+      })
+      srv.listen(portToBind, bindHost, () => {
+        const address = srv.address()
+        const boundPort =
+          typeof address === 'object' && address !== null
+            ? address.port
+            : portToBind
+        resolve({ srv, boundPort })
+      })
     })
-    srv.listen(port, bindHost, () => {
-      server = srv
-      resolve(true)
-    })
-  })
-  if (started instanceof Error) {
-    database.close()
-    db = null
-    return started
   }
 
-  hranaUrl = `http://127.0.0.1:${port}`
+  let bindResult = await listenOnPort(port)
+
+  // EACCES on Windows means the port falls inside a reserved TCP exclusion
+  // range (dynamic Hyper-V/WSL reservations — `netsh interface ipv4 show
+  // excludedportrange protocol=tcp`); on Unix it means a privileged port.
+  // The port is unbindable no matter what we do, so fall back to an
+  // OS-assigned port instead of failing startup. Single-instance
+  // enforcement via the lock port is not possible in this state anyway —
+  // the port could never be bound by a second instance either.
+  if (bindResult instanceof Error && bindResult.code === 'EACCES') {
+    hranaLogger.log(
+      `Lock port ${port} is not bindable (${bindResult.message}). ` +
+        `Falling back to an OS-assigned port; single-instance enforcement ` +
+        `is skipped for this run.`,
+    )
+    bindResult = await listenOnPort(0)
+  }
+
+  if (bindResult instanceof Error) {
+    database.close()
+    db = null
+    const code = bindResult.code
+    return new ServerStartError({
+      port,
+      reason:
+        code === 'EADDRINUSE'
+          ? `Port ${port} still in use after eviction`
+          : bindResult.message,
+    })
+  }
+
+  server = bindResult.srv
+  hranaUrl = `http://127.0.0.1:${bindResult.boundPort}`
   hranaLogger.log(`Hrana server ready at ${hranaUrl}`)
   return hranaUrl
 }
